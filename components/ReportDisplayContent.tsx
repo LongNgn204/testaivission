@@ -28,17 +28,27 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
         </div>
     );
     
-    const renderColorblind = (result: ColorBlindResult) => (
-         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('test_result')}</h3>
-            <p className="text-3xl font-bold text-green-600 dark:text-green-400">{result.type}</p>
-             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div><p className="font-bold text-lg dark:text-gray-200">{result.correct}/{result.total}</p><p className="text-xs text-gray-500 dark:text-gray-400">{t('correct')}</p></div>
-                <div><p className="font-bold text-lg dark:text-gray-200">{result.accuracy}%</p><p className="text-xs text-gray-500 dark:text-gray-400">{t('accuracy')}</p></div>
-                <div><p className="font-bold text-lg dark:text-gray-200">{result.duration}s</p><p className="text-xs text-gray-500 dark:text-gray-400">{t('duration')}</p></div>
+    const renderColorblind = (result: ColorBlindResult) => {
+        // Map English type to translation key
+        const typeMap: Record<string, string> = {
+            'Normal': t('colorblind_type_normal'),
+            'Red-Green Deficiency': t('colorblind_type_red_green'),
+            'Possible Total Color Blindness': t('colorblind_type_total')
+        };
+        const translatedType = typeMap[result.type] || result.type;
+        
+        return (
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('test_result')}</h3>
+                <p className="text-3xl font-bold text-green-600 dark:text-green-400">{translatedType}</p>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div><p className="font-bold text-lg dark:text-gray-200">{result.correct}/{result.total}</p><p className="text-xs text-gray-500 dark:text-gray-400">{t('correct')}</p></div>
+                    <div><p className="font-bold text-lg dark:text-gray-200">{result.accuracy}%</p><p className="text-xs text-gray-500 dark:text-gray-400">{t('accuracy')}</p></div>
+                    <div><p className="font-bold text-lg dark:text-gray-200">{result.duration}s</p><p className="text-xs text-gray-500 dark:text-gray-400">{t('duration')}</p></div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderAstigmatism = (result: AstigmatismResult) => {
         const hasAstigmatism = result.overallSeverity !== 'NONE';

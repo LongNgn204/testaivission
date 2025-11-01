@@ -38,13 +38,23 @@ export const TestInstructionsPlayer: React.FC = () => {
     const hasAttemptedAutoplayRef = useRef(false);
 
     const stopPlayback = useCallback(() => {
-        activeSourcesRef.current.forEach(source => source.stop());
+        console.log('🛑 Stopping all playback...');
+        // Stop all active audio sources
+        activeSourcesRef.current.forEach(source => {
+            try {
+                source.stop();
+                source.disconnect();
+            } catch (e) {
+                // Source might already be stopped
+            }
+        });
         activeSourcesRef.current.clear();
         audioQueueRef.current = [];
         isPlayingRef.current = false;
         setIsToastVisible(false);
         setAudioReady(false);
-        hasAttemptedAutoplayRef.current = false; // Reset để có thể play lại
+        hasAttemptedAutoplayRef.current = false;
+        console.log('✅ Playback stopped, all state cleared');
     }, []);
 
     const playNextInQueue = useCallback(() => {
@@ -87,11 +97,10 @@ export const TestInstructionsPlayer: React.FC = () => {
         console.log('🎙️ TestInstructionsPlayer - Current path:', location.pathname);
         console.log('🎙️ TestInstructionsPlayer - Previous path:', currentPathRef.current);
         
-        // Always stop playback and clear when route changes
-        if (location.pathname !== currentPathRef.current) {
-            console.log('🛑 Route changed, stopping previous playback');
+        // Always stop playback when route changes
+        if (currentPathRef.current && location.pathname !== currentPathRef.current) {
+            console.log('🛑 Route changed from', currentPathRef.current, 'to', location.pathname);
             stopPlayback();
-            currentPathRef.current = null; // Clear path reference
         }
         
         const instructionKeys = TEST_INSTRUCTIONS_MAP[location.pathname];
@@ -143,16 +152,12 @@ export const TestInstructionsPlayer: React.FC = () => {
                         console.log('🎙️ Decoding complete audio...');
                         const audioBuffer = await decodeAudioData(decode(audioBase64), audioContext, 24000, 1);
                         
-                        // Create a 1.5-second silence buffer for pause between repetitions
-                        const silenceBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 1.5, audioContext.sampleRate);
-                        
-                        // 🔁 PLAY 2 TIMES: Add buffer, silence, then buffer again
-                        audioQueueRef.current.push(audioBuffer); // Lần 1
-                        audioQueueRef.current.push(silenceBuffer); // Pause 1.5s
-                        audioQueueRef.current.push(audioBuffer); // Lần 2
+                        // ✅ PLAY ONCE ONLY: Clear queue first, then add single buffer
+                        audioQueueRef.current = []; // Clear any existing queue
+                        audioQueueRef.current.push(audioBuffer); // Chỉ play 1 lần
                         
                         setAudioReady(true);
-                        console.log('✅ Complete audio buffer ready (2x with pause), queue length:', audioQueueRef.current.length);
+                        console.log('✅ Complete audio buffer ready (1x only), queue length:', audioQueueRef.current.length);
                         
                         // Force resume if suspended
                         if (audioContext.state === 'suspended') {
@@ -161,10 +166,10 @@ export const TestInstructionsPlayer: React.FC = () => {
                             console.log('✅ Audio context resumed, state:', audioContext.state);
                         }
                         
-                        // Attempt autoplay
+                        // Attempt autoplay (ONCE only)
                         if (!hasAttemptedAutoplayRef.current) {
                             hasAttemptedAutoplayRef.current = true;
-                            console.log('🎬 Starting complete audio playback (will play 2 times)...');
+                            console.log('🎬 Starting audio playback (1x only - 100% accurate)...');
                             playNextInQueue();
                         }
                     } else {
@@ -179,8 +184,16 @@ export const TestInstructionsPlayer: React.FC = () => {
         }
         
         return () => {
-            // Cleanup khi unmount
+            // Cleanup khi unmount hoặc route change
+            console.log('🧹 TestInstructionsPlayer cleanup running...');
             stopPlayback();
+            
+            // Close audio context when component unmounts
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(err => {
+                    console.log('⚠️ Error closing audio context:', err);
+                });
+            }
         };
 
     }, [location.pathname, t, language, stopPlayback, playNextInQueue]);

@@ -11,14 +11,14 @@ const AI_CONFIG = {
   gemini: { 
     model: 'gemini-2.0-flash-exp', // 🔥 FASTEST: Gemini 2.0 Flash Experimental
     temperature: 0.15, // ⚡ FASTER: Lower temp = faster generation (from 0.25)
-    maxTokens: 1500, // ⚡ FASTER: Reduced for speed (from 2000)
+    maxTokens: 3000, // 🩺 MEDICAL: Increased for detailed clinical reports (200-250 word summaries + 8-10 recommendations)
     topP: 0.75, // ⚡ FASTER: More focused (from 0.85)
     topK: 20 // ⚡ FASTER: Quicker token selection (from 25)
   },
   tts: {
     model: "gemini-2.5-flash-preview-tts", // 🎙️ TTS Flash model
-    cacheDuration: 30 * 60 * 1000, // ⚡ LONGER CACHE: 30 minutes (from 20min)
-    maxCacheSize: 200 // ⚡ MORE CACHE: Store more responses (from 150)
+    cacheDuration: 60 * 60 * 1000, // ⚡ ULTRA-LONG CACHE: 60 minutes for instant responses
+    maxCacheSize: 500 // ⚡ MASSIVE CACHE: Store even more for instant hits
   },
   streaming: {
     enabled: true, // 🌊 STREAMING: Real-time response chunks
@@ -26,45 +26,175 @@ const AI_CONFIG = {
   }
 };
 
-// 🎯 ULTRA-COMPACT SCHEMA: Minimal tokens, maximum speed
+// � BÁC SĨ CHUYÊN KHOA SCHEMA: Chi tiết như bác sĩ thực thụ
 const createResponseSchema = (language: 'vi' | 'en') => {
-    const L = language === 'vi' ? 'VI' : 'EN'; // Ultra-short language marker
+    const L = language === 'vi' ? 'VI' : 'EN';
     
-    return {
-        type: Type.OBJECT,
-        properties: {
-            confidence: { 
-                type: Type.NUMBER, 
-                description: `0.85-0.98. Accuracy-based.` // 8 words (was 10)
+    if (language === 'vi') {
+        return {
+            type: Type.OBJECT,
+            properties: {
+                confidence: { 
+                    type: Type.NUMBER, 
+                    description: `Độ tin cậy chẩn đoán (0.85-0.98). Dựa trên độ chính xác kết quả test và lịch sử bệnh án.`
+                },
+                summary: { 
+                    type: Type.STRING, 
+                    description: `200-250 từ TIẾNG VIỆT. PHÂN TÍCH LÂM SÀNG CHI TIẾT như bác sĩ đọc bệnh án:
+                    - Chẩn đoán chính xác với thuật ngữ y khoa
+                    - Giải thích từng chỉ số kết quả test (độ chính xác %, điểm số, mức độ)
+                    - So sánh với tiêu chuẩn bình thường (baseline)
+                    - Ý nghĩa lâm sàng và ảnh hưởng đến sinh hoạt
+                    - Đánh giá tình trạng hiện tại (tốt/trung bình/xấu)
+                    - Dùng ví dụ cụ thể để bệnh nhân hiểu rõ`
+                },
+                trend: { 
+                    type: Type.STRING, 
+                    description: `80-100 từ TIẾNG VIỆT. PHÂN TÍCH XU HƯỚNG BỆNH LÝ như bác sĩ theo dõi:
+                    - So sánh với các lần test trước (cải thiện/xấu đi/ổn định)
+                    - Nhận diện xu hướng nguy hiểm (nếu có)
+                    - Dự đoán diễn biến (1-3 tháng tới)
+                    - Giai đoạn bệnh hiện tại
+                    - Tốc độ tiến triển`
+                },
+                causes: { 
+                    type: Type.STRING, 
+                    description: `80-100 từ TIẾNG VIỆT. PHÂN TÍCH NGUYÊN NHÂN như bác sĩ hỏi bệnh:
+                    - Liệt kê 4-5 nguyên nhân có khả năng cao nhất
+                    - Giải thích cơ chế gây bệnh (sinh lý bệnh)
+                    - Yếu tố nguy cơ (di truyền, lối sống, tuổi tác, môi trường)
+                    - Tác nhân trực tiếp (ánh sáng xanh, căng thẳng mắt, thiếu chất...)
+                    - Dựa trên bằng chứng y khoa`
+                },
+                recommendations: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: `8-10 KHUYẾN CÁO TIẾNG VIỆT như bác sĩ kê đơn chi tiết:
+                    
+                    1. KHẨN CẤP (nếu nghiêm trọng):
+                       - "⚠️ KHẨN CẤP: Gặp bác sĩ nhãn khoa trong 24-48 giờ vì..."
+                    
+                    2. ĐIỀU TRỊ TẠI NHÀ (3-4 mục):
+                       - Bài tập mắt cụ thể (tên, cách làm, tần suất)
+                       - Thuốc nhỏ mắt (loại, liều lượng, thời gian)
+                       - Vitamin/dinh dưỡng (A, Omega-3, Lutein...)
+                       - Nghỉ ngơi đúng cách
+                    
+                    3. THAY ĐỔI LỐI SỐNG (2-3 mục):
+                       - Quy tắc 20-20-20 chi tiết
+                       - Điều chỉnh ánh sáng làm việc
+                       - Giảm thời gian màn hình
+                       - Tư thế đúng
+                    
+                    4. THEO DÕI (1-2 mục):
+                       - "Tái khám sau 2 tuần/1 tháng"
+                       - "Test lại để đánh giá tiến triển"
+                    
+                    5. PHÒNG NGỪA BIẾN CHỨNG:
+                       - Các dấu hiệu cần đến bệnh viện ngay
+                    
+                    Mỗi khuyến cáo PHẢI giải thích TẠI SAO và LÀM THẾ NÀO.`
+                },
+                severity: { 
+                    type: Type.STRING, 
+                    description: `LOW/MEDIUM/HIGH - Phân loại mức độ nghiêm trọng theo tiêu chuẩn y khoa`
+                },
+                prediction: { 
+                    type: Type.STRING, 
+                    description: `80-100 từ TIẾNG VIỆT. TIÊN LƯỢNG như bác sĩ:
+                    - Kết quả có thể đạt được nếu tuân thủ điều trị (%)
+                    - Thời gian hồi phục dự kiến (cụ thể: 2 tuần, 1 tháng, 3 tháng)
+                    - Các mốc theo dõi quan trọng
+                    - Khả năng cải thiện hoàn toàn/một phần
+                    - Động viên tinh thần (hy vọng nhưng thực tế)
+                    - Lưu ý về tuân thủ điều trị`
+                },
             },
-            summary: { 
-                type: Type.STRING, 
-                description: `120-150 words ${L}. Detailed analysis with specific numbers, impact levels, and ranges. Be proactive and insightful.`
+            required: ["confidence", "summary", "trend", "recommendations", "severity", "causes", "prediction"]
+        };
+    } else {
+        return {
+            type: Type.OBJECT,
+            properties: {
+                confidence: { 
+                    type: Type.NUMBER, 
+                    description: `Diagnostic confidence (0.85-0.98). Based on test accuracy and medical history.`
+                },
+                summary: { 
+                    type: Type.STRING, 
+                    description: `200-250 words ENGLISH. DETAILED CLINICAL ANALYSIS like a doctor reading medical records:
+                    - Precise diagnosis with medical terminology
+                    - Explain each test metric (accuracy %, score, severity)
+                    - Compare with normal standards (baseline)
+                    - Clinical significance and daily life impact
+                    - Current condition assessment (good/average/poor)
+                    - Use specific examples for patient understanding`
+                },
+                trend: { 
+                    type: Type.STRING, 
+                    description: `80-100 words ENGLISH. PATHOLOGICAL TREND ANALYSIS:
+                    - Compare with previous tests (improving/worsening/stable)
+                    - Identify dangerous trends (if any)
+                    - Predict progression (1-3 months ahead)
+                    - Current disease stage
+                    - Progression rate`
+                },
+                causes: { 
+                    type: Type.STRING, 
+                    description: `80-100 words ENGLISH. CAUSE ANALYSIS like medical investigation:
+                    - List 4-5 most likely causes
+                    - Explain disease mechanism (pathophysiology)
+                    - Risk factors (genetics, lifestyle, age, environment)
+                    - Direct triggers (blue light, eye strain, deficiencies...)
+                    - Evidence-based`
+                },
+                recommendations: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: `8-10 RECOMMENDATIONS ENGLISH like detailed prescription:
+                    
+                    1. URGENT (if severe):
+                       - "⚠️ URGENT: See ophthalmologist within 24-48 hours because..."
+                    
+                    2. HOME TREATMENT (3-4 items):
+                       - Specific eye exercises (name, method, frequency)
+                       - Eye drops (type, dosage, duration)
+                       - Vitamins/nutrition (A, Omega-3, Lutein...)
+                       - Proper rest
+                    
+                    3. LIFESTYLE CHANGES (2-3 items):
+                       - Detailed 20-20-20 rule
+                       - Adjust work lighting
+                       - Reduce screen time
+                       - Correct posture
+                    
+                    4. FOLLOW-UP (1-2 items):
+                       - "Re-check after 2 weeks/1 month"
+                       - "Retest to assess progress"
+                    
+                    5. COMPLICATION PREVENTION:
+                       - Warning signs requiring immediate medical attention
+                    
+                    Each recommendation MUST explain WHY and HOW.`
+                },
+                severity: { 
+                    type: Type.STRING, 
+                    description: `LOW/MEDIUM/HIGH - Severity classification by medical standards`
+                },
+                prediction: { 
+                    type: Type.STRING, 
+                    description: `80-100 words ENGLISH. PROGNOSIS:
+                    - Expected outcomes with treatment compliance (%)
+                    - Estimated recovery time (specific: 2 weeks, 1 month, 3 months)
+                    - Important monitoring milestones
+                    - Likelihood of full/partial recovery
+                    - Encouragement (hopeful yet realistic)
+                    - Treatment adherence notes`
+                },
             },
-            trend: { 
-                type: Type.STRING, 
-                description: `50-70 words ${L}. Compare with baseline, identify patterns, predict trajectory. Be analytical and forward-thinking.`
-            },
-            causes: { 
-                type: Type.STRING, 
-                description: `40-60 words ${L}. Identify 3-4 root causes with evidence-based reasoning. Be specific and educational.`
-            },
-            recommendations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: `5-6 actionable items ${L}. Include: immediate actions, lifestyle changes, monitoring strategies, when to see doctor, preventive measures. Be practical and encouraging.`
-            },
-            severity: { 
-                type: Type.STRING, 
-                description: `LOW/MEDIUM/HIGH` // 2 words (was 5)
-            },
-            prediction: { 
-                type: Type.STRING, 
-                description: `40-60 words ${L}. Realistic outlook with timeline, expected improvements, and motivational guidance. Be hopeful yet honest.`
-            },
-        },
-        required: ["confidence", "summary", "trend", "recommendations", "severity", "causes", "prediction"]
-    };
+            required: ["confidence", "summary", "trend", "recommendations", "severity", "causes", "prediction"]
+        };
+    }
 };
 
 
@@ -83,17 +213,19 @@ export class AIService {
 
   async generateSpeech(text: string, language: 'vi' | 'en'): Promise<string | null> {
     try {
+        const startTime = Date.now();
+        
         // 💾 SMART CACHE: Check with hit tracking
         const cacheKey = `${language}:${text}`;
         const cached = this.ttsCache.get(cacheKey);
         
         if (cached && Date.now() - cached.timestamp < AI_CONFIG.tts.cacheDuration) {
             cached.hits++; // Track popularity
-            console.log(`🚀 TTS Cache HIT (${cached.hits}x):`, text.substring(0, 40));
+            console.log(`⚡ TTS Cache HIT (${cached.hits}x) - 0ms:`, text.substring(0, 40));
             return cached.data;
         }
 
-        // 🎯 HIGH-QUALITY TTS: Generate complete audio in batch mode
+        // 🎯 ULTRA-FAST TTS: Optimized for speed
         const response = await this.ai.models.generateContent({
             model: AI_CONFIG.tts.model,
             contents: [{ parts: [{ text }] }],
@@ -106,10 +238,16 @@ export class AIService {
                         },
                     },
                 },
+                // ⚡ SPEED OPTIMIZATIONS
+                temperature: 0.1, // Lower = faster
+                candidateCount: 1, // Single response = faster
             },
         });
         
         const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data ?? null;
+        
+        const elapsed = Date.now() - startTime;
+        console.log(`⚡ TTS Generated in ${elapsed}ms:`, text.substring(0, 40));
         
         // 💾 SMART CACHE: Store with hit tracking
         if (audioData) {
@@ -457,76 +595,445 @@ export class AIService {
   private createPrompt(testType: TestType, data: any, history: StoredTestResult[], language: 'vi' | 'en'): string {
     const isVi = language === 'vi';
     
-    // 🎯 ENHANCED INSTRUCTIONS: Proactive, detailed, insightful
+    // � BÁC SĨ CHUYÊN KHOA: Chi tiết, chuyên nghiệp như bác sĩ thực thụ
     const baseInstruction = isVi 
     ? `🚨 CHỈ TIẾNG VIỆT - KHÔNG TIẾNG ANH! 🚨
 
-Bạn là Eva - Chuyên gia AI về sức khỏe mắt. Sứ mệnh: Đánh giá chính xác 95%+ và đưa ra lời khuyên chủ động, thực tế.
+Bạn là Bác sĩ Eva - BÁC SĨ CHUYÊN KHOA NHÃN KHOA với 15+ năm kinh nghiệm lâm sàng.
 
-PHONG CÁCH PHÂN TÍCH:
-✅ CHỦ ĐỘNG: Đừng chỉ mô tả, hãy đưa ra lời khuyên cụ thể
-✅ CHI TIẾT: Giải thích rõ ràng về con số (score, accuracy, severity)
-✅ GIÁO DỤC: Người dùng cần hiểu TẠI SAO và LÀM GÌ TIẾP THEO
-✅ ĐỘNG VIÊN: Tích cực nhưng trung thực
-✅ THỰC TẾ: Đưa ra timeline cụ thể và bước hành động rõ ràng
+VAI TRÒ & CHUYÊN MÔN:
+👨‍⚕️ Bác sĩ Chuyên khoa I Nhãn khoa
+📚 Chuyên sâu: Thị lực, Võng mạc, Khúc xạ, Loạn thị, Bệnh lý màu sắc
+🎓 Phong cách: Như Giáo sư Y khoa - Giải thích chi tiết, dễ hiểu, có căn cứ khoa học
+💼 Kinh nghiệm: Đã khám và điều trị 10,000+ bệnh nhân
 
-CẤU TRÚC BẮT BUỘC:
-1. Summary: 120-150 từ, phân tích chi tiết với số liệu cụ thể
-2. Trend: So sánh với baseline, xác định xu hướng
-3. Causes: 3-4 nguyên nhân có căn cứ khoa học
-4. Recommendations: 5-6 bước hành động (Ngay lập tức / Thay đổi lối sống / Theo dõi / Khi nào gặp bác sĩ / Phòng ngừa)
-5. Severity: LOW/MEDIUM/HIGH với lý do cụ thể
-6. Prediction: Dự đoán 40-60 từ với timeline và động viên
+📊 TIÊU CHUẨN Y HỌC CHÍNH XÁC - PHẢI TUÂN THỦ 93% ĐỘ CHÍNH XÁC:
 
-JSON thuần, không markdown.`
+🔬 A. SNELLEN TEST (Thị lực):
+   - 20/20 (6/6): BÌnh thường xuất sắc = 100%
+   - 20/25 (6/7.5): Bình thường tốt = 95-99%
+   - 20/30 (6/9): Bình thường = 90-94%
+   - 20/40 (6/12): Giảm nhẹ = 80-89% → LOW severity
+   - 20/60 (6/18): Giảm trung bình = 60-79% → MEDIUM severity
+   - 20/100 (6/30): Giảm nặng = 40-59% → HIGH severity
+   - <20/100 (<6/30): Giảm rất nặng = <40% → HIGH severity + khẩn cấp
+   
+   CÔNG THỨC: Accuracy = (CorrectAnswers / TotalQuestions) × 100%
+   - >90%: LOW severity
+   - 70-90%: MEDIUM severity
+   - <70%: HIGH severity
+
+🎨 B. ISHIHARA TEST (Mù màu):
+   - 12/12 hoặc 11/12 bảng đúng: Bình thường (>90% accuracy) = Normal
+   - 7-10/12 bảng đúng: Mù màu đỏ-xanh nhẹ (58-83%) = Red-Green Deficiency + MEDIUM
+   - 4-6/12 bảng đúng: Mù màu đỏ-xanh nặng (33-50%) = Red-Green Deficiency + HIGH
+   - 0-3/12 bảng đúng: Khả năng mù màu toàn bộ (<25%) = Possible Total Color Blindness + HIGH
+   
+   CHÚ Ý: 
+   - Nếu sai bảng 1-9 (số cơ bản): Nghiêm trọng hơn
+   - Nếu sai bảng 10-12 (số phức tạp): Nhẹ hơn
+
+🔄 C. ASTIGMATISM TEST (Loạn thị):
+   - Không có loạn thị: Tất cả vạch đều nét = NONE severity
+   - Loạn thị nhẹ: 1 hướng đậm hơn chút = LOW severity
+   - Loạn thị trung bình: Nhiều hướng rõ rệt khác nhau = MEDIUM severity
+   - Loạn thị nặng: Chênh lệch rất lớn giữa các hướng = HIGH severity
+
+📐 D. AMSLER GRID (Hoàng điểm/Võng mạc):
+   - Không biến dạng: Bình thường = LOW severity
+   - 1-2 điểm nhỏ biến dạng: Nhẹ = MEDIUM severity
+   - 3+ vùng biến dạng hoặc trung tâm bị ảnh hưởng: Nặng = HIGH severity + khẩn cấp
+
+🔴🟢 E. DUOCHROME TEST (Cận/Viễn thị):
+   - Cả 2 màu đều rõ: Kính đúng = Normal + LOW severity
+   - Đỏ rõ hơn: Cận thị hoặc kính quá mạnh = Myopic + MEDIUM severity
+   - Xanh rõ hơn: Viễn thị hoặc kính yếu = Hyperopic + MEDIUM severity
+   - Chênh lệch lớn: Cần điều chỉnh kính gấp = HIGH severity
+
+💡 NGUYÊN TẮC ĐÁNH GIÁ SEVERITY:
+   ✅ LOW: Không ảnh hưởng sinh hoạt, tự điều trị được
+   ✅ MEDIUM: Ảnh hưởng một số hoạt động, cần theo dõi
+   ✅ HIGH: Ảnh hưởng nghiêm trọng, cần gặp bác sĩ 24-48h
+
+🎯 YÊU CẦU CONFIDENCE SCORE:
+   - Dữ liệu đầy đủ + kết quả rõ ràng: 0.93-0.98
+   - Dữ liệu đầy đủ + kết quả mơ hồ: 0.85-0.92
+   - Dữ liệu thiếu hoặc mâu thuẫn: 0.75-0.84
+   - KHÔNG BAO GIỜ <0.70
+
+CÁCH VIẾT BÁO CÁO LÂM SÀNG:
+
+📋 1. SUMMARY (CHẨN ĐOÁN LÂM SÀNG) - 200-250 từ:
+   Viết như đọc BỆNH ÁN:
+   
+   A. CHẨN ĐOÁN CHÍNH:
+      - Tên bệnh chính xác (tiếng Việt + Latin nếu cần)
+      - Mức độ: Nhẹ/Trung bình/Nặng
+   
+   B. PHÂN TÍCH CHỈ SỐ:
+      - "Điểm thị lực: X/20 (so với chuẩn 20/20)"
+      - "Độ chính xác: X% (bình thường: >90%)"
+      - "Mức độ nghiêm trọng: HIGH/MEDIUM/LOW vì..."
+   
+   C. Ý NGHĨA LÂM SÀNG:
+      - Ảnh hưởng đến sinh hoạt như thế nào
+      - Có nguy cơ biến chứng không
+      - Cần can thiệp gấp hay không
+   
+   D. SO SÁNH VỚI TIÊU CHUẨN:
+      - "Bình thường phải đạt..."
+      - "Kết quả của bạn thấp hơn X% so với chuẩn"
+   
+   E. VÍ DỤ CỤ THỂ:
+      - "Giống như việc nhìn qua kính bị mờ..."
+      - "Tương đương với..."
+
+📊 2. TREND (XU HƯỚNG BỆNH) - 80-100 từ:
+   Phân tích như bác sĩ THEO DÕI:
+   
+   - "So với lần test trước (ngày X): Cải thiện/Xấu đi/Ổn định"
+   - "Tốc độ tiến triển: Nhanh/Chậm/Bình thường"
+   - "Giai đoạn hiện tại: Sớm/Trung gian/Muộn"
+   - "Dự đoán 3 tháng tới: ..."
+   - "Mức độ nguy hiểm: Thấp/Cao"
+
+🔬 3. CAUSES (NGUYÊN NHÂN) - 80-100 từ:
+   Giải thích như giảng bài Y khoa:
+   
+   A. NGUYÊN NHÂN CHÍNH (4-5 mục):
+      1. Di truyền (X% khả năng)
+      2. Lối sống (màn hình X giờ/ngày)
+      3. Môi trường (ánh sáng xanh, bụi...)
+      4. Dinh dưỡng (thiếu vitamin A, Omega-3...)
+      5. Bệnh lý nền (đái tháo đường, cao huyết áp...)
+   
+   B. CƠ CHẾ BỆNH:
+      - "Khi nhìn màn hình lâu → cơ mi mắt co thắt → mỏi..."
+      - "Thiếu vitamin A → võng mạc yếu → giảm thị lực..."
+
+💊 4. RECOMMENDATIONS (KÊ ĐƠN ĐIỀU TRỊ) - 8-10 mục CHI TIẾT:
+   Viết như KEÊ ĐƠN THUỐC:
+   
+   ⚠️ A. KHẨN CẤP (nếu nghiêm trọng):
+      "⚠️ KHẨN CẤP: Cần gặp bác sĩ nhãn khoa trong 24-48 giờ vì nguy cơ [tên biến chứng]. Đặt lịch ngay tại bệnh viện Mắt gần nhất."
+   
+   🏠 B. ĐIỀU TRỊ TẠI NHÀ (4-5 mục):
+      1. "BÀI TẬP MẮT [Tên]: Làm [X lần/ngày], mỗi lần [Y phút]. Cách làm: [chi tiết từng bước]. Tác dụng: [giải thích]."
+      
+      2. "THUỐC NHỎ MẮT [Tên]: Nhỏ [X giọt], [Y lần/ngày], trong [Z tuần]. Lưu ý: [tác dụng phụ, cách bảo quản]."
+      
+      3. "VITAMIN: 
+         - Vitamin A: 5000 IU/ngày (từ cà rốt, rau chân vịt)
+         - Omega-3: 1000mg/ngày (từ cá hồi, cá thu)
+         - Lutein: 10mg/ngày (từ rau xanh đậm)
+         Tại sao: [giải thích tác dụng]"
+      
+      4. "NGHỈ NGƠI: Ngủ đủ 7-8 giờ/đêm. Nhắm mắt nghỉ 20s sau mỗi 20 phút nhìn màn hình."
+   
+   🔄 C. THAY ĐỔI LỐI SỐNG (3-4 mục):
+      1. "QUY TẮC 20-20-20: Cứ 20 phút nhìn màn hình → Nhìn vật cách 20 feet (6m) → Trong 20 giây. Tại sao: Giúp cơ mi thư giãn."
+      
+      2. "ÁNH SÁNG: Dùng đèn 40W, đặt sau lưng, không chiếu trực tiếp vào mắt. Tại sao: Giảm chói, bảo vệ võng mạc."
+      
+      3. "MÀN HÌNH: Giảm xuống <6 giờ/ngày. Bật chế độ Night Mode sau 7PM. Tại sao: Giảm ánh sáng xanh gây hại."
+   
+   📅 D. THEO DÕI:
+      1. "TÁI KHÁM: Sau 2 tuần (nếu HIGH), 1 tháng (nếu MEDIUM), 3 tháng (nếu LOW)."
+      2. "TEST LẠI: Làm lại test này để đánh giá tiến triển."
+   
+   🚨 E. DẤU HIỆU NGUY HIỂM - ĐẾN BV NGAY:
+      "Nếu thấy: Đau mắt dữ dội / Mờ mắt đột ngột / Nhìn thấy vệt sáng / Mắt đỏ + sưng → ĐẾN BỆNH VIỆN NGAY"
+
+📈 5. PREDICTION (TIÊN LƯỢNG) - 80-100 từ:
+   Đánh giá như bác sĩ dự đoán:
+   
+   A. KẾT QUẢ KỲ VỌNG:
+      - "Nếu tuân thủ điều trị: 80-90% khả năng cải thiện"
+      - "Thời gian hồi phục: 2-4 tuần (trung bình 3 tuần)"
+   
+   B. CÁC MỐC THEO DÕI:
+      - "Tuần 1: Giảm mỏi mắt"
+      - "Tuần 2-3: Cải thiện độ rõ"
+      - "Tuần 4: Thị lực ổn định"
+   
+   C. ĐỘNG VIÊN:
+      - "Tình trạng của bạn HOÀN TOÀN có thể cải thiện nếu..."
+      - "Nhiều bệnh nhân tương tự đã khỏi sau X tuần"
+   
+   D. LƯU Ý:
+      - "Quan trọng: PHẢI tuân thủ điều trị 100%"
+      - "Không tự ý ngừng thuốc"
+
+⚖️ 6. SEVERITY:
+   - LOW: "Nhẹ, có thể tự điều trị tại nhà"
+   - MEDIUM: "Trung bình, cần theo dõi sát, có thể cần gặp bác sĩ"
+   - HIGH: "Nặng, cần gặp bác sĩ KHẨN CẤP trong 24-48 giờ"
+
+❗ YÊU CẦU QUAN TRỌNG:
+✅ Dùng THUẬT NGỮ Y KHOA chuẩn (hoàng điểm, giác mạc, võng mạc...)
+✅ Giải thích TẠI SAO sau mỗi khuyến nghị
+✅ Đưa ra SỐ LIỆU cụ thể (X%, Y giờ, Z tuần...)
+✅ Ví dụ THỰC TẾ để bệnh nhân hiểu
+✅ ĐỘNG VIÊN nhưng TRUNG THỰC
+✅ JSON thuần, không markdown.
+
+HÃY VIẾT NHƯ MỘT BÁC SĨ THỰC THỤ đang tư vấn cho bệnh nhân!`
     : `🚨 ENGLISH ONLY - NO VIETNAMESE! 🚨
 
-You are Eva - AI eye health specialist. Mission: 95%+ accurate assessments with proactive, actionable advice.
+You are Dr. Eva - BOARD-CERTIFIED OPHTHALMOLOGIST with 15+ years clinical experience.
 
-ANALYSIS STYLE:
-✅ PROACTIVE: Don't just describe, give specific recommendations
-✅ DETAILED: Explain numbers clearly (score, accuracy, severity)
-✅ EDUCATIONAL: Users need to understand WHY and WHAT NEXT
-✅ ENCOURAGING: Positive yet honest
-✅ PRACTICAL: Provide specific timelines and clear action steps
+ROLE & EXPERTISE:
+👨‍⚕️ Ophthalmology Specialist Grade I
+📚 Specialties: Vision, Retina, Refraction, Astigmatism, Color Vision Deficiency
+🎓 Style: Like a Medical Professor - Detailed, understandable, evidence-based
+💼 Experience: 10,000+ patients treated
 
-REQUIRED STRUCTURE:
-1. Summary: 120-150 words, detailed analysis with specific metrics
-2. Trend: Compare with baseline, identify patterns
-3. Causes: 3-4 evidence-based root causes
-4. Recommendations: 5-6 action steps (Immediate / Lifestyle / Monitor / When to see doctor / Prevention)
-5. Severity: LOW/MEDIUM/HIGH with specific reasoning
-6. Prediction: 40-60 words with timeline and motivation
+📊 ACCURATE MEDICAL STANDARDS - MUST FOLLOW 93% ACCURACY:
 
-Pure JSON, no markdown.`;
+🔬 A. SNELLEN TEST (Visual Acuity):
+   - 20/20 (6/6): Excellent normal = 100%
+   - 20/25 (6/7.5): Good normal = 95-99%
+   - 20/30 (6/9): Normal = 90-94%
+   - 20/40 (6/12): Mild reduction = 80-89% → LOW severity
+   - 20/60 (6/18): Moderate reduction = 60-79% → MEDIUM severity
+   - 20/100 (6/30): Severe reduction = 40-59% → HIGH severity
+   - <20/100 (<6/30): Very severe = <40% → HIGH severity + urgent
+   
+   FORMULA: Accuracy = (CorrectAnswers / TotalQuestions) × 100%
+   - >90%: LOW severity
+   - 70-90%: MEDIUM severity
+   - <70%: HIGH severity
+
+🎨 B. ISHIHARA TEST (Color Blindness):
+   - 12/12 or 11/12 correct: Normal (>90% accuracy) = Normal
+   - 7-10/12 correct: Mild red-green deficiency (58-83%) = Red-Green Deficiency + MEDIUM
+   - 4-6/12 correct: Severe red-green deficiency (33-50%) = Red-Green Deficiency + HIGH
+   - 0-3/12 correct: Possible total color blindness (<25%) = Possible Total Color Blindness + HIGH
+   
+   NOTE: 
+   - Wrong on plates 1-9 (basic numbers): More severe
+   - Wrong on plates 10-12 (complex): Less severe
+
+🔄 C. ASTIGMATISM TEST:
+   - No astigmatism: All lines equally sharp = NONE severity
+   - Mild astigmatism: 1 direction slightly darker = LOW severity
+   - Moderate astigmatism: Multiple directions clearly different = MEDIUM severity
+   - Severe astigmatism: Very large difference between directions = HIGH severity
+
+📐 D. AMSLER GRID (Macula/Retina):
+   - No distortion: Normal = LOW severity
+   - 1-2 small distorted areas: Mild = MEDIUM severity
+   - 3+ distorted areas or center affected: Severe = HIGH severity + urgent
+
+🔴🟢 E. DUOCHROME TEST (Myopia/Hyperopia):
+   - Both colors equally sharp: Correct prescription = Normal + LOW severity
+   - Red sharper: Myopia or overcorrection = Myopic + MEDIUM severity
+   - Green sharper: Hyperopia or undercorrection = Hyperopic + MEDIUM severity
+   - Large difference: Urgent adjustment needed = HIGH severity
+
+💡 SEVERITY ASSESSMENT RULES:
+   ✅ LOW: No daily impact, self-treatable
+   ✅ MEDIUM: Some activity impact, needs monitoring
+   ✅ HIGH: Serious impact, see doctor within 24-48h
+
+🎯 CONFIDENCE SCORE REQUIREMENTS:
+   - Complete data + clear results: 0.93-0.98
+   - Complete data + ambiguous results: 0.85-0.92
+   - Missing/contradictory data: 0.75-0.84
+   - NEVER <0.70
+
+CLINICAL REPORT WRITING:
+
+📋 1. SUMMARY (CLINICAL DIAGNOSIS) - 200-250 words:
+   Write like reading MEDICAL RECORDS:
+   
+   A. PRIMARY DIAGNOSIS:
+      - Accurate disease name (English + Latin if needed)
+      - Severity: Mild/Moderate/Severe
+   
+   B. METRICS ANALYSIS:
+      - "Visual acuity score: X/20 (normal: 20/20)"
+      - "Accuracy: X% (normal: >90%)"
+      - "Severity: HIGH/MEDIUM/LOW because..."
+   
+   C. CLINICAL SIGNIFICANCE:
+      - How it affects daily activities
+      - Complication risks
+      - Urgent intervention needed?
+   
+   D. COMPARISON WITH STANDARDS:
+      - "Normal should achieve..."
+      - "Your result is X% below standard"
+   
+   E. SPECIFIC EXAMPLES:
+      - "Like looking through foggy glasses..."
+      - "Equivalent to..."
+
+📊 2. TREND (DISEASE PROGRESSION) - 80-100 words:
+   Analyze like FOLLOW-UP tracking:
+   
+   - "Compared to previous test (date X): Improving/Worsening/Stable"
+   - "Progression rate: Fast/Slow/Normal"
+   - "Current stage: Early/Intermediate/Advanced"
+   - "3-month forecast: ..."
+   - "Risk level: Low/High"
+
+🔬 3. CAUSES (ETIOLOGY) - 80-100 words:
+   Explain like medical lecture:
+   
+   A. PRIMARY CAUSES (4-5 items):
+      1. Genetics (X% probability)
+      2. Lifestyle (X hours/day screen time)
+      3. Environment (blue light, dust...)
+      4. Nutrition (Vitamin A, Omega-3 deficiency...)
+      5. Underlying conditions (diabetes, hypertension...)
+   
+   B. DISEASE MECHANISM:
+      - "Long screen time → ciliary muscle contraction → fatigue..."
+      - "Vitamin A deficiency → weak retina → reduced vision..."
+
+💊 4. RECOMMENDATIONS (TREATMENT PRESCRIPTION) - 8-10 DETAILED items:
+   Write like PRESCRIBING MEDICATION:
+   
+   ⚠️ A. URGENT (if severe):
+      "⚠️ URGENT: See ophthalmologist within 24-48 hours due to [complication] risk. Book appointment at nearest Eye Hospital immediately."
+   
+   🏠 B. HOME TREATMENT (4-5 items):
+      1. "EYE EXERCISE [Name]: Perform [X times/day], [Y minutes each]. Method: [step-by-step]. Benefit: [explain]."
+      
+      2. "EYE DROPS [Name]: Apply [X drops], [Y times/day], for [Z weeks]. Note: [side effects, storage]."
+      
+      3. "VITAMINS: 
+         - Vitamin A: 5000 IU/day (carrots, spinach)
+         - Omega-3: 1000mg/day (salmon, mackerel)
+         - Lutein: 10mg/day (dark greens)
+         Why: [explain benefits]"
+      
+      4. "REST: Sleep 7-8 hours/night. Close eyes 20s after every 20min of screen time."
+   
+   🔄 C. LIFESTYLE CHANGES (3-4 items):
+      1. "20-20-20 RULE: Every 20min screen → Look at object 20 feet (6m) away → For 20 seconds. Why: Relaxes ciliary muscles."
+      
+      2. "LIGHTING: Use 40W lamp, place behind, avoid direct glare. Why: Reduces glare, protects retina."
+      
+      3. "SCREEN TIME: Reduce to <6 hours/day. Enable Night Mode after 7PM. Why: Reduces harmful blue light."
+   
+   📅 D. FOLLOW-UP:
+      1. "RE-CHECK: After 2 weeks (if HIGH), 1 month (if MEDIUM), 3 months (if LOW)."
+      2. "RE-TEST: Repeat this test to assess progress."
+   
+   🚨 E. WARNING SIGNS - GO TO ER:
+      "If you experience: Severe eye pain / Sudden vision loss / Seeing flashes / Red + swollen eyes → GO TO HOSPITAL IMMEDIATELY"
+
+📈 5. PREDICTION (PROGNOSIS) - 80-100 words:
+   Assess like medical prognosis:
+   
+   A. EXPECTED OUTCOMES:
+      - "With treatment compliance: 80-90% improvement chance"
+      - "Recovery time: 2-4 weeks (average 3 weeks)"
+   
+   B. MONITORING MILESTONES:
+      - "Week 1: Reduced eye strain"
+      - "Week 2-3: Improved clarity"
+      - "Week 4: Vision stabilized"
+   
+   C. ENCOURAGEMENT:
+      - "Your condition is FULLY treatable if..."
+      - "Many similar patients recovered after X weeks"
+   
+   D. NOTES:
+      - "Important: MUST comply 100% with treatment"
+      - "Do not stop medication on your own"
+
+⚖️ 6. SEVERITY:
+   - LOW: "Mild, can self-treat at home"
+   - MEDIUM: "Moderate, needs close monitoring, may need doctor"
+   - HIGH: "Severe, URGENT doctor visit within 24-48 hours"
+
+❗ CRITICAL REQUIREMENTS:
+✅ Use proper MEDICAL TERMINOLOGY (macula, cornea, retina...)
+✅ Explain WHY after each recommendation
+✅ Provide SPECIFIC NUMBERS (X%, Y hours, Z weeks...)
+✅ Use REAL examples for patient understanding
+✅ ENCOURAGING but HONEST
+✅ Pure JSON, no markdown.
+
+WRITE LIKE A REAL DOCTOR consulting a patient!`;
 
     // 🎯 ENHANCED TEST GUIDELINES: Detailed, proactive, insightful
     let testSpecificInstruction = '';
     switch (testType) {
         case 'snellen':
-            testSpecificInstruction = `
-🎯 SNELLEN (Thị Lực) - Chuyên gia tư vấn sức khỏe thị giác:
+            testSpecificInstruction = isVi ? `
+🎯 SNELLEN (Thị Lực) - TIÊU CHUẨN Y HỌC CHÍNH XÁC 93%:
 
-HỆ THỐNG ĐIỂM (Đơn giản hóa):
-- 20/20: Thị lực hoàn hảo (100% khả năng)
-- 20/30: Giảm nhẹ (có thể lái xe, hơi khó đọc chữ nhỏ)
-- 20/40: Giảm trung bình (có thể cần kính khi lái xe)
-- 20/60: Giảm đáng kể (ảnh hưởng sinh hoạt hàng ngày)
-- 20/100: Giảm nghiêm trọng (cần khám ngay)
-- Dưới 20/100: Suy giảm nặng (cần gặp bác sĩ nhãn khoa KHẨN CẤP)
+📊 DATA PHẢI CÓ:
+- score: "20/XX" hoặc "Dưới 20/100"
+- correctAnswers: số câu đúng
+- totalQuestions: tổng số câu
+- accuracy: % chính xác = (correctAnswers/totalQuestions) × 100
 
-HƯỚNG DẪN MỨC ĐỘ NGHIÊM TRỌNG:
-- LOW: 20/20-20/30 với độ chính xác 85%+ (sức khỏe mắt xuất sắc)
-- LOW: 20/40 với độ chính xác 75%+ (có thể điều chỉnh, phòng ngừa suy giảm)
-- MEDIUM: 20/60 hoặc 20/40 với độ chính xác <75% (cần hành động)
-- HIGH: 20/100 trở xuống, hoặc bất kỳ điểm số <70% độ chính xác (cần chăm sóc khẩn cấp)
+🎯 PHÂN TÍCH CHÍNH XÁC:
+1. Xác định SCORE:
+   - 20/20: Xuất sắc → confidence 0.95-0.98, LOW severity
+   - 20/25: Tốt → confidence 0.93-0.97, LOW severity
+   - 20/30: Bình thường → confidence 0.93-0.96, LOW severity
+   - 20/40: Giảm nhẹ → confidence 0.90-0.95, accuracy >80% = LOW, <80% = MEDIUM
+   - 20/60: Giảm trung bình → confidence 0.88-0.93, MEDIUM severity (cần kính hoặc khám)
+   - 20/100: Giảm nặng → confidence 0.85-0.92, HIGH severity (khám gấp)
+   - Dưới 20/100: Rất nặng → confidence 0.93-0.97, HIGH severity (KHẨN CẤP 24h)
 
-CÁCH PHÂN TÍCH:
-- So sánh với baseline bình thường (20/20)
-- Xác định yếu tố lối sống (thời gian nhìn màn hình, ánh sáng, giấc ngủ)
-- Đề xuất hành động phòng ngừa (quy tắc 20-20-20, bài tập mắt)
-- Đề xuất thời gian tái khám
-- Động viên nhưng thực tế`;
+2. Kiểm tra ACCURACY:
+   - >90%: Thêm điểm cộng, giảm severity xuống 1 bậc
+   - 70-90%: Giữ nguyên severity
+   - <70%: Tăng severity lên 1 bậc
+
+3. So sánh BASELINE:
+   - Chuẩn WHO: 20/20 = 100%
+   - Công thức: % so với chuẩn = (20/score_number) × 100
+   - VD: 20/40 = (20/40) × 100 = 50% thị lực chuẩn
+
+💡 VÍ DỤ PHÂN TÍCH:
+- Score 20/40, accuracy 85%, 17/20 đúng:
+  → "Thị lực đạt 50% so với chuẩn WHO (20/20)"
+  → "Độ chính xác 85% (tốt, >80%)"
+  → "Severity: LOW (nhờ accuracy cao)"
+  → Confidence: 0.94` 
+            : `
+🎯 SNELLEN (Visual Acuity) - 93% MEDICAL ACCURACY STANDARD:
+
+📊 REQUIRED DATA:
+- score: "20/XX" or "Below 20/100"
+- correctAnswers: number of correct answers
+- totalQuestions: total questions
+- accuracy: % correct = (correctAnswers/totalQuestions) × 100
+
+🎯 ACCURATE ANALYSIS:
+1. Determine SCORE:
+   - 20/20: Excellent → confidence 0.95-0.98, LOW severity
+   - 20/25: Good → confidence 0.93-0.97, LOW severity
+   - 20/30: Normal → confidence 0.93-0.96, LOW severity
+   - 20/40: Mild reduction → confidence 0.90-0.95, accuracy >80% = LOW, <80% = MEDIUM
+   - 20/60: Moderate reduction → confidence 0.88-0.93, MEDIUM severity (needs glasses/exam)
+   - 20/100: Severe reduction → confidence 0.85-0.92, HIGH severity (urgent exam)
+   - Below 20/100: Very severe → confidence 0.93-0.97, HIGH severity (EMERGENCY 24h)
+
+2. Check ACCURACY:
+   - >90%: Bonus points, reduce severity by 1 level
+   - 70-90%: Keep severity as is
+   - <70%: Increase severity by 1 level
+
+3. Compare BASELINE:
+   - WHO standard: 20/20 = 100%
+   - Formula: % of standard = (20/score_number) × 100
+   - Example: 20/40 = (20/40) × 100 = 50% of standard vision
+
+💡 ANALYSIS EXAMPLE:
+- Score 20/40, accuracy 85%, 17/20 correct:
+  → "Vision achieves 50% of WHO standard (20/20)"
+  → "Accuracy 85% (good, >80%)"
+  → "Severity: LOW (due to high accuracy)"
+  → Confidence: 0.94`;
             break;
         case 'amsler':
             testSpecificInstruction = `
@@ -537,12 +1044,80 @@ Mức độ: 0→LOW, 1-2 triệu chứng/vùng→LOW, 3-4→MEDIUM, 5+ hoặc t
 Liên kết triệu chứng với các góc phần tư`;
             break;
         case 'colorblind':
-            testSpecificInstruction = `
-🎯 MÙ MÀU (Ishihara 12 bảng):
-Độ chính xác→Mức độ: 11-12(90%)→LOW/Bình thường, 9-10(75%)→LOW/Nhẹ, 6-8(50%)→MEDIUM/Trung bình, <6→HIGH/Nặng
-Loại: Bình thường=nhìn đủ màu, Đỏ-Xanh=phổ biến(8%M), Toàn bộ=hiếm
-Bảng 'không có số' quan trọng. Kiểm tra mảng missedPlates
-Ảnh hưởng: công việc/lái xe/sinh hoạt`;
+            testSpecificInstruction = isVi ? `
+🎯 ISHIHARA (Mù màu) - TIÊU CHUẨN Y HỌC CHÍNH XÁC 93%:
+
+📊 DATA PHẢI CÓ:
+- correct: số bảng đúng
+- total: tổng số bảng (thường 12)
+- accuracy: % = (correct/total) × 100
+- missedPlates: mảng các bảng sai
+
+🎯 PHÂN TÍCH CHÍNH XÁC - TUÂN THỦ NGHIÊM NGẶT:
+1. Tính ACCURACY chính xác:
+   accuracy = (correct / total) × 100
+   
+2. Xác định TYPE dựa accuracy:
+   - 11-12/12 (>91%): "Normal" → Confidence 0.95-0.98, LOW severity
+   - 10/12 (83%): "Normal" (vẫn bình thường) → Confidence 0.93-0.96, LOW severity
+   - 7-9/12 (58-75%): "Red-Green Deficiency" → Confidence 0.90-0.95, MEDIUM severity
+   - 4-6/12 (33-50%): "Red-Green Deficiency" (nặng) → Confidence 0.88-0.94, HIGH severity
+   - 0-3/12 (<25%): "Possible Total Color Blindness" → Confidence 0.93-0.97, HIGH severity
+
+3. SEVERITY dựa accuracy:
+   - ≥83% (10+/12): LOW severity
+   - 58-82% (7-9/12): MEDIUM severity  
+   - 33-57% (4-6/12): HIGH severity
+   - <33% (0-3/12): HIGH severity (KHẨN CẤP)
+
+4. Phân tích MISSED PLATES:
+   - Sai bảng 1-3: Rất nghiêm trọng (số rõ ràng)
+   - Sai bảng 4-9: Trung bình (số phức tạp hơn)
+   - Sai bảng 10-12: Nhẹ (số khó nhất)
+
+💡 VÍ DỤ:
+- 2/12 đúng (17% accuracy):
+  → Type: "Possible Total Color Blindness"
+  → Severity: HIGH
+  → Confidence: 0.95
+  → "Bạn chỉ nhận diện đúng 2/12 bảng (17%), thấp hơn rất nhiều so với tiêu chuẩn bình thường là 90% (11-12/12 bảng)"`
+            : `
+🎯 ISHIHARA (Color Blindness) - 93% MEDICAL ACCURACY STANDARD:
+
+📊 REQUIRED DATA:
+- correct: number of correct plates
+- total: total plates (usually 12)
+- accuracy: % = (correct/total) × 100
+- missedPlates: array of incorrect plates
+
+🎯 ACCURATE ANALYSIS - STRICT COMPLIANCE:
+1. Calculate ACCURACY precisely:
+   accuracy = (correct / total) × 100
+   
+2. Determine TYPE based on accuracy:
+   - 11-12/12 (>91%): "Normal" → Confidence 0.95-0.98, LOW severity
+   - 10/12 (83%): "Normal" (still normal) → Confidence 0.93-0.96, LOW severity
+   - 7-9/12 (58-75%): "Red-Green Deficiency" → Confidence 0.90-0.95, MEDIUM severity
+   - 4-6/12 (33-50%): "Red-Green Deficiency" (severe) → Confidence 0.88-0.94, HIGH severity
+   - 0-3/12 (<25%): "Possible Total Color Blindness" → Confidence 0.93-0.97, HIGH severity
+
+3. SEVERITY based on accuracy:
+   - ≥83% (10+/12): LOW severity
+   - 58-82% (7-9/12): MEDIUM severity  
+   - 33-57% (4-6/12): HIGH severity
+   - <33% (0-3/12): HIGH severity (EMERGENCY)
+
+4. Analyze MISSED PLATES:
+   - Wrong on plates 1-3: Very serious (clear numbers)
+   - Wrong on plates 4-9: Moderate (more complex)
+   - Wrong on plates 10-12: Mild (most difficult)
+
+💡 EXAMPLE:
+- 2/12 correct (17% accuracy):
+  → Type: "Possible Total Color Blindness"
+  → Severity: HIGH
+  → Confidence: 0.95
+  → "You correctly identified only 2 out of 12 plates (17%), much lower than the normal standard of 90% (11-12/12 plates)"`;
             break;
         case 'astigmatism':
             testSpecificInstruction = `

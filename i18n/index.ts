@@ -179,6 +179,9 @@ export const translations = {
     colorblind_question: "Bạn nhìn thấy gì trong hình?",
     input_placeholder: "Nhập số",
     nothing_button: "Không thấy gì",
+    colorblind_type_normal: "Bình thường",
+    colorblind_type_red_green: "Mù màu Đỏ-Xanh lá",
+    colorblind_type_total: "Khả năng Mù màu Toàn bộ",
 
     // Astigmatism Test
     astigmatism_start_title: "Kiểm Tra Loạn Thị",
@@ -281,9 +284,9 @@ export const translations = {
     duochrome_mixed_short: "Hỗn hợp",
 
     // Vision Coach
-    coach_title: "HLV Thị Lực AI",
+    coach_title: "Trợ lý bác sĩ EVA",
     coach_welcome: "Xin chào! Tôi là trợ lý giọng nói của bạn. Nhấn nút micro và nói chuyện với tôi.",
-    coach_button_aria: "Mở HLV Thị Lực AI",
+    coach_button_aria: "Mở Trợ lý bác sĩ EVA",
     coach_status_speak: "Nói ngay...",
     coach_status_listening: "Đang nghe...",
     coach_status_connecting: "Đang kết nối...",
@@ -299,7 +302,7 @@ export const translations = {
     about_disclaimer_content: "Ứng dụng này KHÔNG PHẢI là một công cụ chẩn đoán y tế và KHÔNG THỂ thay thế cho việc thăm khám, tư vấn và chẩn đoán của một bác sĩ nhãn khoa hoặc chuyên gia y tế có chuyên môn. Mọi thông tin và báo cáo được tạo ra chỉ mang tính chất tham khảo. Vui lòng tham khảo ý kiến bác sĩ để có lời khuyên y tế chính xác.",
 
     // Footer
-    footer_copyright: `© ${new Date().getFullYear()} Kiểm tra thị lực cùng AI. Đồ án bởi Long Nguyen.`,
+    footer_copyright: `© ${new Date().getFullYear()} Kiểm tra thị lực cùng AI.`,
     footer_disclaimer: "Đây là một dự án demo và không thay thế cho việc chẩn đoán y tế chuyên nghiệp.",
 
     // User Info & Login
@@ -586,6 +589,9 @@ export const translations = {
     colorblind_question: "What do you see in the image?",
     input_placeholder: "Enter number",
     nothing_button: "See Nothing",
+    colorblind_type_normal: "Normal",
+    colorblind_type_red_green: "Red-Green Deficiency",
+    colorblind_type_total: "Possible Total Color Blindness",
 
     // Astigmatism Test
     astigmatism_start_title: "Astigmatism Test",
@@ -688,9 +694,9 @@ export const translations = {
     duochrome_mixed_short: "Mixed",
 
     // Vision Coach
-    coach_title: "AI Vision Coach",
+    coach_title: "Dr. EVA Assistant",
     coach_welcome: "Hello! I'm your voice assistant. Tap the mic and speak.",
-    coach_button_aria: "Open AI Vision Coach",
+    coach_button_aria: "Open Dr. EVA Assistant",
     coach_status_speak: "Speak Now...",
     coach_status_listening: "Listening...",
     coach_status_connecting: "Connecting...",
@@ -706,7 +712,7 @@ export const translations = {
     about_disclaimer_content: "This application is NOT a medical diagnostic tool and CANNOT replace a visit, consultation, or diagnosis from a qualified ophthalmologist or healthcare professional. All information and reports generated are for informational purposes only. Please consult a doctor for accurate medical advice.",
 
     // Footer
-    footer_copyright: `© ${new Date().getFullYear()} AI Vision Test. Project by Long Nguyen.`,
+    footer_copyright: `© ${new Date().getFullYear()} AI Vision Test.`,
     footer_disclaimer: "This is a demo project and does not replace professional medical diagnosis.",
 
     // User Info & Login
