@@ -39,7 +39,7 @@ npm run preview
 - **Voice**: Web Speech API
 - **PWA**: Service Worker + Manifest
 
-🌐 **View your app in AI Studio:** https://ai.studio/apps/drive/1zwmySwX0CUmdVZc2xcFl-M0umCXWAwsm
+🌐 **View app: https://testaivision.pages.dev/ 
 
 ---
 
