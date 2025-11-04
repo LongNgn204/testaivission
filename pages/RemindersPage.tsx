@@ -74,20 +74,27 @@ export default function RemindersPage() {
 
     setExerciseTimer(exercise.duration);
 
+    let isActive = true; // Track if effect is still active
     const interval = setInterval(() => {
       setExerciseTimer((prev) => {
+        if (!isActive) return prev; // Don't update if unmounted
+        
         if (prev <= 1) {
-          clearInterval(interval);
-          setExerciseInProgress(null);
-          recordExercise(exercise.id);
-          setStreak(getStreak());
+          if (isActive) {
+            setExerciseInProgress(null);
+            recordExercise(exercise.id);
+            setStreak(getStreak());
+          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+    };
   }, [exerciseInProgress]);
 
   const handleToggleReminder = (id: string, enabled: boolean) => {
