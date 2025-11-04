@@ -39,6 +39,13 @@ export const TestInstructionsPlayer: React.FC = () => {
 
     const stopPlayback = useCallback(() => {
         console.log('🛑 Stopping all playback...');
+        
+        // 🛑 Stop Web Speech API
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            console.log('🛑 Stopped Web Speech API');
+        }
+        
         // Stop all active audio sources
         activeSourcesRef.current.forEach(source => {
             try {
@@ -143,37 +150,24 @@ export const TestInstructionsPlayer: React.FC = () => {
                     const audioContext = audioContextRef.current!;
                     console.log('🎙️ Audio context state:', audioContext.state);
 
-                    // Generate complete audio in one go (no delay needed)
+                    // 🎙️ WEB SPEECH API: Tự động play, không cần decode
                     console.log('🎙️ Calling generateSpeech for complete audio...');
-                    const audioBase64 = await aiService.generateSpeech(fullText, language);
-                    console.log('🎙️ Complete audio received:', !!audioBase64);
+                    const speechId = await aiService.generateSpeech(fullText, language);
+                    console.log('🎙️ Speech generated:', !!speechId);
                     
-                    if (audioBase64) {
-                        console.log('🎙️ Decoding complete audio...');
-                        const audioBuffer = await decodeAudioData(decode(audioBase64), audioContext, 24000, 1);
-                        
-                        // ✅ PLAY ONCE ONLY: Clear queue first, then add single buffer
-                        audioQueueRef.current = []; // Clear any existing queue
-                        audioQueueRef.current.push(audioBuffer); // Chỉ play 1 lần
-                        
+                    if (speechId) {
+                        // Web Speech API tự động play, chỉ cần set state
                         setAudioReady(true);
-                        console.log('✅ Complete audio buffer ready (1x only), queue length:', audioQueueRef.current.length);
+                        hasAttemptedAutoplayRef.current = true;
+                        console.log('✅ Speech playing via Web Speech API');
                         
-                        // Force resume if suspended
-                        if (audioContext.state === 'suspended') {
-                            console.log('⚠️ Audio context suspended, attempting resume...');
-                            await audioContext.resume();
-                            console.log('✅ Audio context resumed, state:', audioContext.state);
-                        }
-                        
-                        // Attempt autoplay (ONCE only)
-                        if (!hasAttemptedAutoplayRef.current) {
-                            hasAttemptedAutoplayRef.current = true;
-                            console.log('🎬 Starting audio playback (1x only - 100% accurate)...');
-                            playNextInQueue();
-                        }
+                        // Set timeout để stop sau khi đọc xong (ước tính)
+                        const estimatedDuration = fullText.length * 60; // ~60ms per character
+                        setTimeout(() => {
+                            stopPlayback();
+                        }, estimatedDuration);
                     } else {
-                        console.log('⚠️ No audio received');
+                        console.log('⚠️ No speech generated');
                     }
                 } catch (error) {
                     console.error("Error in audio pipeline:", error);

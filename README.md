@@ -134,8 +134,9 @@ npm run preview
 - **Lucide React** - Icon library
 
 ### **AI/ML**
-- **Google Gemini AI** - gemini-2.0-flash-exp (chat, analysis), gemini-2.5-flash-preview-tts (voice)
-- **Web Speech API** - Speech Recognition (webkitSpeechRecognition), Text-to-Speech (speechSynthesis)
+- **Google Gemini AI** - gemini-2.0-flash (chat, analysis)
+- **Google Cloud Text-to-Speech API** - High-quality voice synthesis (vi-VN-Wavenet-A, en-US-Wavenet-F)
+- **Web Speech API** - Speech Recognition (webkitSpeechRecognition)
 
 ### **Storage & APIs**
 - **LocalStorage** - Test history, chat, reminders, badges, streaks, preferences

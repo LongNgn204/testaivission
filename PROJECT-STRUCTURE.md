@@ -17,8 +17,11 @@
 
 ### AI & Machine Learning
 - **Google Gemini AI (@google/genai 1.28.0)** - AI chatbot & phân tích kết quả
-- **Web Speech API** - Text-to-Speech (TTS) và Speech Recognition
-- **Gemini 1.5 Flash** - Model AI nhanh, tối ưu cho realtime chat
+- **Gemini 2.0 Flash** - Model AI nhanh, ổn định cho production
+- **Google Cloud Text-to-Speech API** - Chuyển văn bản thành giọng nói chất lượng cao
+  - Voice tiếng Việt: vi-VN-Wavenet-A (nữ)
+  - Voice tiếng Anh: en-US-Wavenet-F (nữ)
+- **Web Speech API** - Speech Recognition (nhận diện giọng nói)
 
 ### Export & Visualization
 - **jsPDF 3.0.3** - Export báo cáo PDF
@@ -97,9 +100,9 @@ d:\git\test/
 │   └── VoiceControlContext.tsx      # Quản lý voice control
 │
 ├── 📂 services/                     # Business Logic & API Calls
-│   ├── aiService.ts                 # Google Gemini AI integration
+│   ├── aiService.ts                 # Google Gemini AI & Cloud TTS integration
 │   │                                # - Chat với AI (cached)
-│   │                                # - Text-to-Speech (TTS cache)
+│   │                                # - Google Cloud Text-to-Speech (TTS cache)
 │   │                                # - Phân tích kết quả test
 │   │
 │   ├── chatbotService.ts            # Chatbot logic (conversation flow)
@@ -300,13 +303,14 @@ analyzeTestResults(testResults: TestResult[])
 - Đưa ra đề xuất (bài tập, khám bác sĩ, etc.)
 - Tính wellness score
 
-#### 3. **Text-to-Speech**
+#### 3. **Text-to-Speech (Google Cloud TTS)**
 ```typescript
-textToSpeech(text: string)
+generateSpeech(text: string, language: 'vi' | 'en')
 ```
-- Convert text thành giọng nói
-- Cache audio (30 phút)
-- LRU eviction (xóa cache cũ)
+- Sử dụng Google Cloud Text-to-Speech API
+- Voice chất lượng cao (Wavenet)
+- Cache audio (60 phút)
+- LRU eviction (xóa cache cũ khi đầy)
 
 #### 4. **Tạo kế hoạch cá nhân hóa**
 ```typescript
@@ -317,9 +321,10 @@ generatePersonalizedPlan(userAnswers)
 - Gợi ý test & bài tập phù hợp
 
 **Config:**
-- Model: `gemini-1.5-flash` (fast & cost-effective)
+- AI Model: `gemini-2.0-flash` (stable & production-ready)
+- TTS: Google Cloud Text-to-Speech API (Wavenet voices)
 - Temperature: 0.15 (consistent responses)
-- Max tokens: 1500
+- Max tokens: 3000
 - Language: Vietnamese priority
 
 ---

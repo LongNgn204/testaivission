@@ -3,22 +3,28 @@
 
 
 
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
 
 // ⚡ ULTRA-FAST AI CONFIGURATION - OPTIMIZED FOR SPEED
 const AI_CONFIG = {
   gemini: { 
-    model: 'gemini-2.0-flash-exp', // 🔥 FASTEST: Gemini 2.0 Flash Experimental
+    model: 'gemini-2.0-flash', // 🔥 STABLE: Gemini 2.0 Flash (production-ready)
     temperature: 0.15, // ⚡ FASTER: Lower temp = faster generation (from 0.25)
     maxTokens: 3000, // 🩺 MEDICAL: Increased for detailed clinical reports (200-250 word summaries + 8-10 recommendations)
     topP: 0.75, // ⚡ FASTER: More focused (from 0.85)
     topK: 20 // ⚡ FASTER: Quicker token selection (from 25)
   },
   tts: {
-    model: "gemini-2.5-flash-preview-tts", // 🎙️ TTS Flash model
     cacheDuration: 60 * 60 * 1000, // ⚡ ULTRA-LONG CACHE: 60 minutes for instant responses
-    maxCacheSize: 500 // ⚡ MASSIVE CACHE: Store even more for instant hits
+    maxCacheSize: 500, // ⚡ MASSIVE CACHE: Store even more for instant hits
+    voice: {
+      vi: 'vi-VN', // Vietnamese voice
+      en: 'en-US'  // English voice
+    },
+    rate: 1.0, // Speaking rate
+    pitch: 1.0, // Voice pitch
+    volume: 1.0 // Voice volume
   },
   streaming: {
     enabled: true, // 🌊 STREAMING: Real-time response chunks
@@ -200,80 +206,135 @@ const createResponseSchema = (language: 'vi' | 'en') => {
 
 export class AIService {
   private ai: GoogleGenAI;
+  private voicesLoaded = false;
   
   constructor() {
     if (!process.env.API_KEY) {
       throw new Error("API_KEY environment variable not set");
     }
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // 🎙️ Ensure voices are loaded
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        this.voicesLoaded = true;
+        console.log('🎙️ TTS Voices loaded:', window.speechSynthesis.getVoices().length);
+      };
+      // Trigger voice loading
+      window.speechSynthesis.getVoices();
+    }
   }
 
   // 🚀 ULTRA-OPTIMIZED TTS CACHE with LRU eviction
   private ttsCache = new Map<string, { data: string, timestamp: number, hits: number }>();
 
+  // 🗣️ Utterance cache để play lại
+  private utteranceCache = new Map<string, { utterance: SpeechSynthesisUtterance, timestamp: number, hits: number }>();
+
+  // 🎙️ Helper: Đợi voices load xong
+  private async waitForVoices(): Promise<SpeechSynthesisVoice[]> {
+    return new Promise((resolve) => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        resolve(voices);
+        return;
+      }
+      
+      window.speechSynthesis.onvoiceschanged = () => {
+        resolve(window.speechSynthesis.getVoices());
+      };
+    });
+  }
+
   async generateSpeech(text: string, language: 'vi' | 'en'): Promise<string | null> {
     try {
         const startTime = Date.now();
         
-        // 💾 SMART CACHE: Check with hit tracking
-        const cacheKey = `${language}:${text}`;
-        const cached = this.ttsCache.get(cacheKey);
-        
-        if (cached && Date.now() - cached.timestamp < AI_CONFIG.tts.cacheDuration) {
-            cached.hits++; // Track popularity
-            console.log(`⚡ TTS Cache HIT (${cached.hits}x) - 0ms:`, text.substring(0, 40));
-            return cached.data;
+        if (!('speechSynthesis' in window)) {
+            console.error('Web Speech API not supported');
+            return null;
         }
 
-        // 🎯 ULTRA-FAST TTS: Optimized for speed
-        const response = await this.ai.models.generateContent({
-            model: AI_CONFIG.tts.model,
-            contents: [{ parts: [{ text }] }],
-            config: {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { 
-                            voiceName: language === 'vi' ? 'Kore' : 'Puck' 
-                        },
-                    },
-                },
-                // ⚡ SPEED OPTIMIZATIONS
-                temperature: 0.1, // Lower = faster
-                candidateCount: 1, // Single response = faster
-            },
-        });
+        // 💾 SMART CACHE: Check utterance cache
+        const cacheKey = `${language}:${text}`;
+        const cached = this.utteranceCache.get(cacheKey);
         
-        const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data ?? null;
-        
-        const elapsed = Date.now() - startTime;
-        console.log(`⚡ TTS Generated in ${elapsed}ms:`, text.substring(0, 40));
-        
-        // 💾 SMART CACHE: Store with hit tracking
-        if (audioData) {
-            this.ttsCache.set(cacheKey, { data: audioData, timestamp: Date.now(), hits: 0 });
+        if (cached && Date.now() - cached.timestamp < AI_CONFIG.tts.cacheDuration) {
+            cached.hits++;
+            console.log(`⚡ TTS Cache HIT (${cached.hits}x) - 0ms:`, text.substring(0, 40));
             
-            // 🧹 LRU EVICTION: Remove least-used items when full
-            if (this.ttsCache.size > AI_CONFIG.tts.maxCacheSize) {
-                let leastUsedKey = '';
-                let leastHits = Infinity;
-                
-                // Find least popular entry
-                this.ttsCache.forEach((value, key) => {
-                    if (value.hits < leastHits) {
-                        leastHits = value.hits;
-                        leastUsedKey = key;
-                    }
-                });
-                
-                if (leastUsedKey) {
-                    this.ttsCache.delete(leastUsedKey);
-                    console.log('🗑️ TTS Cache: Evicted least-used entry');
+            // Play lại từ cache
+            window.speechSynthesis.cancel(); // Stop any current speech
+            window.speechSynthesis.speak(cached.utterance);
+            return cacheKey; // Return cache key as identifier
+        }
+
+        // 🎯 WEB SPEECH API: Đợi và tìm giọng tốt nhất
+        const voices = await this.waitForVoices();
+        let selectedVoice: SpeechSynthesisVoice | null = null;
+
+        if (language === 'vi') {
+            // Ưu tiên: Google Tiếng Việt > Microsoft Tiếng Việt > bất kỳ giọng vi-VN nào
+            selectedVoice = voices.find(v => v.lang === 'vi-VN' && v.name.includes('Google')) ||
+                           voices.find(v => v.lang === 'vi-VN' && v.name.includes('Microsoft')) ||
+                           voices.find(v => v.lang.startsWith('vi')) ||
+                           null;
+            
+            if (selectedVoice) {
+                console.log('🎙️ Selected Vietnamese voice:', selectedVoice.name);
+            } else {
+                console.warn('⚠️ No Vietnamese voice found, using default');
+            }
+        } else {
+            // Tiếng Anh: Ưu tiên giọng nữ Google/Microsoft
+            selectedVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google') && v.name.includes('Female')) ||
+                           voices.find(v => v.lang === 'en-US' && v.name.includes('Microsoft') && v.name.includes('Zira')) ||
+                           voices.find(v => v.lang === 'en-US') ||
+                           null;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = AI_CONFIG.tts.voice[language];
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
+        utterance.rate = AI_CONFIG.tts.rate;
+        utterance.pitch = AI_CONFIG.tts.pitch;
+        utterance.volume = AI_CONFIG.tts.volume;
+
+        // 💾 Cache utterance để play lại
+        this.utteranceCache.set(cacheKey, { 
+            utterance, 
+            timestamp: Date.now(), 
+            hits: 0 
+        });
+
+        // 🧹 LRU EVICTION
+        if (this.utteranceCache.size > AI_CONFIG.tts.maxCacheSize) {
+            let leastUsedKey = '';
+            let leastHits = Infinity;
+            
+            this.utteranceCache.forEach((value, key) => {
+                if (value.hits < leastHits) {
+                    leastHits = value.hits;
+                    leastUsedKey = key;
                 }
+            });
+            
+            if (leastUsedKey) {
+                this.utteranceCache.delete(leastUsedKey);
+                console.log('🗑️ TTS Cache: Evicted least-used entry');
             }
         }
+
+        const elapsed = Date.now() - startTime;
+        console.log(`⚡ TTS Generated in ${elapsed}ms:`, text.substring(0, 40));
+
+        // Play speech
+        window.speechSynthesis.cancel(); // Stop any current speech
+        window.speechSynthesis.speak(utterance);
         
-        return audioData;
+        return cacheKey; // Return cache key as identifier
     } catch (error) {
         console.error(`Failed to generate speech for text "${text}":`, error);
         return null;
