@@ -175,15 +175,22 @@ export default function ProgressPage() {
               <Grid className="w-5 h-5 text-red-600" />
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{language === 'vi' ? 'Bản đồ nhiệt Amsler' : 'Amsler Heatmap'}</h3>
             </div>
-            <div className="grid grid-cols-2 gap-2 w-64 mx-auto">
-              {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((q) => {
-                const v = amslerQuadrantCounts[q] || 0;
-                const intensity = Math.min(0.9, v / 5 + 0.1);
+            <div className="grid grid-cols-2 gap-3 w-72 mx-auto">
+              {[
+                { key: 'top-left', label: language === 'vi' ? 'Trên-Trái' : 'Top-Left' },
+                { key: 'top-right', label: language === 'vi' ? 'Trên-Phải' : 'Top-Right' },
+                { key: 'bottom-left', label: language === 'vi' ? 'Dưới-Trái' : 'Bottom-Left' },
+                { key: 'bottom-right', label: language === 'vi' ? 'Dưới-Phải' : 'Bottom-Right' }
+              ].map((item) => {
+                const v = amslerQuadrantCounts[item.key] || 0;
+                const intensity = Math.min(0.85, v / 5 + 0.2);
                 const bg = `rgba(239, 68, 68, ${intensity})`;
+                const borderColor = v > 0 ? 'border-red-600' : 'border-gray-300 dark:border-gray-600';
                 return (
-                  <div key={q} className="p-6 rounded-md text-center" style={{ background: bg }}>
-                    <div className="font-semibold text-white text-sm">{q}</div>
-                    <div className="text-white text-2xl font-bold">{v}</div>
+                  <div key={item.key} className={`p-6 rounded-lg text-center border-2 ${borderColor} shadow-md transition-all duration-300`} style={{ background: bg }}>
+                    <div className="font-semibold text-white text-sm drop-shadow-md">{item.label}</div>
+                    <div className="text-white text-3xl font-bold drop-shadow-lg mt-1">{v}</div>
+                    {v > 0 && <div className="text-xs text-white/90 mt-1">{language === 'vi' ? 'lần phát hiện' : 'detections'}</div>}
                   </div>
                 );
               })}

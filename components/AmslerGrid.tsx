@@ -36,7 +36,7 @@ export const AmslerGrid: React.FC<AmslerGridProps> = ({
             <line x1={0} y1={i * step} x2={size} y2={i * step} className="stroke-black dark:stroke-gray-400" strokeWidth="1" />
           </g>
         ))}
-        {/* Distorted cells overlay */}
+        {/* Distorted cells overlay - Improved visibility */}
         {distortedCells.map(({ x, y }, i) => (
           <rect
             key={i}
@@ -44,11 +44,15 @@ export const AmslerGrid: React.FC<AmslerGridProps> = ({
             y={y * step}
             width={step}
             height={step}
-            fill="rgba(255, 0, 0, 0.4)"
+            fill="rgba(239, 68, 68, 0.7)"
+            stroke="rgba(220, 38, 38, 0.9)"
+            strokeWidth="2"
+            className="dark:fill-red-500/80 dark:stroke-red-600"
           />
         ))}
-        {/* Fixation point */}
-        <circle cx={size / 2} cy={size / 2} r="5" className="fill-black dark:fill-gray-300" />
+        {/* Fixation point - Larger and more visible */}
+        <circle cx={size / 2} cy={size / 2} r="6" fill="#000" className="dark:fill-white" />
+        <circle cx={size / 2} cy={size / 2} r="3" fill="#fff" className="dark:fill-gray-800" />
         {/* Interaction layer */}
         <rect
             width={size}

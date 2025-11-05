@@ -342,8 +342,12 @@ export const Home: React.FC = () => {
     { nameKey: 'history_page', descKey: 'history_desc', path: '/home/history', icon: History, color: 'text-gray-500 dark:text-gray-400', bgColor: 'bg-gray-200' },
   ];
 
-  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const today = daysOfWeek[new Date().getDay()];
+  const daysOfWeek = language === 'vi' 
+    ? ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"]
+    : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const daysOfWeekKeys = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const today = daysOfWeekKeys[new Date().getDay()];
+  const todayDisplay = daysOfWeek[new Date().getDay()];
   const todaysActivities = weeklyRoutine ? weeklyRoutine[today] : [];
 
   const completedCount = todaysActivities.filter((activity, index) => {
