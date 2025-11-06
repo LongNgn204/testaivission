@@ -1207,4 +1207,89 @@ Giải thích phải/trái và ảnh hưởng của kính`;
 
     return `${baseInstruction}\n\n${testSpecificInstruction}\n\n**TEST HISTORY (for trend analysis):**\n${historyString}\n\n**CURRENT TEST DATA:**\n${dataString}`;
   }
+
+  /**
+   * 💬 Chat với AI Eva (Text-based conversation)
+   */
+  async chat(
+    userMessage: string,
+    lastTestResult: StoredTestResult | null,
+    userProfile: AnswerState | null,
+    language: 'vi' | 'en'
+  ): Promise<string> {
+    const startTime = Date.now();
+    
+    const systemInstruction = language === 'vi' 
+      ? `Bạn là Bác sĩ Eva - Trợ lý Bác sĩ Chuyên khoa Nhãn khoa thông minh.
+
+PHONG CÁCH TRẢ LỜI:
+- Chuyên nghiệp nhưng thân thiện, dễ hiểu
+- Trả lời ngắn gọn (50-100 từ) nhưng đầy đủ thông tin
+- Dùng thuật ngữ y khoa kèm giải thích đơn giản
+- Nếu cần khám bác sĩ, nói rõ lý do và mức độ khẩn cấp
+- Luôn dựa trên bằng chứng y khoa
+
+KHI TRẢ LỜI:
+1. Phân tích kết quả test gần nhất (nếu có)
+2. Đưa ra lời khuyên cụ thể, thực tế
+3. Giải thích "Tại sao" và "Làm thế nào"
+4. Động viên và khích lệ người dùng`
+      : `You are Dr. Eva - AI Medical Assistant specializing in Ophthalmology.
+
+RESPONSE STYLE:
+- Professional but friendly and easy to understand
+- Concise (50-100 words) but complete
+- Use medical terms with simple explanations
+- If medical consultation needed, explain why and urgency level
+- Always based on medical evidence
+
+WHEN RESPONDING:
+1. Analyze latest test results (if available)
+2. Provide specific, practical advice
+3. Explain "Why" and "How"
+4. Encourage and motivate user`;
+
+    let contextInfo = '';
+    
+    if (lastTestResult) {
+      const testType = language === 'vi' 
+        ? { snellen: 'Thị lực', colorblind: 'Mù màu', astigmatism: 'Loạn thị', amsler: 'Lưới Amsler', duochrome: 'Duochrome' }[lastTestResult.testType]
+        : lastTestResult.testType;
+      
+      contextInfo = language === 'vi'
+        ? `\n\nKẾT QUẢ TEST GẦN NHẤT:\nLoại test: ${testType}\nNgày: ${new Date(lastTestResult.date).toLocaleDateString('vi-VN')}\nDữ liệu: ${JSON.stringify(lastTestResult.resultData)}`
+        : `\n\nLATEST TEST RESULT:\nTest type: ${testType}\nDate: ${new Date(lastTestResult.date).toLocaleDateString('en-US')}\nData: ${JSON.stringify(lastTestResult.resultData)}`;
+    }
+    
+    if (userProfile) {
+      const profileText = language === 'vi'
+        ? `\n\nHỒ SƠ NGƯỜI DÙNG:\nLàm việc với máy tính: ${userProfile.worksWithComputer}\nĐeo kính: ${userProfile.wearsGlasses}\nMục tiêu: ${userProfile.goal}`
+        : `\n\nUSER PROFILE:\nComputer work: ${userProfile.worksWithComputer}\nWears glasses: ${userProfile.wearsGlasses}\nGoal: ${userProfile.goal}`;
+      contextInfo += profileText;
+    }
+
+    const fullPrompt = `${systemInstruction}${contextInfo}\n\n${language === 'vi' ? 'CÂU HỎI' : 'QUESTION'}: ${userMessage}`;
+
+    try {
+      const response = await this.ai.models.generateContent({
+        model: AI_CONFIG.gemini.model,
+        contents: fullPrompt,
+        config: {
+          temperature: 0.7,
+          maxOutputTokens: 500,
+          topP: AI_CONFIG.gemini.topP,
+          topK: AI_CONFIG.gemini.topK,
+        }
+      });
+
+      const elapsed = Date.now() - startTime;
+      console.log(`💬 Chat response generated in ${elapsed}ms`);
+
+      const text = response.text;
+      return text || (language === 'vi' ? 'Xin lỗi, tôi không thể trả lời câu hỏi này.' : 'Sorry, I cannot answer this question.');
+    } catch (error) {
+      console.error('Chat error:', error);
+      throw error;
+    }
+  }
 }

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, X, Bot } from 'lucide-react';
+import { Mic, X, Bot, MessageCircle, Send } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration, Blob } from '@google/genai';
 import { useLanguage } from '../context/LanguageContext';
 import { useRoutine } from '../context/RoutineContext';
@@ -149,10 +149,16 @@ export const VisionCoach: React.FC = () => {
     const { userProfile } = useRoutine();
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
+    const [mode, setMode] = useState<'voice' | 'chat'>('voice');
     const [status, setStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'thinking'>('idle');
     
     const [userTranscript, setUserTranscript] = useState('');
     const [botTranscript, setBotTranscript] = useState('');
+    
+    // Chat mode states
+    const [chatInput, setChatInput] = useState('');
+    const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'bot', text: string }>>([]);
+    const chatEndRef = useRef<HTMLDivElement>(null);
 
     const aiRef = useRef<GoogleGenAI | null>(null);
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
@@ -237,7 +243,8 @@ export const VisionCoach: React.FC = () => {
             clearTimeout(idleTimerRef.current);
         }
 
-        if (isOpen && status === 'listening') {
+        // Chỉ trigger proactive tip ở chế độ voice
+        if (isOpen && mode === 'voice' && status === 'listening') {
             idleTimerRef.current = window.setTimeout(triggerProactiveTip, 15000); // 15 seconds idle timeout
         }
 
@@ -246,7 +253,46 @@ export const VisionCoach: React.FC = () => {
                 clearTimeout(idleTimerRef.current);
             }
         };
-    }, [isOpen, status, triggerProactiveTip]);
+    }, [isOpen, mode, status, triggerProactiveTip]);
+    
+    const handleClose = useCallback(() => {
+        setIsOpen(false);
+        // Reset chat state khi đóng
+        if (mode === 'chat') {
+            setChatInput('');
+            setStatus('idle');
+        }
+    }, [mode]);
+
+    const handleChatSubmit = useCallback(async () => {
+        if (!chatInput.trim()) return;
+        
+        const userMessage = chatInput.trim();
+        setChatInput('');
+        setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
+        setStatus('thinking');
+        
+        try {
+            const history = storageService.getTestHistory();
+            const context = history.length > 0 ? history[0] : null;
+            
+            const response = await aiService.chat(userMessage, context, userProfile, language);
+            
+            setChatHistory(prev => [...prev, { role: 'bot', text: response }]);
+            setStatus('idle');
+        } catch (error) {
+            console.error('Chat error:', error);
+            const errorMsg = language === 'vi' 
+                ? 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.' 
+                : 'Sorry, an error occurred. Please try again.';
+            setChatHistory(prev => [...prev, { role: 'bot', text: errorMsg }]);
+            setStatus('idle');
+        }
+    }, [chatInput, language, userProfile]);
+    
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatHistory]);
     
     const cleanup = useCallback(() => {
         stopAudioPlayback();
@@ -386,13 +432,13 @@ export const VisionCoach: React.FC = () => {
     }, [language, navigate, cleanup]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && mode === 'voice') {
             startSession();
         } else {
             cleanup();
         }
         return cleanup;
-    }, [isOpen, startSession, cleanup]);
+    }, [isOpen, mode, startSession, cleanup]);
 
     if (!process.env.API_KEY) return null;
 
@@ -408,17 +454,36 @@ export const VisionCoach: React.FC = () => {
 
     return (
         <>
-            <button
-                onClick={() => setIsOpen(true)}
-                className={`fixed bottom-8 right-8 z-40 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition-all duration-300 ${isOpen ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}
-                aria-label={t('coach_button_aria')}
-            >
-                <Mic size={28} />
-            </button>
+            {/* Floating action buttons */}
+            <div className={`fixed bottom-24 right-8 z-40 group ${isOpen ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} transition-all duration-300`}>
+                <button
+                    onClick={() => { setMode('voice'); setIsOpen(true); }}
+                    className="bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition-all duration-300"
+                    aria-label={t('coach_button_aria')}
+                >
+                    <Mic size={28} />
+                </button>
+                <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    {language === 'vi' ? 'Nói chuyện bằng giọng' : 'Voice Chat'}
+                </span>
+            </div>
+            
+            <div className={`fixed bottom-8 right-8 z-40 group ${isOpen ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} transition-all duration-300`}>
+                <button
+                    onClick={() => { setMode('chat'); setIsOpen(true); }}
+                    className="bg-green-600 text-white rounded-full p-4 shadow-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-300"
+                    aria-label={language === 'vi' ? 'Chat với Eva' : 'Chat with Eva'}
+                >
+                    <MessageCircle size={28} />
+                </button>
+                <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    {language === 'vi' ? 'Chat bằng văn bản' : 'Text Chat'}
+                </span>
+            </div>
 
-            {isOpen && (
+            {isOpen && mode === 'voice' && (
                 <div className="fixed inset-0 bg-black/70 z-50 flex flex-col items-center justify-center animate-fade-in p-4">
-                    <button onClick={() => setIsOpen(false)} className="absolute top-6 right-6 text-white/70 hover:text-white"><X size={32} /></button>
+                    <button onClick={handleClose} className="absolute top-6 right-6 text-white/70 hover:text-white"><X size={32} /></button>
                     
                     <div className="flex flex-col items-center justify-center text-center text-white flex-grow">
                          <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-colors duration-300 ${status === 'speaking' ? 'bg-green-500/20' : 'bg-blue-500/20'}`}>
@@ -437,6 +502,90 @@ export const VisionCoach: React.FC = () => {
                     <p className="text-sm text-white/50 mb-4">{t('coach_title')}</p>
                 </div>
             )}
+
+            {isOpen && mode === 'chat' && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                                    <Bot size={24} className="text-green-600 dark:text-green-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{language === 'vi' ? 'Chat với Eva' : 'Chat with Eva'}</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{language === 'vi' ? 'Trợ lý Bác sĩ Nhãn khoa AI' : 'AI Ophthalmology Assistant'}</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={handleClose} 
+                                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Chat messages */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {chatHistory.length === 0 && (
+                                <div className="text-center text-gray-500 dark:text-gray-400 mt-20">
+                                    <Bot size={48} className="mx-auto mb-4 opacity-50" />
+                                    <p>{language === 'vi' ? 'Chào bạn! Tôi là Eva. Hỏi tôi bất cứ điều gì về sức khỏe mắt của bạn.' : 'Hello! I\'m Eva. Ask me anything about your eye health.'}</p>
+                                </div>
+                            )}
+                            
+                            {chatHistory.map((msg, idx) => (
+                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                                        msg.role === 'user' 
+                                            ? 'bg-blue-600 text-white' 
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                                    }`}>
+                                        <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            
+                            {status === 'thinking' && (
+                                <div className="flex justify-start">
+                                    <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-3">
+                                        <div className="flex gap-2">
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        {/* Input */}
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleChatSubmit()}
+                                    placeholder={language === 'vi' ? 'Gõ câu hỏi của bạn...' : 'Type your question...'}
+                                    className="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    disabled={status === 'thinking'}
+                                />
+                                <button
+                                    onClick={handleChatSubmit}
+                                    disabled={!chatInput.trim() || status === 'thinking'}
+                                    className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-colors duration-200 flex items-center justify-center"
+                                >
+                                    <Send size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .animate-fade-in { animation: fadeIn 0.3s ease-out both; }
                 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }

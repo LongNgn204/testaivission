@@ -1,58 +1,3 @@
-# 📘 HƯỚNG DẪN DỄ HIỂU - ỨNG DỤNG KIỂM TRA MẮT AI
-
-**Dành cho:** Người không chuyên về lập trình  
-**Ngày tạo:** 4 tháng 11, 2025  
-**Mục đích:** Giải thích đơn giản về cách hoạt động của ứng dụng
-
----
-
-## 🎯 ỨNG DỤNG NÀY LÀM GÌ?
-
-Đây là một **website kiểm tra mắt thông minh** giúp bạn:
-- ✅ Kiểm tra thị lực tại nhà (không cần đến bệnh viện)
-- ✅ AI phân tích kết quả và tư vấn như bác sĩ
-- ✅ Nói chuyện với trợ lý ảo Eva bằng giọng nói
-- ✅ Theo dõi sức khỏe mắt theo thời gian
-- ✅ Tìm bệnh viện mắt gần nhất
-
-**Ví dụ đơn giản:**
-> Giống như có một bác sĩ nhãn khoa trong điện thoại, luôn sẵn sàng kiểm tra mắt và tư vấn cho bạn - miễn phí!
-
----
-
-## 🛠️ CÔNG NGHỆ SỬ DỤNG (GIẢI THÍCH ĐƠN GIẢN)
-
-### 1. **React 19** - Bộ não của website
-**Là gì?**  
-React giống như **bộ LEGO** để xây dựng website. Thay vì viết code dài dòng, lập trình viên ghép các "miếng LEGO" (gọi là components) lại với nhau.
-
-**Tại sao dùng?**
-- ⚡ Website chạy nhanh, mượt mà
-- 🔄 Cập nhật trang không cần reload (như Facebook, Instagram)
-- 🧩 Dễ bảo trì và mở rộng
-
-**Ví dụ thực tế:**
-```
-Trang chủ = Header (đầu trang) + Sidebar (menu bên) + Danh sách bài test + Footer (cuối trang)
-Mỗi phần là 1 miếng LEGO riêng, ghép lại thành trang hoàn chỉnh!
-```
-
----
-
-### 2. **TypeScript** - Ngôn ngữ lập trình an toàn hơn
-**Là gì?**  
-TypeScript giống như **JavaScript có "bảo hiểm"**. Nó giúp lập trình viên viết code ít lỗi hơn.
-
-**Ví dụ dễ hiểu:**
-- JavaScript: Như viết văn không kiểm tra lỗi chính tả → Dễ sai
-- TypeScript: Như viết văn có Word gạch chân lỗi → Ít sai hơn
-
-**Tại sao quan trọng?**
-- ✅ Phát hiện lỗi trước khi chạy
-- ✅ Code dễ đọc, dễ hiểu hơn
-- ✅ Ít bug hơn
-
----
 
 ### 3. **Google Gemini AI** - Trợ lý AI thông minh
 **Là gì?**  
@@ -554,15 +499,16 @@ Eva: "Dựa vào kết quả, bạn nên gặp bác sĩ trong 2-4 tuần
 
 ### **Cách nói chuyện với Eva:**
 
-**Bằng giọng nói:**
-1. Click biểu tượng mic 🎤
-2. Nói câu hỏi
+**Bằng giọng nói:** 🎤
+1. Click nút tròn màu **XANH DƯƠNG** (biểu tượng micro) ở góc dưới bên phải
+2. Nói câu hỏi rõ ràng
 3. Eva nghe → Suy nghĩ → Trả lời bằng giọng
 
-**Bằng chat:**
-1. Gõ câu hỏi vào ô chat
-2. Enter
-3. Eva trả lời ngay
+**Bằng chat:** 💬
+1. Click nút tròn màu **XANH LÁ** (biểu tượng chat) ở góc dưới bên phải
+2. Gõ câu hỏi vào ô nhập liệu
+3. Nhấn Enter hoặc nút gửi
+4. Eva trả lời bằng văn bản ngay lập tức
 
 ---
 
