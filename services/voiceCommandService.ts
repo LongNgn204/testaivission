@@ -89,31 +89,35 @@ class VoiceCommandService {
         patterns: [
           /(?:eva|ai)?\s*(?:bắt đầu|start|begin|run)\s*(?:bài |test |kiểm tra )?(?:test )?(?:thị lực|snellen|vision|sight)/i,
           /(?:eva|ai)?\s*(?:làm|do|take)\s*(?:bài |test )?snellen/i,
+          /(?:eva|ai)?\s*(?:tôi |mình )?(?:muốn |want to? )?(?:kiểm tra|làm|thử)\s*(?:bài )?test(?:\s+thị lực)?/i,
+          /(?:eva|ai)?\s*(?:cho tôi |let me )?(?:làm|do|kiểm tra)\s*(?:một )?(?:bài )?test/i,
         ],
         intent: 'test',
         action: 'start',
         target: 'snellen',
-        examples: ['Eva, bắt đầu test thị lực', 'Start Snellen test', 'Begin vision test']
+        examples: ['Eva, bắt đầu test thị lực', 'Start Snellen test', 'Tôi muốn kiểm tra bài test', 'Cho tôi làm test']
       },
       {
         patterns: [
           /(?:eva|ai)?\s*(?:bắt đầu|start|begin|run)\s*(?:bài |test |kiểm tra )?(?:test )?(?:mù màu|color\s*blind|ishihara)/i,
           /(?:eva|ai)?\s*(?:làm|do|take)\s*(?:bài |test )?(?:mù màu|color\s*blind)/i,
+          /(?:eva|ai)?\s*(?:tôi |mình )?(?:muốn |want to? )?(?:kiểm tra|làm|thử)\s*(?:bài )?test\s*(?:mù màu|màu sắc|color)/i,
         ],
         intent: 'test',
         action: 'start',
         target: 'colorblind',
-        examples: ['Eva, bắt đầu test mù màu', 'Start color blind test', 'Begin Ishihara test']
+        examples: ['Eva, bắt đầu test mù màu', 'Start color blind test', 'Tôi muốn kiểm tra test mù màu']
       },
       {
         patterns: [
           /(?:eva|ai)?\s*(?:bắt đầu|start|begin|run)\s*(?:bài |test |kiểm tra )?(?:test )?(?:loạn thị|astigmatism)/i,
           /(?:eva|ai)?\s*(?:làm|do|take)\s*(?:bài |test )?(?:loạn thị|astigmatism)/i,
+          /(?:eva|ai)?\s*(?:tôi |mình )?(?:muốn |want to? )?(?:kiểm tra|làm|thử)\s*(?:bài )?test\s*(?:loạn thị)/i,
         ],
         intent: 'test',
         action: 'start',
         target: 'astigmatism',
-        examples: ['Eva, bắt đầu test loạn thị', 'Start astigmatism test']
+        examples: ['Eva, bắt đầu test loạn thị', 'Start astigmatism test', 'Tôi muốn kiểm tra test loạn thị']
       },
       {
         patterns: [
@@ -235,7 +239,19 @@ class VoiceCommandService {
    * Parse câu lệnh giọng nói thành VoiceCommand object
    */
   parseCommand(transcript: string): VoiceCommand | null {
-    const normalizedTranscript = transcript.toLowerCase().trim();
+    let normalizedTranscript = transcript.toLowerCase().trim();
+
+    // Loại bỏ các từ chào hỏi phổ biến ở đầu câu
+    const greetings = [
+      /^(?:xin chào|chào|hello|hi|hey)\s*/i,
+      /^(?:ê|ơi|à)\s*/i,
+    ];
+    
+    for (const greeting of greetings) {
+      normalizedTranscript = normalizedTranscript.replace(greeting, '');
+    }
+
+    normalizedTranscript = normalizedTranscript.trim();
 
     // Thử match với từng pattern
     for (const commandPattern of this.commandPatterns) {
