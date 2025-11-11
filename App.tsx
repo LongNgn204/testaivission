@@ -39,6 +39,7 @@ const HospitalLocator = lazy(() => import('./components/HospitalLocator'));
 const RemindersPage = lazy(() => import('./pages/RemindersPage'));
 const ProgressPage = lazy(() => import('./pages/ProgressPage'));
 const VisionCoach = lazy(() => import('./components/VisionCoach').then(m => ({ default: m.VisionCoach })));
+const VoiceCommandButton = lazy(() => import('./components/VoiceCommandButton').then(m => ({ default: m.VoiceCommandButton })));
 const TestInstructionsPlayer = lazy(() => import('./components/TestInstructionsPlayer').then(m => ({ default: m.TestInstructionsPlayer })));
 
 // ⚡ LOADING FALLBACK: Fast, minimal loading UI
@@ -104,6 +105,7 @@ const MainAppLayout: React.FC = () => {
             </footer>
             <Suspense fallback={<div />}>
                 <VisionCoach />
+                <VoiceCommandButton />
             </Suspense>
         </div>
     );

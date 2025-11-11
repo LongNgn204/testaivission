@@ -18,7 +18,7 @@
 - ✅ **Native Multimodal**: Phân tích đồng thời văn bản và hình ảnh
 - ✅ **Production-Ready**: Model ổn định, được kiểm tra kỹ lưỡng cho môi trường thương mại
 - ✅ **Comprehensive Safety Testing**: Kiểm tra an toàn toàn diện nhất của Google
-- ✅ **1 Million Token Context**: Có thể xử lý lịch sử kiểm tra mắt dài hạn
+- ✅ **1 Million Token Context**: Có khể xử lý lịch sử kiểm tra mắt dài hạn
 
 ---
 
