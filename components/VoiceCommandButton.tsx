@@ -84,15 +84,6 @@ export const VoiceCommandButton: React.FC = () => {
                 : 'bg-gray-400'
             }`}
           ></div>
-
-          {/* Help button */}
-          <button
-            onClick={() => setShowHelp(true)}
-            className="absolute -bottom-12 left-1/2 -translate-x-1/2 p-2 bg-gray-700/80 hover:bg-gray-600/90 rounded-full transition-all"
-            aria-label="Voice commands help"
-          >
-            <HelpCircle size={20} className="text-white" />
-          </button>
         </div>
 
         {/* Transcript/Feedback bubble */}
