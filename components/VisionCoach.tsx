@@ -34,7 +34,7 @@ const navigateToFunctionDeclaration: FunctionDeclaration = {
     properties: {
       page: {
         type: Type.STRING,
-        description: 'The name of the page to navigate to. Must be one of: home, history, about.',
+        description: 'The name of the page to navigate to. Must be one of: home, history, about, progress, reminders, hospitals.',
       },
     },
     required: ['page'],
@@ -81,8 +81,13 @@ CÁCH TƯ VẤN:
    - Hỏi lại nếu không rõ triệu chứng
    
 6. SỬ DỤNG CÔNG CỤ:
-   - startTest: Bắt đầu kiểm tra thị lực chuyên sâu
-   - navigateTo: Điều hướng xem kết quả/lịch sử
+   - startTest(testName): Bắt đầu bài kiểm tra (snellen, colorblind, astigmatism, amsler, duochrome)
+     VD: Khi user nói "tôi muốn làm test thị lực" → gọi startTest({testName: "snellen"})
+     VD: Khi user nói "test mù màu" → gọi startTest({testName: "colorblind"})
+   
+   - navigateTo(page): Chuyển trang (home, history, about, progress, reminders, hospitals)
+     VD: Khi user nói "xem lịch sử" → gọi navigateTo({page: "history"})
+     VD: Khi user nói "tìm bệnh viện" → gọi navigateTo({page: "hospitals"})
 
 PHONG CÁCH NÓI CHUYỆN:
 "Chào anh/chị, tôi là Bác sĩ Eva. Để tôi xem kết quả kiểm tra của anh/chị..."
@@ -177,22 +182,48 @@ export const VisionCoach: React.FC = () => {
             const validTests = ['snellen', 'colorblind', 'astigmatism', 'amsler', 'duochrome'];
             const lowerTestName = testName.toLowerCase();
             if (validTests.includes(lowerTestName)) {
-                navigate(`/test/${lowerTestName}`);
-                setIsOpen(false);
-                return `Okay, starting the ${testName} test.`;
+                // Close session before navigating to prevent errors
+                if (mode === 'voice') {
+                    cleanup();
+                }
+                
+                // Small delay to ensure cleanup completes
+                setTimeout(() => {
+                    navigate(`/home/test/${lowerTestName}`);
+                    setIsOpen(false);
+                }, 100);
+                
+                return language === 'vi' 
+                    ? `Được rồi, đang bắt đầu bài test ${testName}.` 
+                    : `Okay, starting the ${testName} test.`;
             }
-            return `Sorry, I can't start a test called ${testName}.`;
+            return language === 'vi'
+                ? `Xin lỗi, tôi không thể bắt đầu bài test ${testName}.`
+                : `Sorry, I can't start a test called ${testName}.`;
         },
         navigateTo: ({ page }: { page: string }) => {
-            const validPages = ['home', 'history', 'about'];
+            const validPages = ['home', 'history', 'about', 'progress', 'reminders', 'hospitals'];
             const lowerPage = page.toLowerCase();
             if (validPages.includes(lowerPage)) {
-                const path = lowerPage === 'home' ? '/' : `/${lowerPage}`;
-                navigate(path);
-                setIsOpen(false);
-                return `Navigating to the ${page} page.`;
+                // Close session before navigating to prevent errors
+                if (mode === 'voice') {
+                    cleanup();
+                }
+                
+                // Small delay to ensure cleanup completes
+                setTimeout(() => {
+                    const path = lowerPage === 'home' ? '/home' : `/home/${lowerPage}`;
+                    navigate(path);
+                    setIsOpen(false);
+                }, 100);
+                
+                return language === 'vi'
+                    ? `Đang chuyển đến trang ${page}.`
+                    : `Navigating to the ${page} page.`;
             }
-            return `Sorry, I can't navigate to a page called ${page}.`;
+            return language === 'vi'
+                ? `Xin lỗi, tôi không thể chuyển đến trang ${page}.`
+                : `Sorry, I can't navigate to a page called ${page}.`;
         }
     };
     
