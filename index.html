@@ -1,93 +1,59 @@
-
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-    
-    <!-- ⚡ PWA & SEO Meta Tags -->
-    <title>Sức Khỏe AI - Kiểm Tra Thị Lực Thông Minh</title>
-    <meta name="description" content="Nền tảng kiểm tra thị lực AI với điều khiển giọng nói, phân tích chuyên sâu và lời khuyên cá nhân hóa. Miễn phí 100%!" />
-    <meta name="keywords" content="kiểm tra mắt, thị lực, AI, sức khỏe mắt, snellen, mù màu, astigmatism, amsler" />
-    <meta name="author" content="Sức Khỏe AI Team" />
-    <meta name="theme-color" content="#4f46e5" />
-    
-    <!-- ⚡ PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
-    
-    <!-- ⚡ Icons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
-    
-    <!-- ⚡ iOS PWA Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Sức Khỏe AI" />
-    
-    <!-- ⚡ Performance: Preconnect to external domains -->
-    <link rel="preconnect" href="https://cdn.tailwindcss.com" />
-    <link rel="preconnect" href="https://aistudiocdn.com" />
-    <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
-    
-    <!-- ⚡ Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-      };
-    </script>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+
+  <!-- ⚡ PWA & SEO Meta Tags -->
+  <title>Sức Khỏe AI - Nền Tảng Kiểm Tra Thị Lực Y Tế</title>
+  <meta name="description"
+    content="Nền tảng kiểm tra thị lực chuẩn y tế với AI chuyên gia nhãn khoa. Kiểm tra Snellen, Mù màu, Loạn thị, Võng mạc với độ chính xác cao." />
+  <meta name="keywords" content="kiểm tra mắt, thị lực, AI, bác sĩ mắt, nhãn khoa, snellen, mù màu, loạn thị, amsler" />
+  <meta name="author" content="Sức Khỏe AI Team" />
+  <meta name="theme-color" content="#0891e6" />
+
+  <!-- ⚡ PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- ⚡ Icons -->
+  <link rel="icon" type="image/svg+xml" href="/assets/images/logo_eye_health.svg" />
+  <link rel="apple-touch-icon" href="/assets/images/logo_eye_health.svg" />
+
+  <!-- ⚡ iOS PWA Support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sức Khỏe AI" />
+
+  <!-- ⚡ Fonts: Inter (UI) & Merriweather (Medical Headings) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap"
+    rel="stylesheet">
+
+  <!-- ⚡ Design System -->
+  <link rel="stylesheet" href="/styles/design-system.css" />
+
   <script type="importmap">
-{
-  "imports": {
-    "react-dom/client": "https://aistudiocdn.com/react-dom@19.2.0/client",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.548.0",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^6.23.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
-    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1"
-  }
-}
-</script>
+    {
+      "imports": {
+        "react-dom/client": "https://aistudiocdn.com/react-dom@19.2.0/client",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-router-dom": "https://aistudiocdn.com/react-router-dom@^6.23.1",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
+        "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1"
+      }
+    }
+    </script>
 </head>
-  <body>
-    <style>
-      body {
-        background-color: #f9fafb; /* light mode fallback */
-        background-image: radial-gradient(circle at top left, #eff6ff, #f9fafb 50%);
-      }
-      html.dark body {
-        background-color: #030712; /* dark mode fallback */
-        background-image: radial-gradient(circle at top left, #111827, #030712 50%);
-      }
-      
-      /* Custom animations */
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      
-      .animate-fade-in {
-        animation: fadeIn 0.3s ease-out;
-      }
-      
-      /* Smooth transitions for all interactive elements */
-      * {
-        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        transition-duration: 150ms;
-      }
-    </style>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

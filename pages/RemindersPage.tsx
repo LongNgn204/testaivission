@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import {
-  Bell,
-  Clock,
-  Plus,
-  Trash2,
-  Trophy,
-  Flame,
-  Star,
-  TrendingUp,
-  CheckCircle,
-  Play,
-  Timer,
-  Settings,
-  Award,
-  Target,
-} from 'lucide-react';
+  BellIcon,
+  ClockIcon,
+  PlusIcon,
+  Trash2Icon,
+  TrophyIcon,
+  FlameIcon,
+  StarIcon,
+  TrendingUpIcon,
+  CheckCircleIcon,
+  PlayIcon,
+  TimerIcon,
+  SettingsIcon,
+  AwardIcon,
+  TargetIcon,
+} from '../components/ui/Icons';
 import {
   getReminders,
   saveReminders,
@@ -78,7 +78,7 @@ export default function RemindersPage() {
     const interval = setInterval(() => {
       setExerciseTimer((prev) => {
         if (!isActive) return prev; // Don't update if unmounted
-        
+
         if (prev <= 1) {
           if (isActive) {
             setExerciseInProgress(null);
@@ -151,7 +151,7 @@ export default function RemindersPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2 flex items-center justify-center gap-3">
-            <Bell className="w-10 h-10 text-purple-600" />
+            <BellIcon className="w-10 h-10 text-purple-600" />
             {language === 'vi' ? 'Nhắc Nhở & Thành Tựu' : 'Reminders & Achievements'}
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
@@ -165,7 +165,7 @@ export default function RemindersPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-gradient-to-br from-orange-400 to-red-500 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <Flame className="w-8 h-8" />
+              <FlameIcon className="w-8 h-8" />
               <span className="text-3xl font-bold">{streak.currentStreak}</span>
             </div>
             <p className="text-sm opacity-90">{language === 'vi' ? 'Chuỗi hiện tại' : 'Current Streak'}</p>
@@ -176,7 +176,7 @@ export default function RemindersPage() {
 
           <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <Trophy className="w-8 h-8" />
+              <TrophyIcon className="w-8 h-8" />
               <span className="text-3xl font-bold">{points}</span>
             </div>
             <p className="text-sm opacity-90">{language === 'vi' ? 'Điểm số' : 'Points'}</p>
@@ -187,7 +187,7 @@ export default function RemindersPage() {
 
           <div className="bg-gradient-to-br from-green-400 to-teal-500 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <CheckCircle className="w-8 h-8" />
+              <CheckCircleIcon className="w-8 h-8" />
               <span className="text-3xl font-bold">{streak.totalTests}</span>
             </div>
             <p className="text-sm opacity-90">{language === 'vi' ? 'Tổng test' : 'Total Tests'}</p>
@@ -196,7 +196,7 @@ export default function RemindersPage() {
 
           <div className="bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <Target className="w-8 h-8" />
+              <TargetIcon className="w-8 h-8" />
               <span className="text-3xl font-bold">{streak.totalExercises}</span>
             </div>
             <p className="text-sm opacity-90">{language === 'vi' ? 'Bài tập' : 'Exercises'}</p>
@@ -208,7 +208,7 @@ export default function RemindersPage() {
         {!notificationEnabled && (
           <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-300 dark:border-yellow-700 rounded-xl p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Bell className="w-6 h-6 text-yellow-700 dark:text-yellow-300" />
+              <BellIcon className="w-6 h-6 text-yellow-700 dark:text-yellow-300" />
               <div>
                 <p className="font-semibold text-yellow-900 dark:text-yellow-100">
                   {language === 'vi' ? 'Bật thông báo' : 'Enable Notifications'}
@@ -233,35 +233,32 @@ export default function RemindersPage() {
         <div className="flex gap-2 mb-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('reminders')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === 'reminders'
+            className={`px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${activeTab === 'reminders'
                 ? 'bg-purple-600 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+              }`}
           >
-            <Bell className="w-5 h-5 inline mr-2" />
+            <BellIcon className="w-5 h-5 inline mr-2" />
             {language === 'vi' ? 'Nhắc nhở' : 'Reminders'}
           </button>
           <button
             onClick={() => setActiveTab('exercises')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === 'exercises'
+            className={`px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${activeTab === 'exercises'
                 ? 'bg-purple-600 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+              }`}
           >
-            <Play className="w-5 h-5 inline mr-2" />
+            <PlayIcon className="w-5 h-5 inline mr-2" />
             {language === 'vi' ? 'Bài tập mắt' : 'Eye Exercises'}
           </button>
           <button
             onClick={() => setActiveTab('achievements')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-              activeTab === 'achievements'
+            className={`px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap ${activeTab === 'achievements'
                 ? 'bg-purple-600 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+              }`}
           >
-            <Trophy className="w-5 h-5 inline mr-2" />
+            <TrophyIcon className="w-5 h-5 inline mr-2" />
             {language === 'vi' ? 'Thành tựu' : 'Achievements'}
           </button>
         </div>
@@ -277,7 +274,7 @@ export default function RemindersPage() {
                 onClick={() => setShowAddReminder(true)}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
               >
-                <Plus className="w-5 h-5" />
+                <PlusIcon className="w-5 h-5" />
                 {language === 'vi' ? 'Thêm' : 'Add'}
               </button>
             </div>
@@ -385,7 +382,7 @@ export default function RemindersPage() {
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className={`p-3 rounded-full ${reminder.enabled ? 'bg-purple-100 dark:bg-purple-900' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                      <Clock className={`w-6 h-6 ${reminder.enabled ? 'text-purple-600 dark:text-purple-300' : 'text-gray-400'}`} />
+                      <ClockIcon className={`w-6 h-6 ${reminder.enabled ? 'text-purple-600 dark:text-purple-300' : 'text-gray-400'}`} />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-gray-800 dark:text-white">{reminder.title}</h3>
@@ -413,7 +410,7 @@ export default function RemindersPage() {
                       onClick={() => handleDeleteReminder(reminder.id)}
                       className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <Trash2Icon className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -458,7 +455,7 @@ export default function RemindersPage() {
 
                   {exerciseInProgress === exercise.id ? (
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-4 text-white text-center">
-                      <Timer className="w-8 h-8 mx-auto mb-2 animate-pulse" />
+                      <TimerIcon className="w-8 h-8 mx-auto mb-2 animate-pulse" />
                       <p className="text-3xl font-bold">{exerciseTimer}s</p>
                       <p className="text-sm opacity-90">{language === 'vi' ? 'Đang tiến hành...' : 'In progress...'}</p>
                     </div>
@@ -467,7 +464,7 @@ export default function RemindersPage() {
                       onClick={() => startExercise(exercise.id)}
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
                     >
-                      <Play className="w-5 h-5" />
+                      <PlayIcon className="w-5 h-5" />
                       {language === 'vi' ? 'Bắt đầu' : 'Start'}
                     </button>
                   )}
@@ -487,7 +484,7 @@ export default function RemindersPage() {
             {/* Unlocked Badges */}
             <div className="mb-8">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                <Trophy className="w-6 h-6 text-yellow-500" />
+                <TrophyIcon className="w-6 h-6 text-yellow-500" />
                 {language === 'vi' ? 'Đã mở khóa' : 'Unlocked'} ({unlockedBadges.length})
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -518,7 +515,7 @@ export default function RemindersPage() {
             {/* Locked Badges */}
             <div>
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                <Award className="w-6 h-6 text-gray-400" />
+                <AwardIcon className="w-6 h-6 text-gray-400" />
                 {language === 'vi' ? 'Chưa mở khóa' : 'Locked'} ({lockedBadges.length})
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Navigation, Phone, Clock, Star, Filter, ExternalLink } from 'lucide-react';
+import { MapPinIcon, NavigationIcon, PhoneIcon, ClockIcon, StarIcon, FilterIcon, ExternalLinkIcon } from './ui/Icons';
 import { useLanguage } from '../context/LanguageContext';
 
 interface Hospital {
@@ -183,9 +183,9 @@ export default function HospitalLocator() {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return Math.round(R * c * 10) / 10; // Round to 1 decimal
   };
@@ -232,7 +232,7 @@ export default function HospitalLocator() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2 flex items-center justify-center gap-3">
-            <MapPin className="w-10 h-10 text-blue-600" />
+            <MapPinIcon className="w-10 h-10 text-blue-600" />
             {language === 'vi' ? 'Tìm Bệnh Viện Mắt' : 'Find Eye Hospitals'}
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
@@ -245,7 +245,7 @@ export default function HospitalLocator() {
         {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <FilterIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
               {language === 'vi' ? 'Bộ lọc' : 'Filters'}
             </h3>
@@ -303,7 +303,7 @@ export default function HospitalLocator() {
 
           {/* Location Status */}
           <div className="mt-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <Navigation className="w-4 h-4" />
+            <NavigationIcon className="w-4 h-4" />
             {isLoadingLocation ? (
               <span>{language === 'vi' ? 'Đang lấy vị trí...' : 'Getting location...'}</span>
             ) : userLocation ? (
@@ -343,7 +343,7 @@ export default function HospitalLocator() {
                     {language === 'vi' ? hospital.name : hospital.nameEn}
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                    <StarIcon className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                     <span className="font-semibold">{hospital.rating}</span>
                     <span>({hospital.reviewCount} reviews)</span>
                   </div>
@@ -359,7 +359,7 @@ export default function HospitalLocator() {
 
               {/* Address */}
               <div className="flex gap-2 mb-3 text-gray-700 dark:text-gray-300">
-                <MapPin className="w-5 h-5 flex-shrink-0 text-gray-500" />
+                <MapPinIcon className="w-5 h-5 flex-shrink-0 text-gray-500" />
                 <span className="text-sm">
                   {language === 'vi' ? hospital.address : hospital.addressEn}
                 </span>
@@ -367,7 +367,7 @@ export default function HospitalLocator() {
 
               {/* Phone */}
               <div className="flex gap-2 mb-3 text-gray-700 dark:text-gray-300">
-                <Phone className="w-5 h-5 flex-shrink-0 text-gray-500" />
+                <PhoneIcon className="w-5 h-5 flex-shrink-0 text-gray-500" />
                 <a href={`tel:${hospital.phone}`} className="text-sm hover:text-blue-600">
                   {hospital.phone}
                 </a>
@@ -375,7 +375,7 @@ export default function HospitalLocator() {
 
               {/* Opening Hours */}
               <div className="flex gap-2 mb-4 text-gray-700 dark:text-gray-300">
-                <Clock className="w-5 h-5 flex-shrink-0 text-gray-500" />
+                <ClockIcon className="w-5 h-5 flex-shrink-0 text-gray-500" />
                 <span className="text-sm">{hospital.openingHours}</span>
               </div>
 
@@ -425,7 +425,7 @@ export default function HospitalLocator() {
                   rel="noopener noreferrer"
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
                 >
-                  <Navigation className="w-4 h-4" />
+                  <NavigationIcon className="w-4 h-4" />
                   {language === 'vi' ? 'Chỉ đường' : 'Directions'}
                 </a>
                 {hospital.website && (
@@ -435,7 +435,7 @@ export default function HospitalLocator() {
                     rel="noopener noreferrer"
                     className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLinkIcon className="w-4 h-4" />
                     Website
                   </a>
                 )}
@@ -447,7 +447,7 @@ export default function HospitalLocator() {
         {/* Empty State */}
         {filteredHospitals.length === 0 && (
           <div className="text-center py-12">
-            <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <MapPinIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400 text-lg">
               {language === 'vi'
                 ? 'Không tìm thấy bệnh viện phù hợp. Hãy thử bỏ bớt bộ lọc.'

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { TrendingUp, TrendingDown, Minus, Activity, Eye, Droplet, Palette, Grid, TestTube } from 'lucide-react';
+import { TrendingUpIcon, TrendingDownIcon, MinusIcon, ActivityIcon, EyeIcon, DropletIcon, PaletteIcon, GridIcon, TestTubeIcon } from '../components/ui/Icons';
 import { StorageService } from '../services/storageService';
 import { StoredTestResult, TestType } from '../types';
 import { AIService } from '../services/aiService';
@@ -131,7 +131,7 @@ export default function ProgressPage() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-6 text-center">
           <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2 flex items-center justify-center gap-3">
-            <TrendingUp className="w-10 h-10 text-purple-600" />
+            <TrendingUpIcon className="w-10 h-10 text-purple-600" />
             {language === 'vi' ? 'Tiến trình & Xu hướng' : 'Progress & Trends'}
           </h1>
           <p className="text-gray-600 dark:text-gray-300">{language === 'vi' ? 'Theo dõi thị lực của bạn theo thời gian' : 'Track your vision over time'}</p>
@@ -139,12 +139,12 @@ export default function ProgressPage() {
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-4">
-            <Eye className="w-6 h-6 text-indigo-600" />
+            <EyeIcon className="w-6 h-6 text-indigo-600" />
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">{language === 'vi' ? 'Xu hướng Snellen' : 'Snellen Trend'}</h2>
           </div>
           {snellenData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Eye className="w-16 h-16 text-gray-300 mb-3" />
+              <EyeIcon className="w-16 h-16 text-gray-300 mb-3" />
               <p className="text-gray-500 dark:text-gray-400">{language === 'vi' ? 'Chưa có dữ liệu Snellen. Hãy làm bài kiểm tra!' : 'No Snellen data yet. Take a test!'}</p>
             </div>
           ) : (
@@ -155,7 +155,7 @@ export default function ProgressPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2 mb-4">
-              <TestTube className="w-5 h-5 text-blue-600" />
+              <TestTubeIcon className="w-5 h-5 text-blue-600" />
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{language === 'vi' ? 'Số lần làm bài theo loại' : 'Tests by Type'}</h3>
             </div>
             <div className="flex items-end gap-4 h-40">
@@ -172,7 +172,7 @@ export default function ProgressPage() {
 
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2 mb-4">
-              <Grid className="w-5 h-5 text-red-600" />
+              <GridIcon className="w-5 h-5 text-red-600" />
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{language === 'vi' ? 'Bản đồ nhiệt Amsler' : 'Amsler Heatmap'}</h3>
             </div>
             <div className="grid grid-cols-2 gap-3 w-72 mx-auto">
@@ -201,7 +201,7 @@ export default function ProgressPage() {
         {/* AI Insights Section */}
         <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl shadow-lg p-6 mt-6">
           <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-6 h-6 text-purple-600" />
+            <ActivityIcon className="w-6 h-6 text-purple-600" />
             <h3 className="text-xl font-bold text-gray-800 dark:text-white">
               {language === 'vi' ? 'Phân tích AI của Eva' : "Eva's AI Analysis"}
             </h3>
@@ -216,10 +216,10 @@ export default function ProgressPage() {
 
           {!loadingInsights && history.length === 0 && (
             <div className="text-center py-8">
-              <TestTube className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+              <TestTubeIcon className="w-16 h-16 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-600 dark:text-gray-400">
-                {language === 'vi' 
-                  ? 'Chưa có dữ liệu. Hãy làm một số bài kiểm tra để xem phân tích!' 
+                {language === 'vi'
+                  ? 'Chưa có dữ liệu. Hãy làm một số bài kiểm tra để xem phân tích!'
                   : 'No data yet. Complete some tests to see your analysis!'}
               </p>
             </div>
@@ -235,14 +235,13 @@ export default function ProgressPage() {
                     {language === 'vi' ? 'Điểm tổng quát' : 'Overall Score'}
                   </div>
                 </div>
-                
+
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow">
-                  <div className={`text-2xl font-bold ${
-                    insights.rating === 'Xuất sắc' || insights.rating === 'Excellent' ? 'text-green-600' :
-                    insights.rating === 'Tốt' || insights.rating === 'Good' ? 'text-blue-600' :
-                    insights.rating === 'Trung bình' || insights.rating === 'Fair' ? 'text-yellow-600' :
-                    'text-red-600'
-                  }`}>
+                  <div className={`text-2xl font-bold ${insights.rating === 'Xuất sắc' || insights.rating === 'Excellent' ? 'text-green-600' :
+                      insights.rating === 'Tốt' || insights.rating === 'Good' ? 'text-blue-600' :
+                        insights.rating === 'Trung bình' || insights.rating === 'Fair' ? 'text-yellow-600' :
+                          'text-red-600'
+                    }`}>
                     {insights.rating}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -252,17 +251,16 @@ export default function ProgressPage() {
 
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow">
                   <div className="flex items-center justify-center gap-2">
-                    {insights.trend === 'IMPROVING' && <TrendingUp className="w-8 h-8 text-green-600" />}
-                    {insights.trend === 'STABLE' && <Minus className="w-8 h-8 text-blue-600" />}
-                    {insights.trend === 'DECLINING' && <TrendingDown className="w-8 h-8 text-red-600" />}
-                    <div className={`text-xl font-bold ${
-                      insights.trend === 'IMPROVING' ? 'text-green-600' :
-                      insights.trend === 'STABLE' ? 'text-blue-600' :
-                      'text-red-600'
-                    }`}>
+                    {insights.trend === 'IMPROVING' && <TrendingUpIcon className="w-8 h-8 text-green-600" />}
+                    {insights.trend === 'STABLE' && <MinusIcon className="w-8 h-8 text-blue-600" />}
+                    {insights.trend === 'DECLINING' && <TrendingDownIcon className="w-8 h-8 text-red-600" />}
+                    <div className={`text-xl font-bold ${insights.trend === 'IMPROVING' ? 'text-green-600' :
+                        insights.trend === 'STABLE' ? 'text-blue-600' :
+                          'text-red-600'
+                      }`}>
                       {insights.trend === 'IMPROVING' ? (language === 'vi' ? 'Cải thiện' : 'Improving') :
-                       insights.trend === 'STABLE' ? (language === 'vi' ? 'Ổn định' : 'Stable') :
-                       (language === 'vi' ? 'Giảm sút' : 'Declining')}
+                        insights.trend === 'STABLE' ? (language === 'vi' ? 'Ổn định' : 'Stable') :
+                          (language === 'vi' ? 'Giảm sút' : 'Declining')}
                     </div>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -275,7 +273,7 @@ export default function ProgressPage() {
               {insights.positives && insights.positives.length > 0 && (
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                   <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
+                    <TrendingUpIcon className="w-5 h-5" />
                     {language === 'vi' ? 'Điểm mạnh' : 'Strengths'}
                   </h4>
                   <ul className="space-y-1">
@@ -293,7 +291,7 @@ export default function ProgressPage() {
               {insights.areasToMonitor && insights.areasToMonitor.length > 0 && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
                   <h4 className="font-semibold text-yellow-800 dark:text-yellow-300 mb-2 flex items-center gap-2">
-                    <Eye className="w-5 h-5" />
+                    <EyeIcon className="w-5 h-5" />
                     {language === 'vi' ? 'Cần theo dõi' : 'Monitor Closely'}
                   </h4>
                   <ul className="space-y-1">

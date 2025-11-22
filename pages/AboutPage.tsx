@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { Heart, Cpu, ShieldAlert } from 'lucide-react';
+import { HeartIcon, CpuIcon, ShieldAlertIcon } from '../components/ui/Icons';
 
 export const AboutPage: React.FC = () => {
   const { t } = useLanguage();
@@ -13,7 +13,7 @@ export const AboutPage: React.FC = () => {
       <div className="space-y-12">
         <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
-            <Heart className="text-blue-500 mr-3" size={28} />
+            <HeartIcon className="text-blue-500 mr-3" size={28} />
             {t('about_purpose_title')}
           </h2>
           <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
@@ -23,7 +23,7 @@ export const AboutPage: React.FC = () => {
 
         <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
-            <Cpu className="text-purple-500 mr-3" size={28} />
+            <CpuIcon className="text-purple-500 mr-3" size={28} />
             {t('about_tech_title')}
           </h2>
           <p className="text-gray-600 dark:text-gray-300 leading-relaxed font-mono bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
@@ -33,7 +33,7 @@ export const AboutPage: React.FC = () => {
 
         <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-800 dark:text-red-200 p-8 rounded-r-2xl shadow-lg">
           <h2 className="text-2xl font-bold text-red-700 dark:text-red-200 mb-4 flex items-center">
-            <ShieldAlert className="text-red-500 mr-3" size={28} />
+            <ShieldAlertIcon className="text-red-500 mr-3" size={28} />
             {t('about_disclaimer_title')}
           </h2>
           <p className="text-red-600 dark:text-red-200 leading-relaxed font-semibold">

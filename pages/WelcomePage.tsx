@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useRoutine } from '../context/RoutineContext';
-import { Eye, Info, ListChecks } from 'lucide-react';
+import { EyeIcon, InfoIcon, ListChecksIcon } from '../components/ui/Icons';
 
 export const WelcomePage: React.FC = () => {
     const { t } = useLanguage();
@@ -64,8 +64,8 @@ export const WelcomePage: React.FC = () => {
             <div className="shape shape4"></div>
 
             <div className="relative z-10 text-center text-white max-w-4xl">
-                <Eye size={64} className="mx-auto mb-6 text-blue-300 animate-fade-in-up" />
-                
+                <EyeIcon size={64} className="mx-auto mb-6 text-blue-300 animate-fade-in-up" />
+
                 <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 animate-fade-in-up delay-200" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                     {t('welcome_title')}
                 </h1>
@@ -77,21 +77,21 @@ export const WelcomePage: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-8 text-left max-w-4xl mx-auto mb-12 animate-fade-in-up delay-600">
                     <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
                         <div className="flex items-center mb-3">
-                            <Info className="text-blue-300 mr-3" size={24} />
+                            <InfoIcon className="text-blue-300 mr-3" size={24} />
                             <h2 className="text-xl font-bold text-white">{t('welcome_info_title')}</h2>
                         </div>
                         <p className="text-gray-300">{t('welcome_info_p1')}</p>
                     </div>
                     <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
                         <div className="flex items-center mb-3">
-                            <ListChecks className="text-blue-300 mr-3" size={24} />
+                            <ListChecksIcon className="text-blue-300 mr-3" size={24} />
                             <h2 className="text-xl font-bold text-white">{t('welcome_info_tests_title')}</h2>
                         </div>
                         <p className="text-gray-300">{t('welcome_info_tests_list')}</p>
                     </div>
                 </div>
 
-                <button 
+                <button
                     onClick={handleStart}
                     className="bg-blue-500 text-white px-10 py-4 rounded-full text-lg font-bold shadow-2xl hover:bg-blue-400 transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300 animate-fade-in-up delay-600"
                 >

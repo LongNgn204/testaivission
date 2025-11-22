@@ -4,7 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { AIService } from '../services/aiService';
 import { useRoutine } from '../context/RoutineContext';
 import { AnswerState } from '../types';
-import { BrainCircuit, Check, Calendar } from 'lucide-react';
+import { BrainCircuitIcon, CheckIcon, CalendarIcon } from '../components/ui/Icons';
 
 const aiService = new AIService();
 
@@ -15,7 +15,7 @@ const Loader: React.FC = () => {
             <div className="relative flex items-center justify-center h-24 w-24 mb-6">
                 <div className="absolute h-full w-full border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
                 <div className="absolute h-full w-full border-t-4 border-blue-600 rounded-full animate-spin"></div>
-                <BrainCircuit className="text-blue-600" size={40} />
+                <BrainCircuitIcon className="text-blue-600" size={40} />
             </div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('setup_loading_title')}</h2>
             <p className="text-gray-600 dark:text-gray-400">{t('setup_loading_subtitle')}</p>
@@ -29,7 +29,7 @@ export const PersonalizedSetupPage: React.FC = () => {
     const [step, setStep] = useState(0);
     const [answers, setAnswers] = useState<AnswerState>({ worksWithComputer: '', wearsGlasses: '', goal: '' });
     const [isLoading, setIsLoading] = useState(false);
-    
+
     // Get user data for personalization
     const userData = React.useMemo(() => {
         const data = localStorage.getItem('user_data');
@@ -37,15 +37,15 @@ export const PersonalizedSetupPage: React.FC = () => {
     }, []);
 
     const questions = [
-        { key: 'worksWithComputer', title: t('setup_q1_title'), options: [ {label: t('setup_q1_op1'), value: 'Yes'}, {label: t('setup_q1_op2'), value: 'No'} ] },
-        { key: 'wearsGlasses', title: t('setup_q2_title'), options: [ {label: t('setup_q2_op1'), value: 'Yes'}, {label: t('setup_q2_op2'), value: 'No'} ] },
-        { key: 'goal', title: t('setup_q3_title'), options: [ {label: t('setup_q3_op1'), value: 'General Check-up'}, {label: t('setup_q3_op2'), value: 'Monitor a Condition'}, {label: t('setup_q3_op3'), value: 'Check for Retinal Issues'} ] },
+        { key: 'worksWithComputer', title: t('setup_q1_title'), options: [{ label: t('setup_q1_op1'), value: 'Yes' }, { label: t('setup_q1_op2'), value: 'No' }] },
+        { key: 'wearsGlasses', title: t('setup_q2_title'), options: [{ label: t('setup_q2_op1'), value: 'Yes' }, { label: t('setup_q2_op2'), value: 'No' }] },
+        { key: 'goal', title: t('setup_q3_title'), options: [{ label: t('setup_q3_op1'), value: 'General Check-up' }, { label: t('setup_q3_op2'), value: 'Monitor a Condition' }, { label: t('setup_q3_op3'), value: 'Check for Retinal Issues' }] },
     ];
 
     const handleAnswer = (key: keyof AnswerState, value: string) => {
         setAnswers(prev => ({ ...prev, [key]: value }));
     };
-    
+
     const handleNext = async () => {
         if (step < questions.length - 1) {
             setStep(step + 1);
@@ -64,7 +64,7 @@ export const PersonalizedSetupPage: React.FC = () => {
             </div>
         );
     }
-    
+
     const currentQuestion = questions[step];
     const currentAnswer = answers[currentQuestion.key as keyof AnswerState];
 
@@ -86,19 +86,19 @@ export const PersonalizedSetupPage: React.FC = () => {
                                     {language === 'vi' ? `Xin chào, ${userData.name.split(' ').slice(-2).join(' ')}!` : `Hello, ${userData.name}!`}
                                 </h2>
                                 <p className="text-white/90 text-sm flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" />
+                                    <CalendarIcon className="w-4 h-4" />
                                     {language === 'vi' ? `${userData.age} tuổi • Thiết lập lịch trình cá nhân` : `${userData.age} years old • Personalize your routine`}
                                 </p>
                             </div>
                         </div>
                     </div>
                 )}
-                
+
                 <header className="mb-8">
                     <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">{t('setup_title')}</h1>
                     <p className="text-lg text-gray-600 dark:text-gray-400 mt-3">{t('setup_subtitle')}</p>
                 </header>
-                
+
                 <div className="w-full bg-white/80 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-gray-200/50 dark:border-gray-700/50">
                     {/* Progress Bar */}
                     <div className="mb-8">
@@ -110,45 +110,44 @@ export const PersonalizedSetupPage: React.FC = () => {
                         </div>
                         <div className="relative w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-900/30 dark:to-indigo-900/30"></div>
-                            <div 
+                            <div
                                 className="relative h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500 ease-out shadow-lg"
-                                style={{width: `${((step + 1) / questions.length) * 100}%`}} 
+                                style={{ width: `${((step + 1) / questions.length) * 100}%` }}
                             />
                         </div>
                     </div>
-                    
+
                     {/* Question Title */}
                     <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">
                         {currentQuestion.title}
                     </h2>
-                    
+
                     {/* Options Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                         {currentQuestion.options.map(opt => (
-                            <button 
-                                key={opt.value} 
+                            <button
+                                key={opt.value}
                                 onClick={() => handleAnswer(currentQuestion.key as keyof AnswerState, opt.value)}
-                                className={`relative text-left p-5 rounded-xl border-2 transition-all duration-300 ${
-                                    currentAnswer === opt.value 
-                                        ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-500 shadow-lg dark:bg-gradient-to-br dark:from-blue-900/40 dark:to-indigo-900/40 dark:border-blue-400 scale-[1.02]' 
+                                className={`relative text-left p-5 rounded-xl border-2 transition-all duration-300 ${currentAnswer === opt.value
+                                        ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-500 shadow-lg dark:bg-gradient-to-br dark:from-blue-900/40 dark:to-indigo-900/40 dark:border-blue-400 scale-[1.02]'
                                         : 'bg-white dark:bg-gray-700 border-gray-200 hover:border-indigo-300 dark:border-gray-600 dark:text-gray-300 dark:hover:border-indigo-500 hover:shadow-md'
-                                }`}
+                                    }`}
                             >
                                 <span className={`font-medium ${currentAnswer === opt.value ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
                                     {opt.label}
                                 </span>
                                 {currentAnswer === opt.value && (
                                     <div className="absolute top-3 right-3 w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg">
-                                        <Check size={16} strokeWidth={3} />
+                                        <CheckIcon size={16} strokeWidth={3} />
                                     </div>
                                 )}
                             </button>
                         ))}
                     </div>
-                    
+
                     {/* Next/Finish Button */}
-                    <button 
-                        onClick={handleNext} 
+                    <button
+                        onClick={handleNext}
                         disabled={!currentAnswer}
                         className="w-full relative group bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none overflow-hidden"
                     >

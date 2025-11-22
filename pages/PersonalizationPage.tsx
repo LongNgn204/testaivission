@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { Palette, Layout, Type, Sparkles, Check } from 'lucide-react';
+import { PaletteIcon, LayoutIcon, TypeIcon, SparklesIcon, CheckIcon } from '../components/ui/Icons';
 
 interface PersonalizationSettings {
   theme: string;
@@ -49,15 +49,15 @@ export default function PersonalizationPage() {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    
+
     // Apply theme to body
     document.body.classList.remove(...THEMES.map(t => `theme-${t.id}`));
     document.body.classList.add(`theme-${settings.theme}`);
-    
+
     // Apply font size
-    document.documentElement.style.fontSize = 
-      settings.fontSize === 'small' ? '14px' : 
-      settings.fontSize === 'large' ? '18px' : '16px';
+    document.documentElement.style.fontSize =
+      settings.fontSize === 'small' ? '14px' :
+        settings.fontSize === 'large' ? '18px' : '16px';
   }, [settings]);
 
   const updateSetting = <K extends keyof PersonalizationSettings>(
@@ -84,8 +84,8 @@ export default function PersonalizationPage() {
             {language === 'vi' ? '🎨 Cá Nhân Hóa' : '🎨 Personalization'}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {language === 'vi' 
-              ? 'Tùy chỉnh giao diện theo phong cách riêng của bạn' 
+            {language === 'vi'
+              ? 'Tùy chỉnh giao diện theo phong cách riêng của bạn'
               : 'Customize the interface to match your style'}
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function PersonalizationPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                <Palette className="w-6 h-6 text-white" />
+                <PaletteIcon className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-800 dark:text-white">
@@ -112,18 +112,17 @@ export default function PersonalizationPage() {
                 <button
                   key={theme.id}
                   onClick={() => updateSetting('theme', theme.id)}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    settings.theme === theme.id
+                  className={`p-4 rounded-xl border-2 transition-all ${settings.theme === theme.id
                       ? 'border-purple-500 shadow-lg scale-105'
                       : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
-                  }`}
+                    }`}
                 >
                   <div className={`w-full h-12 bg-gradient-to-r ${theme.colors.join(' ')} rounded-lg mb-2`}></div>
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     {language === 'vi' ? theme.nameVi : theme.name}
                   </p>
                   {settings.theme === theme.id && (
-                    <Check className="w-5 h-5 text-purple-500 mx-auto mt-1" />
+                    <CheckIcon className="w-5 h-5 text-purple-500 mx-auto mt-1" />
                   )}
                 </button>
               ))}
@@ -140,7 +139,7 @@ export default function PersonalizationPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
+                <SparklesIcon className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-800 dark:text-white">
@@ -157,18 +156,17 @@ export default function PersonalizationPage() {
                 <button
                   key={avatar.id}
                   onClick={() => updateSetting('avatar', avatar.id)}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    settings.avatar === avatar.id
+                  className={`p-4 rounded-xl border-2 transition-all ${settings.avatar === avatar.id
                       ? 'border-blue-500 shadow-lg scale-110'
                       : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
-                  }`}
+                    }`}
                 >
                   <div className="text-4xl mb-2">{avatar.emoji}</div>
                   <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                     {language === 'vi' ? avatar.nameVi : avatar.name}
                   </p>
                   {settings.avatar === avatar.id && (
-                    <Check className="w-4 h-4 text-blue-500 mx-auto mt-1" />
+                    <CheckIcon className="w-4 h-4 text-blue-500 mx-auto mt-1" />
                   )}
                 </button>
               ))}
@@ -179,7 +177,7 @@ export default function PersonalizationPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                <Layout className="w-6 h-6 text-white" />
+                <LayoutIcon className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-800 dark:text-white">
@@ -194,11 +192,10 @@ export default function PersonalizationPage() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => updateSetting('layout', 'card')}
-                className={`p-6 rounded-xl border-2 transition-all ${
-                  settings.layout === 'card'
+                className={`p-6 rounded-xl border-2 transition-all ${settings.layout === 'card'
                     ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-green-300'
-                }`}
+                  }`}
               >
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
@@ -209,16 +206,15 @@ export default function PersonalizationPage() {
                 <p className="font-semibold text-gray-700 dark:text-gray-300">
                   {language === 'vi' ? 'Lưới' : 'Card Grid'}
                 </p>
-                {settings.layout === 'card' && <Check className="w-5 h-5 text-green-500 mx-auto mt-2" />}
+                {settings.layout === 'card' && <CheckIcon className="w-5 h-5 text-green-500 mx-auto mt-2" />}
               </button>
 
               <button
                 onClick={() => updateSetting('layout', 'list')}
-                className={`p-6 rounded-xl border-2 transition-all ${
-                  settings.layout === 'list'
+                className={`p-6 rounded-xl border-2 transition-all ${settings.layout === 'list'
                     ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-green-300'
-                }`}
+                  }`}
               >
                 <div className="space-y-2 mb-3">
                   <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
@@ -229,7 +225,7 @@ export default function PersonalizationPage() {
                 <p className="font-semibold text-gray-700 dark:text-gray-300">
                   {language === 'vi' ? 'Danh sách' : 'List View'}
                 </p>
-                {settings.layout === 'list' && <Check className="w-5 h-5 text-green-500 mx-auto mt-2" />}
+                {settings.layout === 'list' && <CheckIcon className="w-5 h-5 text-green-500 mx-auto mt-2" />}
               </button>
             </div>
           </div>
@@ -238,7 +234,7 @@ export default function PersonalizationPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
-                <Type className="w-6 h-6 text-white" />
+                <TypeIcon className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-800 dark:text-white">
@@ -255,23 +251,21 @@ export default function PersonalizationPage() {
                 <button
                   key={size}
                   onClick={() => updateSetting('fontSize', size)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
-                    settings.fontSize === size
+                  className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between ${settings.fontSize === size
                       ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-orange-300'
-                  }`}
+                    }`}
                 >
-                  <span className={`font-semibold text-gray-700 dark:text-gray-300 ${
-                    size === 'small' ? 'text-sm' : size === 'large' ? 'text-xl' : 'text-base'
-                  }`}>
+                  <span className={`font-semibold text-gray-700 dark:text-gray-300 ${size === 'small' ? 'text-sm' : size === 'large' ? 'text-xl' : 'text-base'
+                    }`}>
                     {size === 'small' ? 'A' : size === 'large' ? 'A++' : 'A+'}
                   </span>
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {language === 'vi' 
+                    {language === 'vi'
                       ? (size === 'small' ? 'Nhỏ' : size === 'large' ? 'Lớn' : 'Trung bình')
                       : (size === 'small' ? 'Small' : size === 'large' ? 'Large' : 'Medium')}
                   </span>
-                  {settings.fontSize === size && <Check className="w-5 h-5 text-orange-500" />}
+                  {settings.fontSize === size && <CheckIcon className="w-5 h-5 text-orange-500" />}
                 </button>
               ))}
             </div>
@@ -288,7 +282,7 @@ export default function PersonalizationPage() {
                 {language === 'vi' ? 'Xem trước cá nhân hóa' : 'Personalization Preview'}
               </h3>
               <p className="opacity-90">
-                {language === 'vi' 
+                {language === 'vi'
                   ? `Chủ đề: ${selectedTheme.nameVi} • Linh vật: ${selectedAvatar.nameVi}`
                   : `Theme: ${selectedTheme.name} • Mascot: ${selectedAvatar.name}`}
               </p>

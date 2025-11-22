@@ -6,7 +6,7 @@ export const translations = {
     appName_line1: "Hỗ trợ sức khỏe",
     appName_line2: "cùng AI",
     user: "Khách",
-    
+
     // Navigation
     nav_progress: "Tiến trình",
     nav_hospitals: "Bệnh viện",
@@ -39,7 +39,7 @@ export const translations = {
     setup_button_finish: "Tạo kế hoạch của tôi",
     setup_loading_title: "AI đang xây dựng kế hoạch...",
     setup_loading_subtitle: "Dựa trên câu trả lời của bạn, chúng tôi đang tạo một lộ trình được cá nhân hóa. Vui lòng đợi trong giây lát.",
-    
+
     // Exercises
     exercise_202020_title: "Bài tập Quy tắc 20-20-20",
     exercise_202020_step1: "Cứ sau 20 phút làm việc với màn hình, hãy nhìn ra xa.",
@@ -75,7 +75,7 @@ export const translations = {
     welcome_info_tests_list: "Ứng dụng này cung cấp các bài test được AI hỗ trợ để kiểm tra các khía cạnh khác nhau của thị lực, bao gồm: Kiểm tra thị lực (Snellen), Loạn thị, Mù màu, và Lưới Amsler (phát hiện các vấn-đề về võng mạc).",
     get_started: "Bắt đầu",
     welcome_slogan: "Chăm sóc hôm nay, cho tầm nhìn ngày mai.",
-    
+
     // Navigation
     nav_home: "Trang chủ",
     nav_history: "Lịch sử",
@@ -88,6 +88,8 @@ export const translations = {
     home_subtitle: "Chọn một bài kiểm tra bên dưới để bắt đầu đánh giá sức khỏe thị lực của bạn với sự hỗ trợ từ AI.",
     wellness_hub_title: "Trung tâm Sức khỏe Thị lực",
     wellness_hub_subtitle: "Kế hoạch chăm sóc mắt được cá nhân hóa bởi AI dành riêng cho bạn.",
+    learn_more: "Tìm hiểu thêm",
+    view_history: "Xem lịch sử",
     todays_plan: "Kế hoạch hôm nay",
     rest_day_title: "Ngày nghỉ cho mắt!",
     rest_day_desc: "Hôm nay là ngày để đôi mắt bạn được nghỉ ngơi. Hãy thư giãn và hạn chế nhìn vào màn hình.",
@@ -154,7 +156,7 @@ export const translations = {
     cover_eye_instruction_left: "Che mắt TRÁI của bạn và tập trung vào bài kiểm tra.",
     next_step: "Bước tiếp theo",
     finish_test: "Hoàn thành & Xem Báo cáo",
-    
+
     // General Test Instructions (Used for ALL tests - TRULY GENERAL)
     general_instructions_title: "Chuẩn bị bài kiểm tra",
     general_instruction_1: "Tìm một không gian yên tĩnh và thoải mái.",
@@ -240,7 +242,7 @@ export const translations = {
     duochrome_details_normal: "Các ký tự trên cả hai nền đỏ và xanh lá cây đều rõ nét như nhau.",
     duochrome_details_myopic: "Các ký tự trên nền đỏ rõ nét hơn, có thể là dấu hiệu của cận thị hoặc điều chỉnh kính quá mức.",
     duochrome_details_hyperopic: "Các ký tự trên nền xanh lá cây rõ nét hơn, có thể là dấu hiệu của viễn thị hoặc điều chỉnh kính chưa đủ.",
-    
+
     // Report
     report_title_snellen: "Báo Cáo Phân Tích Thị Lực",
     report_title_colorblind: "Báo Cáo Phân Tích Mù Màu",
@@ -420,12 +422,12 @@ export const translations = {
     appName_line1: "AI Health",
     appName_line2: "Support",
     user: "Guest",
-    
+
     // Navigation
     nav_progress: "Progress",
     nav_hospitals: "Hospitals",
     nav_reminders: "Reminders",
-    
+
     minutes: "minutes",
     got_it: "Got it",
     eva_is_speaking_title: "Eva is explaining...",
@@ -498,6 +500,8 @@ export const translations = {
     home_subtitle: "Choose a test below to start assessing your vision health with the help of AI.",
     wellness_hub_title: "Vision Wellness Hub",
     wellness_hub_subtitle: "Your AI-personalized eye care plan, designed just for you.",
+    learn_more: "Learn More",
+    view_history: "View History",
     todays_plan: "Today's Plan",
     rest_day_title: "A Rest Day for Your Eyes!",
     rest_day_desc: "Today's a day to let your eyes recover. Try to relax and limit screen time.",
@@ -545,7 +549,7 @@ export const translations = {
     duochrome_desc: "Check prescription accuracy.",
     history_page: "Test History",
     history_desc: "Review your previous results.",
-    
+
     // Test Screens
     start_test: "Start",
     submit: "Submit",
@@ -650,7 +654,7 @@ export const translations = {
     duochrome_details_normal: "Characters on both red and green backgrounds appear equally sharp.",
     duochrome_details_myopic: "Characters on the red background are sharper, suggesting potential myopia or overcorrection.",
     duochrome_details_hyperopic: "Characters on the green background are sharper, suggesting potential hyperopia or undercorrection.",
-    
+
     // Report
     report_title_snellen: "Vision Analysis Report",
     report_title_colorblind: "Color Blindness Analysis Report",

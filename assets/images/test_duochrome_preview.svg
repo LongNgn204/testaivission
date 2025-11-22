@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Left Side: Red Background -->
+  <rect x="0" y="0" width="400" height="600" fill="#ef4444" />
+  
+  <!-- Right Side: Green Background -->
+  <rect x="400" y="0" width="400" height="600" fill="#10b981" />
+  
+  <!-- Center Divider -->
+  <line x1="400" y1="0" x2="400" y2="600" stroke="rgba(0,0,0,0.1)" stroke-width="2" />
+  
+  <!-- Test Targets (Landolt C or E) -->
+  <g fill="black" font-family="sans-serif" font-weight="bold" text-anchor="middle">
+    <!-- Row 1 -->
+    <text x="200" y="150" font-size="120">E</text>
+    <text x="600" y="150" font-size="120">E</text>
+    
+    <!-- Row 2 -->
+    <text x="200" y="300" font-size="80">H</text>
+    <text x="600" y="300" font-size="80">H</text>
+    
+    <!-- Row 3 -->
+    <text x="200" y="420" font-size="60">X</text>
+    <text x="600" y="420" font-size="60">X</text>
+    
+    <!-- Row 4 -->
+    <text x="200" y="520" font-size="40">U</text>
+    <text x="600" y="520" font-size="40">U</text>
+  </g>
+  
+  <!-- Overlay for "Preview" feel -->
+  <rect x="0" y="0" width="800" height="600" fill="url(#shine)" opacity="0.1" pointer-events="none" />
+  <defs>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="white" stop-opacity="0.5" />
+      <stop offset="50%" stop-color="white" stop-opacity="0" />
+      <stop offset="100%" stop-color="black" stop-opacity="0.1" />
+    </linearGradient>
+  </defs>
+</svg>

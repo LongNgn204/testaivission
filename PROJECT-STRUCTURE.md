@@ -13,7 +13,7 @@
 - **TypeScript 5.8.2** - Ngôn ngữ lập trình type-safe
 - **Vite 6.2.0** - Build tool & dev server cực nhanh
 - **React Router DOM 6.23.1** - Routing giữa các trang
-- **Lucide React 0.548.0** - Thư viện icon hiện đại
+- **Custom SVG Icons** - Hệ thống icon SVG tùy chỉnh, tối ưu hóa
 
 ### AI & Machine Learning
 - **Google Gemini AI (@google/genai 1.28.0)** - AI chatbot & phân tích kết quả
@@ -444,10 +444,10 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 </Routes>
 ```
 
-### 3. **lucide-react** - Icons
+### 3. **Custom SVG Icons** - Icons
 ```typescript
-import { Eye, Mic, Volume2 } from 'lucide-react';
-<Eye size={24} />
+import { EyeIcon, MicIcon, VolumeIcon } from '../components/ui/Icons';
+<EyeIcon size={24} />
 ```
 
 ### 4. **jspdf + html2canvas** - PDF Export

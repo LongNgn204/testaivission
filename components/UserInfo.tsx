@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Phone, Calendar, LogOut, Edit, X, Check } from 'lucide-react';
+import { UserIcon, PhoneIcon, CalendarIcon, LogOutIcon, EditIcon, XIcon, CheckIcon } from './ui/Icons';
 import { useLanguage } from '../context/LanguageContext';
 
 interface UserData {
@@ -42,10 +42,10 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
   const handleLogout = () => {
     if (window.confirm(t('logout_confirm'))) {
       localStorage.removeItem('user_data');
-      
+
       // Dispatch custom event to notify app of logout
       window.dispatchEvent(new Event('userLoggedOut'));
-      
+
       navigate('/');
     }
   };
@@ -80,13 +80,13 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
   // Show login button if not logged in
   if (!userData) {
     if (!showLoginButton) return null;
-    
+
     return (
       <button
         onClick={() => navigate('/login')}
         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
       >
-        <User className="w-5 h-5" />
+        <UserIcon className="w-5 h-5" />
         <span className="hidden md:inline">
           {t('login_button')}
         </span>
@@ -102,7 +102,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
         className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/50 transition-all duration-200 border border-blue-100 dark:border-blue-800/50"
       >
         <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md">
-          <User className="w-5 h-5 text-white" />
+          <UserIcon className="w-5 h-5 text-white" />
         </div>
         <div className="hidden md:block text-left">
           <div className="text-sm font-bold text-gray-800 dark:text-white leading-tight">{userData.name.split(' ').slice(-2).join(' ')}</div>
@@ -113,18 +113,18 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
       {/* Dropdown Menu */}
       {showDropdown && (
         <>
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-40"
             onClick={() => setShowDropdown(false)}
           ></div>
-          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-20 overflow-hidden animate-fade-in">
+          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
             {!isEditing ? (
               <>
                 {/* User Info Display */}
                 <div className="p-6 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border-2 border-white/30">
-                      <User className="w-8 h-8 text-white" />
+                      <UserIcon className="w-8 h-8 text-white" />
                     </div>
                     <div className="flex-1 text-white">
                       <div className="text-lg font-bold mb-1">{userData.name}</div>
@@ -140,7 +140,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
                 <div className="p-4 space-y-2">
                   <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-700 rounded-xl">
                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <CalendarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
@@ -154,7 +154,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
 
                   <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-700 dark:to-gray-700 rounded-xl">
                     <div className="w-10 h-10 bg-green-100 dark:bg-green-900/50 rounded-lg flex items-center justify-center">
-                      <Phone className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      <PhoneIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
@@ -171,14 +171,14 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
                       onClick={() => setIsEditing(true)}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 rounded-xl font-semibold transition-all text-gray-700 dark:text-gray-200"
                     >
-                      <Edit className="w-4 h-4" />
+                      <EditIcon className="w-4 h-4" />
                       {t('edit_profile')}
                     </button>
                     <button
                       onClick={handleLogout}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogOutIcon className="w-4 h-4" />
                       {t('logout')}
                     </button>
                   </div>
@@ -189,7 +189,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
                     }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl"
                   >
-                    <User className="w-4 h-4" />
+                    <UserIcon className="w-4 h-4" />
                     {t('switch_account')}
                   </button>
                 </div>
@@ -200,7 +200,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
                 <div className="p-6 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500">
                   <div className="flex items-center gap-3 text-white">
                     <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                      <Edit className="w-5 h-5" />
+                      <EditIcon className="w-5 h-5" />
                     </div>
                     <div className="text-lg font-bold">
                       {t('edit_profile_title')}
@@ -211,7 +211,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
                 <div className="p-5 space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                      <User className="w-4 h-4" />
+                      <UserIcon className="w-4 h-4" />
                       {t('name_label')}
                     </label>
                     <input
@@ -225,7 +225,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
+                      <CalendarIcon className="w-4 h-4" />
                       {t('age_label')}
                     </label>
                     <input
@@ -241,7 +241,7 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
+                      <PhoneIcon className="w-4 h-4" />
                       {t('phone_label')}
                     </label>
                     <input
@@ -259,14 +259,14 @@ export const UserInfo: React.FC<UserInfoProps> = ({ showLoginButton = true }) =>
                     onClick={handleCancelEdit}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-xl font-semibold transition-all text-gray-700 dark:text-gray-200"
                   >
-                    <X className="w-4 h-4" />
+                    <XIcon className="w-4 h-4" />
                     {t('cancel')}
                   </button>
                   <button
                     onClick={handleSaveEdit}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl"
                   >
-                    <Check className="w-4 h-4" />
+                    <CheckIcon className="w-4 h-4" />
                     {t('save_changes')}
                   </button>
                 </div>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none">
+  <!-- Subtle Dot Pattern -->
+  <circle cx="10" cy="10" r="1" fill="#0891e6" opacity="0.1" />
+  <circle cx="50" cy="10" r="1" fill="#0891e6" opacity="0.1" />
+  <circle cx="90" cy="10" r="1" fill="#0891e6" opacity="0.1" />
+  
+  <circle cx="30" cy="30" r="1.5" fill="#0d9999" opacity="0.1" />
+  <circle cx="70" cy="30" r="1.5" fill="#0d9999" opacity="0.1" />
+  
+  <circle cx="10" cy="50" r="1" fill="#0891e6" opacity="0.1" />
+  <circle cx="50" cy="50" r="1" fill="#0891e6" opacity="0.1" />
+  <circle cx="90" cy="50" r="1" fill="#0891e6" opacity="0.1" />
+  
+  <circle cx="30" cy="70" r="1.5" fill="#0d9999" opacity="0.1" />
+  <circle cx="70" cy="70" r="1.5" fill="#0d9999" opacity="0.1" />
+  
+  <circle cx="10" cy="90" r="1" fill="#0891e6" opacity="0.1" />
+  <circle cx="50" cy="90" r="1" fill="#0891e6" opacity="0.1" />
+  <circle cx="90" cy="90" r="1" fill="#0891e6" opacity="0.1" />
+  
+  <!-- Abstract Medical Cross (Very subtle) -->
+  <path d="M45 45h10v10h-10z" fill="#0891e6" opacity="0.03" />
+</svg>

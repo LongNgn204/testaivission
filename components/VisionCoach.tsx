@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, X, Bot, MessageCircle, Send } from 'lucide-react';
+import { MicIcon, XIcon, BotIcon, MessageCircleIcon, SendIcon } from './ui/Icons';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration, Blob } from '@google/genai';
 import { useLanguage } from '../context/LanguageContext';
 import { useRoutine } from '../context/RoutineContext';
@@ -12,38 +12,38 @@ import { encode, decode, decodeAudioData } from '../utils/audioUtils';
 
 // --- Function Declarations for Gemini ---
 const startTestFunctionDeclaration: FunctionDeclaration = {
-  name: 'startTest',
-  parameters: {
-    type: Type.OBJECT,
-    description: 'Starts a specific vision test for the user.',
-    properties: {
-      testName: {
-        type: Type.STRING,
-        description: 'The name of the test to start. Must be one of: snellen, colorblind, astigmatism, amsler, duochrome.',
-      },
+    name: 'startTest',
+    parameters: {
+        type: Type.OBJECT,
+        description: 'Starts a specific vision test for the user.',
+        properties: {
+            testName: {
+                type: Type.STRING,
+                description: 'The name of the test to start. Must be one of: snellen, colorblind, astigmatism, amsler, duochrome.',
+            },
+        },
+        required: ['testName'],
     },
-    required: ['testName'],
-  },
 };
 
 const navigateToFunctionDeclaration: FunctionDeclaration = {
-  name: 'navigateTo',
-  parameters: {
-    type: Type.OBJECT,
-    description: 'Navigates the user to a specific page in the application.',
-    properties: {
-      page: {
-        type: Type.STRING,
-        description: 'The name of the page to navigate to. Must be one of: home, history, about, progress, reminders, hospitals.',
-      },
+    name: 'navigateTo',
+    parameters: {
+        type: Type.OBJECT,
+        description: 'Navigates the user to a specific page in the application.',
+        properties: {
+            page: {
+                type: Type.STRING,
+                description: 'The name of the page to navigate to. Must be one of: home, history, about, progress, reminders, hospitals.',
+            },
+        },
+        required: ['page'],
     },
-    required: ['page'],
-  },
 };
 
 const getSystemInstruction = (language: 'vi' | 'en') => {
     const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
-    
+
     if (language === 'vi') {
         return `Bạn là Bác sĩ Eva - Trợ lý Bác sĩ Chuyên khoa Nhãn khoa thông minh với chuyên môn sâu.
 
@@ -156,10 +156,10 @@ export const VisionCoach: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [mode, setMode] = useState<'voice' | 'chat'>('voice');
     const [status, setStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'thinking'>('idle');
-    
+
     const [userTranscript, setUserTranscript] = useState('');
     const [botTranscript, setBotTranscript] = useState('');
-    
+
     // Chat mode states
     const [chatInput, setChatInput] = useState('');
     const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'bot', text: string }>>([]);
@@ -186,15 +186,15 @@ export const VisionCoach: React.FC = () => {
                 if (mode === 'voice') {
                     cleanup();
                 }
-                
+
                 // Small delay to ensure cleanup completes
                 setTimeout(() => {
                     navigate(`/home/test/${lowerTestName}`);
                     setIsOpen(false);
                 }, 100);
-                
-                return language === 'vi' 
-                    ? `Được rồi, đang bắt đầu bài test ${testName}.` 
+
+                return language === 'vi'
+                    ? `Được rồi, đang bắt đầu bài test ${testName}.`
                     : `Okay, starting the ${testName} test.`;
             }
             return language === 'vi'
@@ -209,14 +209,14 @@ export const VisionCoach: React.FC = () => {
                 if (mode === 'voice') {
                     cleanup();
                 }
-                
+
                 // Small delay to ensure cleanup completes
                 setTimeout(() => {
                     const path = lowerPage === 'home' ? '/home' : `/home/${lowerPage}`;
                     navigate(path);
                     setIsOpen(false);
                 }, 100);
-                
+
                 return language === 'vi'
                     ? `Đang chuyển đến trang ${page}.`
                     : `Navigating to the ${page} page.`;
@@ -226,7 +226,7 @@ export const VisionCoach: React.FC = () => {
                 : `Sorry, I can't navigate to a page called ${page}.`;
         }
     };
-    
+
     const stopAudioPlayback = () => {
         audioQueueRef.current.forEach(source => {
             source.stop();
@@ -237,13 +237,13 @@ export const VisionCoach: React.FC = () => {
 
     const triggerProactiveTip = useCallback(async () => {
         if (status !== 'listening') return; // Only trigger if truly idle
-    
+
         setStatus('thinking');
         const history = storageService.getTestHistory();
         const lastTest = history.length > 0 ? history[0] : null;
-    
+
         const tipText = await aiService.generateProactiveTip(lastTest, userProfile, language);
-    
+
         if (tipText) {
             setBotTranscript(tipText); // Show the tip as text
             const audioData = await aiService.generateSpeech(tipText, language);
@@ -262,13 +262,13 @@ export const VisionCoach: React.FC = () => {
                     setStatus('listening');
                 };
             } else {
-                 setStatus('listening'); // Fallback if speech generation fails
+                setStatus('listening'); // Fallback if speech generation fails
             }
         } else {
             setStatus('listening'); // Fallback if tip generation fails
         }
     }, [language, userProfile, status]);
-    
+
     useEffect(() => {
         if (idleTimerRef.current) {
             clearTimeout(idleTimerRef.current);
@@ -285,7 +285,7 @@ export const VisionCoach: React.FC = () => {
             }
         };
     }, [isOpen, mode, status, triggerProactiveTip]);
-    
+
     const handleClose = useCallback(() => {
         setIsOpen(false);
         // Reset chat state khi đóng
@@ -297,34 +297,34 @@ export const VisionCoach: React.FC = () => {
 
     const handleChatSubmit = useCallback(async () => {
         if (!chatInput.trim()) return;
-        
+
         const userMessage = chatInput.trim();
         setChatInput('');
         setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
         setStatus('thinking');
-        
+
         try {
             const history = storageService.getTestHistory();
             const context = history.length > 0 ? history[0] : null;
-            
+
             const response = await aiService.chat(userMessage, context, userProfile, language);
-            
+
             setChatHistory(prev => [...prev, { role: 'bot', text: response }]);
             setStatus('idle');
         } catch (error) {
             console.error('Chat error:', error);
-            const errorMsg = language === 'vi' 
-                ? 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.' 
+            const errorMsg = language === 'vi'
+                ? 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.'
                 : 'Sorry, an error occurred. Please try again.';
             setChatHistory(prev => [...prev, { role: 'bot', text: errorMsg }]);
             setStatus('idle');
         }
     }, [chatInput, language, userProfile]);
-    
+
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatHistory]);
-    
+
     const cleanup = useCallback(() => {
         stopAudioPlayback();
         if (mediaStreamRef.current) {
@@ -339,7 +339,7 @@ export const VisionCoach: React.FC = () => {
             mediaSourceNodeRef.current.disconnect();
             mediaSourceNodeRef.current = null;
         }
-        
+
         if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
             inputAudioContextRef.current.close();
         }
@@ -357,10 +357,10 @@ export const VisionCoach: React.FC = () => {
         setStatus('connecting');
 
         aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        
+
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        
+
         try {
             mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (error) {
@@ -368,7 +368,7 @@ export const VisionCoach: React.FC = () => {
             setStatus('idle');
             return;
         }
-        
+
         try {
             sessionPromiseRef.current = aiRef.current.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -474,7 +474,7 @@ export const VisionCoach: React.FC = () => {
     if (!process.env.API_KEY) return null;
 
     const getStatusText = () => {
-        switch(status) {
+        switch (status) {
             case 'connecting': return t('coach_status_connecting');
             case 'listening': return t('coach_status_speak');
             case 'speaking': return t('coach_status_listening');
@@ -486,26 +486,26 @@ export const VisionCoach: React.FC = () => {
     return (
         <>
             {/* Floating action buttons */}
-            <div className={`fixed bottom-24 right-8 z-40 group ${isOpen ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} transition-all duration-300`}>
+            <div className={`fixed bottom-24 right-8 z-50 group ${isOpen ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} transition-all duration-300`}>
                 <button
                     onClick={() => { setMode('voice'); setIsOpen(true); }}
                     className="bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition-all duration-300"
                     aria-label={t('coach_button_aria')}
                 >
-                    <Mic size={28} />
+                    <MicIcon size={28} />
                 </button>
                 <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     {language === 'vi' ? 'Nói chuyện bằng giọng' : 'Voice Chat'}
                 </span>
             </div>
-            
-            <div className={`fixed bottom-8 right-8 z-40 group ${isOpen ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} transition-all duration-300`}>
+
+            <div className={`fixed bottom-8 right-8 z-50 group ${isOpen ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} transition-all duration-300`}>
                 <button
                     onClick={() => { setMode('chat'); setIsOpen(true); }}
                     className="bg-green-600 text-white rounded-full p-4 shadow-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-300"
                     aria-label={language === 'vi' ? 'Chat với Eva' : 'Chat with Eva'}
                 >
-                    <MessageCircle size={28} />
+                    <MessageCircleIcon size={28} />
                 </button>
                 <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     {language === 'vi' ? 'Chat bằng văn bản' : 'Text Chat'}
@@ -513,46 +513,46 @@ export const VisionCoach: React.FC = () => {
             </div>
 
             {isOpen && mode === 'voice' && (
-                <div className="fixed inset-0 bg-black/70 z-50 flex flex-col items-center justify-center animate-fade-in p-4">
-                    <button onClick={handleClose} className="absolute top-6 right-6 text-white/70 hover:text-white"><X size={32} /></button>
-                    
+                <div className="fixed inset-0 bg-black/70 z-[9999] flex flex-col items-center justify-center animate-fade-in p-4">
+                    <button onClick={handleClose} className="absolute top-6 right-6 text-white/70 hover:text-white"><XIcon size={32} /></button>
+
                     <div className="flex flex-col items-center justify-center text-center text-white flex-grow">
-                         <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-colors duration-300 ${status === 'speaking' ? 'bg-green-500/20' : 'bg-blue-500/20'}`}>
+                        <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-colors duration-300 ${status === 'speaking' ? 'bg-green-500/20' : 'bg-blue-500/20'}`}>
                             <div className={`absolute w-full h-full rounded-full ${status === 'listening' || status === 'speaking' ? 'animate-pulse' : ''} ${status === 'speaking' ? 'bg-green-500/30' : 'bg-blue-500/30'}`}></div>
-                             <Bot size={64} className={`${status === 'speaking' ? 'text-green-300' : 'text-blue-300'}`}/>
+                            <BotIcon size={64} className={`${status === 'speaking' ? 'text-green-300' : 'text-blue-300'}`} />
                         </div>
 
                         <p className="mt-8 text-2xl font-semibold h-8">{getStatusText()}</p>
-                        
+
                         <div className="mt-4 h-24 max-w-xl w-full text-center">
                             <p className="text-lg text-gray-300 min-h-[28px]">{userTranscript}</p>
                             <p className="text-xl font-medium text-white min-h-[32px]">{botTranscript}</p>
                         </div>
                     </div>
-                   
+
                     <p className="text-sm text-white/50 mb-4">{t('coach_title')}</p>
                 </div>
             )}
 
             {isOpen && mode === 'chat' && (
-                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-fade-in p-4">
+                <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center animate-fade-in p-4">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col">
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
-                                    <Bot size={24} className="text-green-600 dark:text-green-400" />
+                                    <BotIcon size={24} className="text-green-600 dark:text-green-400" />
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{language === 'vi' ? 'Chat với Eva' : 'Chat with Eva'}</h3>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">{language === 'vi' ? 'Trợ lý Bác sĩ Nhãn khoa AI' : 'AI Ophthalmology Assistant'}</p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={handleClose} 
+                            <button
+                                onClick={handleClose}
                                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                             >
-                                <X size={24} />
+                                <XIcon size={24} />
                             </button>
                         </div>
 
@@ -560,23 +560,22 @@ export const VisionCoach: React.FC = () => {
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                             {chatHistory.length === 0 && (
                                 <div className="text-center text-gray-500 dark:text-gray-400 mt-20">
-                                    <Bot size={48} className="mx-auto mb-4 opacity-50" />
+                                    <BotIcon size={48} className="mx-auto mb-4 opacity-50" />
                                     <p>{language === 'vi' ? 'Chào bạn! Tôi là Eva. Hỏi tôi bất cứ điều gì về sức khỏe mắt của bạn.' : 'Hello! I\'m Eva. Ask me anything about your eye health.'}</p>
                                 </div>
                             )}
-                            
+
                             {chatHistory.map((msg, idx) => (
                                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                                        msg.role === 'user' 
-                                            ? 'bg-blue-600 text-white' 
+                                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === 'user'
+                                            ? 'bg-blue-600 text-white'
                                             : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                    }`}>
+                                        }`}>
                                         <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                                     </div>
                                 </div>
                             ))}
-                            
+
                             {status === 'thinking' && (
                                 <div className="flex justify-start">
                                     <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-3">
@@ -588,7 +587,7 @@ export const VisionCoach: React.FC = () => {
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div ref={chatEndRef} />
                         </div>
 
@@ -609,7 +608,7 @@ export const VisionCoach: React.FC = () => {
                                     disabled={!chatInput.trim() || status === 'thinking'}
                                     className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-colors duration-200 flex items-center justify-center"
                                 >
-                                    <Send size={20} />
+                                    <SendIcon size={20} />
                                 </button>
                             </div>
                         </div>

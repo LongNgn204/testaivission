@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0891e6" />
+      <stop offset="100%" stop-color="#05558a" />
+    </linearGradient>
+    <linearGradient id="tealGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9999" />
+      <stop offset="100%" stop-color="#085555" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Main Eye Shape -->
+  <path d="M256 112c-98 0-182 62-216 144 34 82 118 144 216 144s182-62 216-144c-34-82-118-144-216-144z" fill="white" stroke="url(#blueGradient)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Iris -->
+  <circle cx="256" cy="256" r="96" fill="url(#blueGradient)" />
+  
+  <!-- Pupil -->
+  <circle cx="256" cy="256" r="48" fill="#021a2e" />
+  
+  <!-- Digital/AI Tech Accents -->
+  <path d="M256 64v32M256 416v32M64 256H32M480 256h-32" stroke="#0d9999" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+  <circle cx="256" cy="256" r="160" stroke="url(#tealGradient)" stroke-width="4" stroke-dasharray="20 40" stroke-linecap="round" opacity="0.8" />
+  
+  <!-- Reflection -->
+  <ellipse cx="220" cy="220" rx="24" ry="16" fill="white" opacity="0.4" transform="rotate(-45 220 220)" />
+</svg>
