@@ -40,6 +40,11 @@ export interface SnellenResult {
   totalQuestions: number;
   duration: number; // seconds
   date: string;
+  // Stage 2 – raw data + metadata for AI usage
+  rawAnswers?: { level: number; size: number; rotation: number; correct: boolean }[];
+  stopCondition?: 'all_passed' | 'failed_threshold' | 'max_extra_attempts' | 'unknown';
+  levelAchieved?: number; // last fully passed level index
+  deviceInfo?: string; // user agent snapshot
 }
 
 export interface ColorBlindResult {
@@ -51,6 +56,9 @@ export interface ColorBlindResult {
   severity: Severity;
   date: string;
   duration: number;
+  // Stage 2 – raw data + metadata
+  rawAnswers?: { plate: number; userAnswer: string; correct: boolean }[];
+  deviceInfo?: string;
 }
 
 export interface AstigmatismResult {
@@ -65,6 +73,8 @@ export interface AstigmatismResult {
   overallSeverity: Severity;
   date: string;
   duration: number;
+  // Stage 2 – metadata
+  deviceInfo?: string;
 }
 
 export interface AmslerGridResult {
@@ -75,6 +85,8 @@ export interface AmslerGridResult {
   details: string; // e.g., "Wavy lines in upper-left quadrant."
   date: string;
   duration: number;
+  // Stage 2 – metadata
+  deviceInfo?: string;
 }
 
 export interface DuochromeResult {
@@ -84,6 +96,9 @@ export interface DuochromeResult {
   severity: Severity;
   date: string;
   duration: number;
+  // Stage 2 – raw data + metadata
+  rawSelections?: { eye: 'right' | 'left'; choice: 'red' | 'green' | 'equal' }[];
+  deviceInfo?: string;
 }
 
 export type TestResultData = SnellenResult | ColorBlindResult | AstigmatismResult | AmslerGridResult | DuochromeResult;

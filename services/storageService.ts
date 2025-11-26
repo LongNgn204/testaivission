@@ -1,4 +1,20 @@
-
+/**
+ * =================================================================
+ * 💾 StorageService - Lưu trữ lịch sử bài test + báo cáo AI theo người dùng
+ * =================================================================
+ *
+ * MỤC ĐÍCH:
+ * - Ghi lại mỗi lần làm test: raw result (resultData) + AI report (report)
+ * - Lấy lịch sử test theo user hiện tại (phân vùng theo số điện thoại)
+ * - Giới hạn tối đa 50 bản ghi gần nhất để tránh phình localStorage
+ *
+ * CÁCH DÙNG:
+ *   import { StorageService } from '../services/storageService';
+ *   const storage = new StorageService();
+ *   storage.saveTestResult(resultData, report);
+ *   const history = storage.getTestHistory();
+ *   storage.clearHistory();
+ */
 import { StoredTestResult, TestResultData, AIReport } from '../types';
 
 const HISTORY_KEY_PREFIX = 'aiVisionTestHistory_';

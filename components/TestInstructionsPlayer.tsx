@@ -3,10 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Volume2, X, Loader2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import { AIService } from '../services/aiService';
 import { decode, decodeAudioData, playAudioBuffer } from '../utils/audioUtils';
-
-const aiService = new AIService();
 
 // General instructions (spoken first for ALL tests)
 const GENERAL_INSTRUCTIONS: (keyof typeof import('../i18n').translations.en)[] = [
@@ -152,6 +149,8 @@ export const TestInstructionsPlayer: React.FC = () => {
 
                     // 🎙️ WEB SPEECH API: Tự động play, không cần decode
                     console.log('🎙️ Calling generateSpeech for complete audio...');
+                    const { AIService } = await import('../services/aiService');
+                    const aiService = new AIService();
                     const speechId = await aiService.generateSpeech(fullText, language);
                     console.log('🎙️ Speech generated:', !!speechId);
                     

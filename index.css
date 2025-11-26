@@ -73,4 +73,34 @@
   .button-glow {
     @apply shadow-lg hover:shadow-2xl transition-shadow duration-300;
   }
+
+  .bg-app-gradient {
+    background: radial-gradient(circle at 20% 20%, rgba(76, 110, 245, 0.15), transparent 45%),
+                radial-gradient(circle at 80% 0%, rgba(34, 184, 207, 0.25), transparent 55%),
+                linear-gradient(180deg, #f5f7fb 0%, #fefefe 65%);
+  }
+
+  .page-shell {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10;
+  }
+
+  .page-hero {
+    @apply flex flex-col gap-4 rounded-3xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-card p-8;
+  }
+
+  .glass-elevated {
+    @apply rounded-3xl bg-white dark:bg-surface-dark/90 border border-white/40 dark:border-white/10 shadow-card;
+  }
+
+  .stat-pill {
+    @apply flex flex-col gap-2 p-4 rounded-2xl border border-slate-100 dark:border-white/10 bg-white/80 dark:bg-white/5;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-primary-muted text-primary-dark;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-2xl bg-slate-200/80 dark:bg-slate-700/70;
+  }
 }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Fix: Import BrainCircuit directly from lucide-react
 import { RotateCcw, Check, Download, Share2, BrainCircuit } from 'lucide-react';
 import { AmslerGridTestService } from '../services/amslerGridService';
-import { AIService } from '../services/aiService';
+
 import { StorageService } from '../services/storageService';
 import { AmslerGridResult, AIReport, StoredTestResult } from '../types';
 import { AmslerGrid } from './AmslerGrid';
@@ -11,9 +12,9 @@ import { useRoutine } from '../context/RoutineContext';
 import { usePdfExport } from '../hooks/usePdfExport';
 import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
+import { TestShell } from './TestShell';
 
 const amslerService = new AmslerGridTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 const Loader: React.FC = () => {
@@ -187,6 +188,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 export const AmslerGridTest: React.FC = () => {
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
+  const navigate = useNavigate();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');
   const [storedResult, setStoredResult] = useState<StoredTestResult | null>(null);
 
@@ -206,6 +208,7 @@ export const AmslerGridTest: React.FC = () => {
     const testResult: AmslerGridResult = {
       ...calculation,
       details,
+      deviceInfo: navigator.userAgent,
     };
     
     try {
@@ -216,27 +219,43 @@ export const AmslerGridTest: React.FC = () => {
         distortedQuadrants: testResult.distortedQuadrants,
         symptoms: testResult.symptoms,
       };
-      const aiReport = await aiService.generateReport('amsler', aiPayload, history, language);
+      let aiReport: AIReport | null = null;
+      try {
+        const svc = new AIService();
+        aiReport = await svc.generateReport('amsler', aiPayload, history, language);
+      } catch (e) {
+        aiReport = null;
+      }
+      const report: AIReport = aiReport || {
+        id: Date.now().toString(),
+        testType: 'amsler',
+        timestamp: new Date().toISOString(),
+        totalResponseTime: 0,
+        confidence: 0,
+        summary: t('error_report'),
+        recommendations: [],
+        severity: testResult.severity === 'HIGH' ? 'HIGH' : testResult.severity === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+      };
       
       const newStoredResult: StoredTestResult = {
-        id: aiReport.id,
+        id: report.id,
         testType: 'amsler',
         date: testResult.date,
         resultData: testResult,
-        report: aiReport,
+        report: report,
       };
       setStoredResult(newStoredResult);
 
-      storageService.saveTestResult(testResult, aiReport);
+      storageService.saveTestResult(testResult, report);
       markActivityAsCompleted('amsler');
-      updateStreak('test'); // 🔥 Update streak & check badges
+      updateStreak('test');
     } catch (err) {
       console.error(err);
     }
     setTestState('report');
   };
 
-  const renderContent = () => {
+  const renderStage = () => {
     switch (testState) {
       case 'start':
         return <StartScreen onStart={startTest} />;
@@ -250,9 +269,25 @@ export const AmslerGridTest: React.FC = () => {
     }
   };
 
+  const instructions = [
+    t('amsler_instruction_1'),
+    t('amsler_instruction_2'),
+    t('amsler_instruction_3'),
+    t('amsler_instruction_4'),
+  ];
+
   return (
-    <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
-      {renderContent()}
-    </div>
+    <TestShell
+      title={t('amsler_grid_test')}
+      description={t('amsler_start_desc')}
+      estimatedTime={3}
+      safetyNote={language === 'vi' ? 'Đảm bảo ánh sáng đầy đủ; tránh chói/loá.' : 'Ensure proper lighting; avoid glare.'}
+      instructions={instructions}
+      onExit={() => navigate('/home')}
+    >
+      <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
+        {renderStage()}
+      </div>
+    </TestShell>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Fix: Import BrainCircuit directly from lucide-react
 import { RotateCcw, Check, Download, Share2, BrainCircuit } from 'lucide-react';
 import { AstigmatismTestService } from '../services/astigmatismService';
@@ -11,9 +12,9 @@ import { useRoutine } from '../context/RoutineContext';
 import { usePdfExport } from '../hooks/usePdfExport';
 import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
+import { TestShell } from './TestShell';
 
 const astigmatismService = new AstigmatismTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 const Loader: React.FC = () => {
@@ -118,6 +119,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 export const AstigmatismTest: React.FC = () => {
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
+  const navigate = useNavigate();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');
   const [currentEye, setCurrentEye] = useState<'right' | 'left'>('right');
   const [rightEyeResult, setRightEyeResult] = useState<AstigmatismUserInput | null>(null);
@@ -133,22 +135,39 @@ export const AstigmatismTest: React.FC = () => {
     if (!rightEyeResult) return; // Should not happen
 
     setTestState('loading');
-    const testResult = astigmatismService.calculateResult(rightEyeResult, leftEyeSelection);
+    const base = astigmatismService.calculateResult(rightEyeResult, leftEyeSelection);
+    const testResult: AstigmatismResult = { ...base, deviceInfo: navigator.userAgent } as AstigmatismResult;
 
     try {
       const history = storageService.getTestHistory();
-      const aiReport = await aiService.generateReport('astigmatism', testResult, history, language);
+      let aiReport: AIReport | null = null;
+      try {
+        const svc = new AIService();
+        aiReport = await svc.generateReport('astigmatism', testResult, history, language);
+      } catch (e) {
+        aiReport = null;
+      }
+      const report: AIReport = aiReport || {
+        id: Date.now().toString(),
+        testType: 'astigmatism',
+        timestamp: new Date().toISOString(),
+        totalResponseTime: 0,
+        confidence: 0,
+        summary: t('error_report'),
+        recommendations: [],
+        severity: testResult.overallSeverity === 'HIGH' ? 'HIGH' : testResult.overallSeverity === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+      };
       const newStoredResult: StoredTestResult = {
-        id: aiReport.id,
+        id: report.id,
         testType: 'astigmatism',
         date: testResult.date,
         resultData: testResult,
-        report: aiReport,
+        report,
       };
       setStoredResult(newStoredResult);
-      storageService.saveTestResult(testResult, aiReport);
+      storageService.saveTestResult(testResult, report);
       markActivityAsCompleted('astigmatism');
-      updateStreak('test'); // 🔥 Update streak & check badges
+      updateStreak('test');
     } catch (err) {
       console.error(err);
     }
@@ -165,7 +184,7 @@ export const AstigmatismTest: React.FC = () => {
   };
 
 
-  const renderContent = () => {
+  const renderStage = () => {
     switch (testState) {
       case 'start':
         return <StartScreen onStart={startTest} />;
@@ -179,9 +198,25 @@ export const AstigmatismTest: React.FC = () => {
     }
   };
 
+  const instructions = [
+    t('astigmatism_instruction_1'),
+    t('astigmatism_instruction_2'),
+    t('astigmatism_instruction_3'),
+    t('astigmatism_instruction_4'),
+  ];
+
   return (
-    <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
-      {renderContent()}
-    </div>
+    <TestShell
+      title={t('astigmatism_test')}
+      description={t('astigmatism_start_desc')}
+      estimatedTime={3}
+      safetyNote={language === 'vi' ? 'Giữ khoảng cách mắt-màn hình ổn định để kết quả nhất quán.' : 'Keep a stable viewing distance for consistent results.'}
+      instructions={instructions}
+      onExit={() => navigate('/home')}
+    >
+      <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
+        {renderStage()}
+      </div>
+    </TestShell>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Eye, Droplets, Target, Grid, CircleDot, Trash2, Calendar, FileText } from 'lucide-react';
 import { StorageService } from '../services/storageService';

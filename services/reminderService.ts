@@ -314,13 +314,16 @@ export const saveBadges = (badges: Badge[]) => {
 };
 
 // ✅ CHECK AND UNLOCK BADGES
+import { StorageService } from './storageService';
+
 export const checkBadges = () => {
   const badges = getBadges();
   const streak = getStreak();
-  const history = JSON.parse(localStorage.getItem('test_history') || '[]');
+  const storage = new StorageService();
+  const history = storage.getTestHistory();
   
   // Count unique test types
-  const testTypes = new Set(history.map((h: any) => h.testType));
+  const testTypes = new Set(history.map((h) => h.testType));
 
   let newUnlocks = 0;
 
@@ -346,7 +349,7 @@ export const checkBadges = () => {
         shouldUnlock = streak.totalExercises >= 10;
         break;
       case 'snellen_perfect':
-        shouldUnlock = history.some((h: any) => h.testType === 'snellen' && h.score === '20/20');
+        shouldUnlock = history.some((h) => h.testType === 'snellen' && (h.resultData as any)?.score === '20/20');
         break;
       case 'all_test_types':
         shouldUnlock = testTypes.size >= 5;

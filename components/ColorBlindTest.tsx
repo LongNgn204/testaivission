@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Fix: Import BrainCircuit directly from lucide-react
 import { RotateCcw, Download, Share2, BrainCircuit } from 'lucide-react';
 import { ColorBlindTestService, Plate } from '../services/colorBlindService';
-import { AIService } from '../services/aiService';
+
 import { StorageService } from '../services/storageService';
 import { ColorBlindResult, AIReport, StoredTestResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,9 +11,9 @@ import { useRoutine } from '../context/RoutineContext';
 import { usePdfExport } from '../hooks/usePdfExport';
 import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
+import { TestShell } from './TestShell';
 
 const colorBlindService = new ColorBlindTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 const IshiharaPlate: React.FC<{ text: string; plateId?: number }> = ({ text, plateId = 0 }) => {
@@ -194,6 +195,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 export const ColorBlindTest: React.FC = () => {
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
+  const navigate = useNavigate();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');
   const [plates, setPlates] = useState<Plate[]>([]);
   const [currentPlate, setCurrentPlate] = useState(0);
@@ -211,21 +213,39 @@ export const ColorBlindTest: React.FC = () => {
       setCurrentPlate(currentPlate + 1);
     } else {
       setTestState('loading');
-      const testResult = colorBlindService.calculateResult();
+      const base = colorBlindService.calculateResult();
+      const testResult: ColorBlindResult = { ...base, deviceInfo: navigator.userAgent };
       try {
         const history = storageService.getTestHistory();
-        const aiReport = await aiService.generateReport('colorblind', testResult, history, language);
+        let aiReport: AIReport | null = null;
+        try {
+          const { AIService } = await import('../services/aiService');
+          const svc = new AIService();
+          aiReport = await svc.generateReport('colorblind', testResult, history, language);
+        } catch (e) {
+          aiReport = null;
+        }
+        const report: AIReport = aiReport || {
+          id: Date.now().toString(),
+          testType: 'colorblind',
+          timestamp: new Date().toISOString(),
+          totalResponseTime: 0,
+          confidence: 0,
+          summary: t('error_report'),
+          recommendations: [],
+          severity: testResult.severity === 'HIGH' ? 'HIGH' : testResult.severity === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+        };
         const newStoredResult: StoredTestResult = {
-            id: aiReport.id,
+            id: report.id,
             testType: 'colorblind',
             date: testResult.date,
             resultData: testResult,
-            report: aiReport,
+            report,
         };
         setStoredResult(newStoredResult);
-        storageService.saveTestResult(testResult, aiReport);
+        storageService.saveTestResult(testResult, report);
         markActivityAsCompleted('colorblind');
-        updateStreak('test'); // 🔥 Update streak & check badges
+        updateStreak('test');
       } catch (err) {
         console.error(err);
       }
@@ -233,7 +253,7 @@ export const ColorBlindTest: React.FC = () => {
     }
   };
 
-  const renderContent = () => {
+  const renderStage = () => {
     switch (testState) {
       case 'start':
         return <StartScreen onStart={startTest} />;
@@ -247,9 +267,24 @@ export const ColorBlindTest: React.FC = () => {
     }
   };
 
+  const instructions = [
+    t('colorblind_instruction_1'),
+    t('colorblind_instruction_2'),
+    t('colorblind_instruction_3'),
+  ];
+
   return (
-    <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
-      {renderContent()}
-    </div>
+    <TestShell
+      title={t('colorblind_test')}
+      description={t('colorblind_start_desc')}
+      estimatedTime={5}
+      safetyNote={language === 'vi' ? 'Đảm bảo màn hình đủ sáng và không bị ám màu.' : 'Ensure neutral lighting and no color cast.'}
+      instructions={instructions}
+      onExit={() => navigate('/home')}
+    >
+      <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
+        {renderStage()}
+      </div>
+    </TestShell>
   );
 };
