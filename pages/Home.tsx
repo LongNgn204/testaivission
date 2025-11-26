@@ -65,7 +65,7 @@ const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
     };
 
     return (
-        <div className="relative" style={{ width: size, height: size }}>
+        <div className="relative drop-shadow-lg" style={{ width: size, height: size }}>
             <svg className="transform -rotate-90" width={size} height={size}>
                 <circle
                     className="text-gray-200 dark:text-gray-700"
@@ -166,7 +166,7 @@ const ActivityCard: React.FC<{
 
 
     return (
-        <div className={`group w-full text-left p-4 rounded-xl shadow-md transition-all duration-300 ${isCompleted ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}`}>
+        <div className={`pill-card group w-full text-left p-4 ${isCompleted ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' : 'bg-surface-light dark:bg-surface-dark border border-surface-light/50 dark:border-surface-dark/50'}`}>
             <div className="flex items-center gap-4">
                  <div onClick={handleCheckboxClick} className="cursor-pointer p-2 -ml-2">
                     <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-200 ${isCompleted ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600 group-hover:border-blue-400'}`}>
@@ -181,7 +181,7 @@ const ActivityCard: React.FC<{
                     <p className="text-sm text-gray-500 dark:text-gray-400">{activity.duration} {t('minutes')}</p>
                 </div>
                 <button onClick={handleCardClick} className={`p-2 transition-opacity ${isCompleted ? 'opacity-30' : 'opacity-100'}`}>
-                    <PlayCircle className={`text-gray-300 group-hover:text-${color}-400 transition-colors dark:text-gray-600 dark:group-hover:text-${color}-400`} size={28} />
+                    <PlayCircle className={`text-white bg-primary rounded-full p-1 shadow-md group-hover:shadow-glow transition-all`} size={28} />
                 </button>
             </div>
         </div>
@@ -192,8 +192,8 @@ const TestCard: React.FC<{test: any}> = ({ test }) => {
     const { t } = useLanguage();
     return (
         <Link to={test.path} className="block group">
-            <div className={`relative flex flex-col items-center justify-center p-6 rounded-2xl h-48 transition-all duration-300 transform bg-white shadow-md group-hover:shadow-xl group-hover:-translate-y-2 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:group-hover:border-blue-500`}>
-                <div className={`mb-4 p-3 rounded-full ${test.bgColor} dark:bg-gray-700`}>
+            <div className={`glass relative flex flex-col items-center justify-center p-6 rounded-2xl h-48 transition-all duration-300 transform shadow-md group-hover:shadow-xl group-hover:-translate-y-2 group-hover:shadow-glow`}>
+                <div className="mb-4 p-3 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20">
                     <test.icon className={test.color} size={32} />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{t(test.nameKey)}</h3>
@@ -371,10 +371,10 @@ export const Home: React.FC = () => {
 
   return (
     <main>
-        {/* Vision Insights Dashboard */}
-        <div className="bg-gradient-to-b from-gray-50 via-blue-50 to-gray-50 dark:from-gray-900/50 dark:via-blue-900/10 dark:to-gray-900/50">
+        {/* Vision Insights Dashboard - New gradient */}
+        <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50 dark:from-emerald-900/20 dark:via-teal-900/20 dark:to-sky-900/20">
             <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                 <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg dark:bg-gray-800/70 dark:shadow-2xl dark:border dark:border-gray-700">
+                 <div className="glass rounded-2xl shadow-lg dark:shadow-2xl">
                     {/* Fix: Call the new component using JSX syntax. */}
                     <RenderDashboardContent
                         isLoadingDashboard={isLoadingDashboard}

@@ -2,6 +2,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import './index.css';
 
 // ⚡ REGISTER SERVICE WORKER for ultra-fast caching & offline support
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {

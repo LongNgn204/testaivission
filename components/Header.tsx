@@ -25,13 +25,13 @@ export const Header: React.FC = () => {
   }
 
   return (
-    <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 dark:bg-gray-900/80 dark:border-b dark:border-gray-800">
+    <header className="glass backdrop-blur-md border-b border-primary-light/30 shadow-soft sticky top-0 z-30 dark:border-surface-dark/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo and App Name */}
           <div className="flex-shrink-0">
             <NavLink to="/home" className="flex items-center gap-3">
-              <Eye className="text-blue-600 flex-shrink-0" size={32} />
+              <Eye className="text-primary drop-shadow-lg flex-shrink-0" size={32} />
               <span className="text-base font-bold text-gray-800 hidden lg:flex lg:flex-col dark:text-gray-200 leading-tight">
                 <span>{t('appName_line1')}</span>
                 <span>{t('appName_line2')}</span>
@@ -47,8 +47,8 @@ export const Header: React.FC = () => {
                 to={item.to}
                 end={item.to === "/home"}
                 className={({ isActive }) =>
-                  `px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    isActive ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                  `px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+                    isActive ? 'bg-primary-light text-primary shadow-inner dark:bg-primary/20 dark:text-primary-light' : 'text-text-sub hover:bg-primary-light/50 hover:text-primary hover:shadow-soft dark:text-text-dark dark:hover:bg-primary/10 dark:hover:shadow-soft'
                   }`
                 }
               >
@@ -56,25 +56,37 @@ export const Header: React.FC = () => {
               </NavLink>
             ))}
             {/* Language Switcher - Desktop */}
-            <div className="flex items-center border-l ml-4 pl-4 dark:border-gray-700">
+            <div className="flex items-center border-l ml-4 pl-4 border-primary-light/30 dark:border-surface-dark/50">
               <button
                 onClick={() => setLanguage('vi')}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold ${language === 'vi' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${language === 'vi' ? 'bg-primary text-white shadow-inner' : 'bg-surface-light text-text-sub hover:bg-primary-light dark:bg-surface-dark dark:text-text-dark dark:hover:bg-primary/20'}`}
               >
                 VI
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`ml-2 px-3 py-1.5 rounded-md text-sm font-semibold ${language === 'en' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+                className={`ml-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${language === 'en' ? 'bg-primary text-white shadow-inner' : 'bg-surface-light text-text-sub hover:bg-primary-light dark:bg-surface-dark dark:text-text-dark dark:hover:bg-primary/20'}`}
               >
                 EN
               </button>
             </div>
              {/* Theme Switcher - Desktop */}
             <div className="flex items-center border-l ml-4 pl-4 dark:border-gray-700">
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-gray-200 dark:bg-gray-800">
-                  <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md ${theme === 'light' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`} aria-label="Light mode"><Sun size={18} className="text-gray-700 dark:text-gray-300" /></button>
-                  <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md ${theme === 'dark' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`} aria-label="Dark mode"><Moon size={18} className="text-gray-700 dark:text-gray-300" /></button>
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-surface-light dark:bg-surface-dark">
+                  <button
+                    onClick={() => setTheme('light')}
+                    className={`p-1.5 rounded-md transition-colors ${theme === 'light' ? 'bg-primary-light text-primary shadow-sm' : 'text-text-sub hover:bg-primary-light/50 dark:text-text-dark dark:hover:bg-primary/20'}`}
+                    aria-label="Light mode"
+                  >
+                    <Sun size={18} />
+                  </button>
+                  <button
+                    onClick={() => setTheme('dark')}
+                    className={`p-1.5 rounded-md transition-colors ${theme === 'dark' ? 'bg-primary-light text-primary shadow-sm' : 'text-text-sub hover:bg-primary-light/50 dark:text-text-dark dark:hover:bg-primary/20'}`}
+                    aria-label="Dark mode"
+                  >
+                    <Moon size={18} />
+                  </button>
               </div>
             </div>
             {/* User Info - Desktop */}
@@ -125,21 +137,33 @@ export const Header: React.FC = () => {
             <div className="px-5 space-y-4">
               <div className="flex items-center justify-center gap-4">
                  <button
-                  onClick={() => { setLanguage('vi'); }}
-                  className={`w-full py-2 rounded font-semibold text-sm transition-colors ${language === 'vi' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
-                >
-                  Tiếng Việt
-                </button>
-                <button
-                  onClick={() => { setLanguage('en'); }}
-                  className={`w-full py-2 rounded font-semibold text-sm transition-colors ${language === 'en' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
-                >
-                  English
-                </button>
+                   onClick={() => { setLanguage('vi'); }}
+                   className={`w-full py-2 rounded-lg font-semibold text-sm transition-colors ${language === 'vi' ? 'bg-primary text-white shadow-inner' : 'bg-surface-light text-text-sub hover:bg-primary-light dark:bg-surface-dark dark:text-text-dark dark:hover:bg-primary/20'}`}
+                 >
+                   Tiếng Việt
+                 </button>
+                 <button
+                   onClick={() => { setLanguage('en'); }}
+                   className={`w-full py-2 rounded-lg font-semibold text-sm transition-colors ${language === 'en' ? 'bg-primary text-white shadow-inner' : 'bg-surface-light text-text-sub hover:bg-primary-light dark:bg-surface-dark dark:text-text-dark dark:hover:bg-primary/20'}`}
+                 >
+                   English
+                 </button>
               </div>
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-gray-200 dark:bg-gray-800 w-full justify-around">
-                  <button onClick={() => { setTheme('light'); handleLinkClick(); }} className={`p-2 rounded-md ${theme === 'light' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`} aria-label="Light mode"><Sun size={20} className="text-gray-700 dark:text-gray-300" /></button>
-                  <button onClick={() => { setTheme('dark'); handleLinkClick(); }} className={`p-2 rounded-md ${theme === 'dark' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`} aria-label="Dark mode"><Moon size={20} className="text-gray-700 dark:text-gray-300" /></button>
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-surface-light dark:bg-surface-dark w-full justify-around">
+                  <button
+                    onClick={() => { setTheme('light'); handleLinkClick(); }}
+                    className={`p-2 rounded-md transition-colors ${theme === 'light' ? 'bg-primary-light text-primary shadow-sm' : 'text-text-sub hover:bg-primary-light/50 dark:text-text-dark dark:hover:bg-primary/20'}`}
+                    aria-label="Light mode"
+                  >
+                    <Sun size={20} />
+                  </button>
+                  <button
+                    onClick={() => { setTheme('dark'); handleLinkClick(); }}
+                    className={`p-2 rounded-md transition-colors ${theme === 'dark' ? 'bg-primary-light text-primary shadow-sm' : 'text-text-sub hover:bg-primary-light/50 dark:text-text-dark dark:hover:bg-primary/20'}`}
+                    aria-label="Dark mode"
+                  >
+                    <Moon size={20} />
+                  </button>
               </div>
             </div>
           </div>
