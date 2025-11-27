@@ -4,7 +4,6 @@ import { Home, History, Info, Menu, Sun, Moon, MapPin, Bell, TrendingUp, X } fro
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { UserInfo } from './UserInfo';
-import { VoiceControlButton } from './VoiceControlButton';
 import logo from '../assets/logo.png';
 
 export const Header: React.FC = () => {
@@ -84,10 +83,6 @@ export const Header: React.FC = () => {
                   <Moon size={18} />
                 </button>
               </div>
-            </div>
-            {/* Voice Control - Desktop */}
-            <div className="ml-4">
-              <VoiceControlButton />
             </div>
             {/* User Info - Desktop */}
             <div className="ml-4">

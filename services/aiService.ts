@@ -1147,6 +1147,7 @@ Giải thích phải/trái và ảnh hưởng của kính`;
 
    /**
     * 💬 Chat với AI Eva (Text-based conversation)
+    * Tích hợp hoàn toàn với Talk to Eva
     */
    async chat(
       userMessage: string,
@@ -1155,6 +1156,10 @@ Giải thích phải/trái và ảnh hưởng của kính`;
       language: 'vi' | 'en'
    ): Promise<string> {
       const startTime = Date.now();
+
+      if (!this.ai) {
+         throw new Error('AI service not initialized. Missing API key.');
+      }
 
       const systemInstruction = language === 'vi'
          ? `Bạn là Bác sĩ Eva - Trợ lý Bác sĩ Chuyên khoa Nhãn khoa thông minh.
@@ -1191,13 +1196,18 @@ WHEN RESPONDING:
       let contextInfo = '';
 
       if (lastTestResult) {
-         const testType = language === 'vi'
-            ? { snellen: 'Thị lực', colorblind: 'Mù màu', astigmatism: 'Loạn thị', amsler: 'Lưới Amsler', duochrome: 'Duochrome' }[lastTestResult.testType]
-            : lastTestResult.testType;
+         const testTypeMap = {
+            snellen: language === 'vi' ? 'Thị lực' : 'Visual Acuity',
+            colorblind: language === 'vi' ? 'Mù màu' : 'Color Blindness',
+            astigmatism: language === 'vi' ? 'Loạn thị' : 'Astigmatism',
+            amsler: language === 'vi' ? 'Lưới Amsler' : 'Amsler Grid',
+            duochrome: language === 'vi' ? 'Duochrome' : 'Duochrome'
+         };
+         const testType = testTypeMap[lastTestResult.testType as keyof typeof testTypeMap];
 
          contextInfo = language === 'vi'
-            ? `\n\nKẾT QUẢ TEST GẦN NHẤT:\nLoại test: ${testType}\nNgày: ${new Date(lastTestResult.date).toLocaleDateString('vi-VN')}\nDữ liệu: ${JSON.stringify(lastTestResult.resultData)}`
-            : `\n\nLATEST TEST RESULT:\nTest type: ${testType}\nDate: ${new Date(lastTestResult.date).toLocaleDateString('en-US')}\nData: ${JSON.stringify(lastTestResult.resultData)}`;
+            ? `\n\nKẾT QUẢ TEST GẦN NHẤT:\nLoại test: ${testType}\nNgày: ${new Date(lastTestResult.date).toLocaleDateString('vi-VN')}\nĐộ nghiêm trọng: ${lastTestResult.report.severity}\nDữ liệu: ${JSON.stringify(lastTestResult.resultData)}`
+            : `\n\nLATEST TEST RESULT:\nTest type: ${testType}\nDate: ${new Date(lastTestResult.date).toLocaleDateString('en-US')}\nSeverity: ${lastTestResult.report.severity}\nData: ${JSON.stringify(lastTestResult.resultData)}`;
       }
 
       if (userProfile) {
@@ -1230,5 +1240,48 @@ WHEN RESPONDING:
          console.error('Chat error:', error);
          throw error;
       }
+   }
+
+   /**
+    * 📊 Kiểm tra tất cả AI Reports - Xác minh tính chính xác
+    * Được gọi từ Dashboard/History để verify reports
+    */
+   async verifyAllReports(history: StoredTestResult[], language: 'vi' | 'en'): Promise<{ verified: number; errors: string[] }> {
+      const errors: string[] = [];
+      let verified = 0;
+
+      for (const result of history) {
+         try {
+            const report = result.report;
+            
+            // Kiểm tra các trường bắt buộc
+            if (!report.summary || report.summary.length < 50) {
+               errors.push(`${result.testType} (${result.date}): Summary quá ngắn`);
+               continue;
+            }
+
+            if (!report.recommendations || report.recommendations.length === 0) {
+               errors.push(`${result.testType} (${result.date}): Không có recommendations`);
+               continue;
+            }
+
+            if (!['LOW', 'MEDIUM', 'HIGH'].includes(report.severity)) {
+               errors.push(`${result.testType} (${result.date}): Severity không hợp lệ`);
+               continue;
+            }
+
+            if (report.confidence < 0.75 || report.confidence > 1) {
+               errors.push(`${result.testType} (${result.date}): Confidence không hợp lệ`);
+               continue;
+            }
+
+            verified++;
+         } catch (e) {
+            errors.push(`${result.testType} (${result.date}): ${String(e)}`);
+         }
+      }
+
+      console.log(`✅ Verified ${verified}/${history.length} reports. Errors: ${errors.length}`);
+      return { verified, errors };
    }
 }
