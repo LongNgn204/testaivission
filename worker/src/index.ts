@@ -14,6 +14,8 @@ import { chat } from './handlers/chat';
 import { generateRoutine } from './handlers/routine';
 import { generateProactiveTip } from './handlers/proactiveTip';
 import { login, verifyToken, logout } from './handlers/auth';
+import { DatabaseService } from './services/database';
+
 import { handleCors, addCorsHeaders } from './middleware/cors';
 import { rateLimit } from './middleware/rateLimit';
 import { validateRequest } from './middleware/validation';
@@ -87,6 +89,110 @@ router.post('/api/routine', generateRoutine);
 router.post('/api/proactive-tip', generateProactiveTip);
 
 /**
+ * POST /api/tests/save
+ * Save test result (D1 Database)
+ */
+router.post('/api/tests/save', async (request: IRequest, env: any) => {
+  try {
+    const auth = (request as Request).headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Verify token
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const body = await (request as Request).json() as any;
+    const { testType, testData, score, result, duration } = body || {};
+    if (!testType || !testData) {
+      return new Response(JSON.stringify({ success: false, message: 'Missing required fields: testType, testData' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Save to D1
+    const db = new DatabaseService(env.DB);
+    const testResult = await db.saveTestResult({
+      user_id: decoded.userId,
+      test_type: testType,
+      test_data: JSON.stringify(testData),
+      score,
+      result,
+      duration,
+    });
+
+    // Track analytics
+    await db.trackEvent('test_completed', decoded.userId, { testType, score });
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Test result saved', 
+      testResult: {
+        id: testResult.id,
+        testType: testResult.test_type,
+        score: testResult.score,
+        result: testResult.result,
+        timestamp: testResult.created_at,
+      }
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Failed to save test result', error: error?.message || 'UNKNOWN' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+});
+
+/**
+ * GET /api/tests/history
+ * Get paginated test history (D1 Database)
+ */
+router.get('/api/tests/history', async (request: IRequest, env: any) => {
+  try {
+    const req = request as Request;
+    const auth = req.headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const url = new URL(req.url);
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '100'), 1000);
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'), 0);
+
+    const db = new DatabaseService(env.DB);
+    const { tests, total } = await db.getUserTestHistory(decoded.userId, limit, offset);
+
+    // Transform data for response
+    const history = tests.map(test => ({
+      id: test.id,
+      testType: test.test_type,
+      testData: JSON.parse(test.test_data),
+      score: test.score,
+      result: test.result,
+      timestamp: test.created_at,
+      duration: test.duration,
+    }));
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Test history retrieved', 
+      history, 
+      total, 
+      limit, 
+      offset 
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Failed to get test history', history: [], error: error?.message || 'UNKNOWN' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+});
+
+/**
  * GET /health
  * Health check endpoint
  */
@@ -108,7 +214,7 @@ router.get('/health', () => {
  * GET /metrics
  * Basic metrics endpoint
  */
-router.get('/metrics', (request: IRequest, env: any) => {
+router.get('/metrics', (_request: IRequest, _env: any) => {
   return new Response(
     JSON.stringify({
       uptime: 'N/A',

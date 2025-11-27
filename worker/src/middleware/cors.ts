@@ -19,6 +19,7 @@ export function handleCors(request: Request): Response | undefined {
       },
     });
   }
+  return undefined;
 }
 
 export function addCorsHeaders(response: Response): Response {
@@ -28,7 +29,11 @@ export function addCorsHeaders(response: Response): Response {
     'Access-Control-Allow-Methods',
     'GET, POST, PUT, DELETE, OPTIONS'
   );
-  newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  newResponse.headers.set(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization'
+  );
+  newResponse.headers.set('Access-Control-Max-Age', '86400');
   return newResponse;
 }
 

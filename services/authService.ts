@@ -9,6 +9,46 @@
 // Use localhost for development, change for production
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+// Generic fetch with retry, timeout, and 5xx backoff
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+): Promise<Response> {
+  const {
+    timeoutMs = 15000, // default 15s
+    ...rest
+  } = options;
+
+  let lastError: any;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...rest, signal: controller.signal });
+      clearTimeout(timer);
+
+      // Retry on 5xx; don't retry on 4xx
+      if (res.status >= 500 && attempt < 2) {
+        const delay = Math.pow(2, attempt) * 500; // 0.5s, 1s
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      lastError = e;
+      if (attempt < 2) {
+        const delay = Math.pow(2, attempt) * 500;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+    }
+  }
+  throw lastError || new Error('Network error');
+}
+
 // Helper function to get auth token from headers
 function getAuthHeader(): Record<string, string> {
   const token = getAuthToken();
@@ -21,16 +61,18 @@ function getAuthHeader(): Record<string, string> {
 }
 
 export interface LoginRequest {
+  name?: string;
+  age?: string;
   email?: string;
   phone?: string;
-  password: string;
+  password?: string;
 }
 
 export interface RegisterRequest {
   name: string;
   email?: string;
   phone?: string;
-  password: string;
+  password?: string;
   age?: string;
 }
 
@@ -89,7 +131,7 @@ export interface LogoutResponse {
  */
 export async function loginUser(credentials: LoginRequest): Promise<LoginResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -123,7 +165,7 @@ export async function loginUser(credentials: LoginRequest): Promise<LoginRespons
  */
 export async function verifyUserToken(token: string): Promise<VerifyTokenResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/auth/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -155,12 +197,13 @@ export async function verifyUserToken(token: string): Promise<VerifyTokenRespons
  */
 export async function logoutUser(token?: string): Promise<LogoutResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeader(),
       },
-      body: JSON.stringify({ token: token || '' }),
+      body: JSON.stringify({}),
     });
 
     const data = await response.json() as LogoutResponse;
@@ -232,7 +275,7 @@ export async function isAuthenticated(): Promise<boolean> {
  */
 export async function registerUser(credentials: RegisterRequest): Promise<RegisterResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -278,18 +321,23 @@ export function isValidPhone(phone: string): boolean {
 }
 
 /**
- * Validate password strength
+ * Validate password strength (optional - only validate if provided)
  */
-export function validatePassword(password: string): PasswordValidation {
+export function validatePassword(password: string | undefined): PasswordValidation {
   const errors: string[] = [];
+
+  // If password is not provided, it's valid (password is optional)
+  if (!password) {
+    return {
+      valid: true,
+      errors: [],
+    };
+  }
 
   if (password.length < 6) {
     errors.push('Password must be at least 6 characters');
   }
 
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
 
   if (!/[a-z]/.test(password)) {
     errors.push('Password must contain at least one lowercase letter');
@@ -328,6 +376,7 @@ export interface SaveTestResultResponse {
   success: boolean;
   message: string;
   testResult?: TestResultResponse;
+  queued?: boolean;
   error?: string;
 }
 
@@ -335,15 +384,59 @@ export interface GetTestHistoryResponse {
   success: boolean;
   message: string;
   history: TestResultResponse[];
+  total?: number;
+  limit?: number;
+  offset?: number;
   error?: string;
 }
 
 /**
  * Save test result to backend
  */
+const OFFLINE_QUEUE_KEY = 'offline_test_queue';
+
+function enqueueOfflineTest(testData: TestResultData) {
+  try {
+    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    arr.push({ testData, ts: Date.now() });
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+export async function processOfflineQueue(): Promise<number> {
+  try {
+    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    const arr: Array<{ testData: TestResultData; ts: number }> = raw ? JSON.parse(raw) : [];
+    if (!arr.length) return 0;
+    const remaining: typeof arr = [];
+    for (const item of arr) {
+      try {
+        const res = await fetchWithRetry(`${API_BASE_URL}/api/tests/save`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeader(),
+          },
+          body: JSON.stringify(item.testData),
+        });
+        if (!res.ok) throw new Error('Failed');
+        // success -> skip
+      } catch {
+        remaining.push(item); // keep in queue
+        break; // stop early, likely still offline
+      }
+    }
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remaining));
+    return arr.length - remaining.length;
+  } catch {
+    return 0;
+  }
+}
+
 export async function saveTestResult(testData: TestResultData): Promise<SaveTestResultResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/tests/save`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/tests/save`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -364,6 +457,11 @@ export async function saveTestResult(testData: TestResultData): Promise<SaveTest
 
     return data;
   } catch (error: any) {
+    // If offline, queue and return queued=true
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      enqueueOfflineTest(testData);
+      return { success: true, message: 'Queued offline', queued: true };
+    }
     console.error('Save test result error:', error);
     return {
       success: false,
@@ -376,9 +474,10 @@ export async function saveTestResult(testData: TestResultData): Promise<SaveTest
 /**
  * Get test history from backend
  */
-export async function getTestHistory(userId: string, limit: number = 100): Promise<GetTestHistoryResponse> {
+export async function getTestHistory(userId: string, limit: number = 100, offset: number = 0): Promise<GetTestHistoryResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/tests/history?userId=${userId}&limit=${limit}`, {
+    const url = `${API_BASE_URL}/api/tests/history?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`;
+    const response = await fetchWithRetry(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

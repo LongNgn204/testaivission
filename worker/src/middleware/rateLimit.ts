@@ -69,5 +69,6 @@ export async function rateLimit(
     console.error('Rate limit middleware error:', error);
     // Don't block on rate limit errors
   }
+  return undefined;
 }
 

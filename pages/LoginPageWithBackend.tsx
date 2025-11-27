@@ -89,12 +89,39 @@ export default function LoginPageWithBackend() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateField = (field: 'name' | 'age' | 'phone', value: string) => {
+    const newErrors: { name?: string; age?: string; phone?: string } = { ...errors };
+    if (field === 'name') {
+      if (!value.trim()) newErrors.name = language === 'vi' ? 'Vui lòng nhập tên' : 'Please enter your name';
+      else if (value.trim().length < 2) newErrors.name = language === 'vi' ? 'Tên phải có ít nhất 2 ký tự' : 'Name must be at least 2 characters';
+      else delete newErrors.name;
+    }
+    if (field === 'age') {
+      if (!value.trim()) newErrors.age = language === 'vi' ? 'Vui lòng nhập tuổi' : 'Please enter your age';
+      else if (isNaN(Number(value)) || Number(value) < 5 || Number(value) > 120) newErrors.age = language === 'vi' ? 'Tuổi phải từ 5-120' : 'Age must be between 5-120';
+      else delete newErrors.age;
+    }
+    if (field === 'phone') {
+      const clean = value.trim();
+      if (!clean) newErrors.phone = language === 'vi' ? 'Vui lòng nhập số điện thoại' : 'Please enter phone number';
+      else if (!/^0\d{9,10}$/.test(clean)) newErrors.phone = language === 'vi' ? 'Số điện thoại không hợp lệ (VD: 0912345678)' : 'Invalid phone number';
+      else delete newErrors.phone;
+    }
+    setErrors(newErrors);
+  };
+
   // Handle login with backend verification
   const handleLogin = async () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
     setApiError('');
+
+    // Timeout guard (30s)
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+      setApiError('Request timeout. Please check your internet or backend server.');
+    }, 30000);
 
     try {
       const credentials: LoginRequest = {
@@ -133,6 +160,7 @@ export default function LoginPageWithBackend() {
       setApiError(error.message || 'An error occurred');
       setErrors({ name: error.message });
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
@@ -247,8 +275,12 @@ export default function LoginPageWithBackend() {
                 <Zap size={20} />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Secure Login</h3>
-                <p className="text-sm text-gray-500">Backend verified authentication</p>
+                <h3 className="font-semibold text-gray-900">
+                  {language === 'vi' ? 'Đăng nhập An toàn' : 'Secure Login'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {language === 'vi' ? 'Xác thực được xác minh bởi backend' : 'Backend verified authentication'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 shadow-sm">
@@ -256,8 +288,12 @@ export default function LoginPageWithBackend() {
                 <Calendar size={20} />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Smart Tracking</h3>
-                <p className="text-sm text-gray-500">Monitor progress daily</p>
+                <h3 className="font-semibold text-gray-900">
+                  {language === 'vi' ? 'Theo dõi Thông minh' : 'Smart Tracking'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {language === 'vi' ? 'Theo dõi tiến độ hàng ngày' : 'Monitor progress daily'}
+                </p>
               </div>
             </div>
           </div>
@@ -278,14 +314,18 @@ export default function LoginPageWithBackend() {
 
             <div className="hidden lg:block mb-8">
               <h2 className="text-2xl font-bold text-gray-900">{t('login_title')}</h2>
-              <p className="text-gray-500 text-sm mt-1">Enter your details to access your dashboard</p>
+              <p className="text-gray-500 text-sm mt-1">{t('login_subtitle')}</p>
             </div>
 
             {/* API Error Alert */}
             {apiError && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
                 <p className="text-red-700 text-sm font-medium">⚠️ {apiError}</p>
-                <p className="text-red-600 text-xs mt-1">Make sure the backend server is running on http://localhost:3001</p>
+                <p className="text-red-600 text-xs mt-1">
+                  {language === 'vi' 
+                    ? 'Đảm bảo máy chủ backend đang chạy trên http://localhost:3001'
+                    : 'Make sure the backend server is running on http://localhost:3001'}
+                </p>
               </div>
             )}
 
@@ -303,7 +343,7 @@ export default function LoginPageWithBackend() {
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => { setName(e.target.value); validateField('name', e.target.value); }}
                     disabled={isLoading}
                     className={`block w-full pl-11 pr-4 py-3.5 bg-gray-50 border ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-indigo-500 focus:ring-indigo-500/20'} rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 disabled:opacity-50`}
                     placeholder="Nguyen Van A"
@@ -325,7 +365,7 @@ export default function LoginPageWithBackend() {
                     <input
                       type="number"
                       value={age}
-                      onChange={(e) => setAge(e.target.value)}
+                      onChange={(e) => { setAge(e.target.value); validateField('age', e.target.value); }}
                       disabled={isLoading}
                       className={`block w-full pl-11 pr-4 py-3.5 bg-gray-50 border ${errors.age ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-indigo-500 focus:ring-indigo-500/20'} rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 disabled:opacity-50`}
                       placeholder="25"
@@ -347,7 +387,7 @@ export default function LoginPageWithBackend() {
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => { setPhone(e.target.value); validateField('phone', e.target.value); }}
                       disabled={isLoading}
                       className={`block w-full pl-11 pr-4 py-3.5 bg-gray-50 border ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-indigo-500 focus:ring-indigo-500/20'} rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 disabled:opacity-50`}
                       placeholder="0912..."

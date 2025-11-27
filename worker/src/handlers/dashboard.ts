@@ -16,7 +16,7 @@ export async function generateDashboardInsights(
   env: any
 ): Promise<Response> {
   try {
-    const { history, language } = await request.json();
+    const { history, language } = await (request as unknown as Request).json() as any;
 
     // Validate input
     if (!history || !Array.isArray(history) || !language) {
@@ -52,7 +52,7 @@ export async function generateDashboardInsights(
     );
 
     // Check cache
-    const cached = await cacheService.get(cacheKey);
+    const cached = await cacheService.get<any>(cacheKey);
     if (cached) {
       return new Response(
         JSON.stringify({
@@ -69,7 +69,7 @@ export async function generateDashboardInsights(
 
     // Generate insights
     const prompt = createDashboardPrompt(history, language);
-    const schema = createDashboardSchema(language);
+    const schema = createDashboardSchema();
 
     const responseText = await gemini.generateContent(prompt, {
       temperature: 0.2,

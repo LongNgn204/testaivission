@@ -1,9 +1,8 @@
 name = "vision-coach-worker"
-type = "javascript"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
-# Account ID and Zone ID - Replace with your actual values
+# Account ID - Replace with your actual Cloudflare account ID
 account_id = "2b532552ba77e0909d0a3b9bdf040984"
 workers_dev = true
 
@@ -15,7 +14,13 @@ routes = [
 ]
 
 [env.development]
-vars = { ENVIRONMENT = "development" }
+vars = { ENVIRONMENT = "development", JWT_SECRET = "dev-worker-secret-change-me-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ" }
+
+# D1 Database - Primary storage
+[[d1_databases]]
+binding = "DB"
+database_name = "testmatai"
+database_id = "4f94c079-cbcf-4bed-85ea-de9e9b302e4e"
 
 # KV Namespace for caching
 [[kv_namespaces]]
@@ -26,20 +31,7 @@ preview_id = "80b0ee1abfbd4b28b401ab6094fedfa6"
 # Secrets (set via: wrangler secret put GEMINI_API_KEY)
 # GEMINI_API_KEY will be available as env.GEMINI_API_KEY
 
-# Build configuration
-[build]
-command = "npm run build"
-cwd = "./"
-watch_paths = ["src/**/*.ts"]
-
 # Observability
 [observability]
 enabled = true
-
-# Limits
-limits = { cpu_ms = 50000 }
-
-# Analytics Engine (optional)
-[analytics]
-enabled = false
 

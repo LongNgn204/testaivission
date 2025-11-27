@@ -11,7 +11,7 @@ export async function validateRequest(
 ): Promise<Response | undefined> {
   // Only validate POST requests
   if (request.method !== 'POST') {
-    return;
+    return undefined;
   }
 
   // Check Content-Type
@@ -57,5 +57,7 @@ export async function validateRequest(
       }
     );
   }
+
+  return undefined;
 }
 

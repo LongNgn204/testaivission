@@ -101,19 +101,19 @@ export class GeminiService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData: any = await response.json();
         throw new Error(
-          `Gemini API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`
+          `Gemini API error: ${response.status} - ${((errorData as any).error?.message) || 'Unknown error'}`
         );
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const elapsed = Date.now() - startTime;
 
       // Extract text from response
       const text =
-        data.candidates?.[0]?.content?.parts?.[0]?.text ||
-        data.candidates?.[0]?.content?.parts?.[0]?.functionCall?.name ||
+        (data as any).candidates?.[0]?.content?.parts?.[0]?.text ||
+        (data as any).candidates?.[0]?.content?.parts?.[0]?.functionCall?.name ||
         '';
 
       if (!text) {

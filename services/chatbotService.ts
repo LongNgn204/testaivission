@@ -19,8 +19,40 @@ function authHeaders() {
   return headers;
 }
 
+// Generic fetch with retry and timeout for robustness
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+): Promise<Response> {
+  const { timeoutMs = 15000, ...rest } = options;
+  let lastError: any;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...rest, signal: controller.signal });
+      clearTimeout(timer);
+      if (res.status >= 500 && attempt < 2) {
+        const delay = Math.pow(2, attempt) * 500;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      lastError = e;
+      if (attempt < 2) {
+        const delay = Math.pow(2, attempt) * 500;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+    }
+  }
+  throw lastError || new Error('Network error');
+}
+
 async function apiPost<T>(path: string, body: any): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetchWithRetry(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify(body),

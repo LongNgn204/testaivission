@@ -143,7 +143,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       setError(null);
 
-      const response = await getTestHistory(userId, 100);
+      const response = await getTestHistory(userId, 100, 0);
 
       if (response.success) {
         setTestHistory(response.history);
@@ -212,18 +212,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           timestamp: response.testResult.timestamp,
         };
 
-        // Update local state
-        setTestHistory(prev => [newResult, ...prev]);
-
-        // Update localStorage
-        if (user?.id) {
-          try {
-            const updated = [newResult, ...testHistory];
-            localStorage.setItem(`test_history_${user.id}`, JSON.stringify(updated));
-          } catch (error) {
-            console.warn('Failed to save test history to localStorage:', error);
+        // Use functional update to avoid stale closure
+        setTestHistory(prev => {
+          const updated = [newResult, ...prev];
+          
+          // Save to localStorage inside functional update
+          if (user?.id) {
+            try {
+              localStorage.setItem(`test_history_${user.id}`, JSON.stringify(updated));
+            } catch (error) {
+              console.warn('Failed to save test history to localStorage:', error);
+            }
           }
-        }
+          
+          return updated;
+        });
 
         return newResult;
       } else {
@@ -237,7 +240,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, testHistory]);
+  }, [user?.id]);
 
   /**
    * Remove test result

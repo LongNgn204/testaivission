@@ -40,7 +40,7 @@ import { Header } from './components/Header';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { initializeReminderSystem } from './services/reminderService';
 import { initPerformanceOptimizations } from './utils/performanceUtils';
-import { verifyUserToken, getAuthToken, clearAuthToken } from './services/authService';
+import { verifyUserToken, getAuthToken, clearAuthToken, processOfflineQueue } from './services/authService';
 
 // ⚡ LAZY LOADING (Tải các component khi cần):
 // - Giảm bundle size ban đầu
@@ -102,6 +102,11 @@ const MainAppLayout: React.FC = () => {
         initPerformanceOptimizations();
         // 🔔 REMINDERS: Khởi tạo hệ thống nhắc nhở
         initializeReminderSystem();
+        // 🔁 Try to process any offline-queued test results on startup and when back online
+        processOfflineQueue().catch(() => {});
+        const handleOnline = () => { processOfflineQueue().catch(() => {}); };
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
     }, []);
 
     return (
@@ -227,7 +232,7 @@ const AppContent: React.FC = () => {
                 <Routes>
                     <Route
                         path="/login"
-                        element={isLoggedIn ? <Navigate to="/home" replace /> : <AuthPage />}
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
                     />
                     <Route
                         path="/login-legacy"

@@ -129,9 +129,10 @@ export default function AuthPage() {
       errors.phone = language === 'vi' ? 'Số điện thoại không hợp lệ (VD: 0912345678)' : 'Invalid phone number';
     }
 
-    if (!loginPassword) {
-      errors.password = language === 'vi' ? 'Vui lòng nhập mật khẩu' : 'Please enter password';
-    }
+    // Password is now optional
+    // if (!loginPassword) {
+    //   errors.password = language === 'vi' ? 'Vui lòng nhập mật khẩu' : 'Please enter password';
+    // }
 
     setLoginErrors(errors);
     return Object.keys(errors).length === 0;
@@ -158,18 +159,18 @@ export default function AuthPage() {
       errors.phone = language === 'vi' ? 'Số điện thoại không hợp lệ (VD: 0912345678)' : 'Invalid phone number';
     }
 
-    if (!regPassword) {
-      errors.password = language === 'vi' ? 'Vui lòng nhập mật khẩu' : 'Please enter password';
-    } else {
+    // Password is now optional
+    if (regPassword) {
       const validation = validatePassword(regPassword);
       if (!validation.valid) {
         errors.password = validation.errors[0];
       }
     }
 
-    if (!regConfirmPassword) {
+    // Only require confirm password if password is provided
+    if (regPassword && !regConfirmPassword) {
       errors.confirmPassword = language === 'vi' ? 'Vui lòng xác nhận mật khẩu' : 'Please confirm password';
-    } else if (regPassword !== regConfirmPassword) {
+    } else if (regPassword && regConfirmPassword && regPassword !== regConfirmPassword) {
       errors.confirmPassword = language === 'vi' ? 'Mật khẩu không khớp' : 'Passwords do not match';
     }
 
@@ -340,19 +341,19 @@ export default function AuthPage() {
                 <Eye className="w-7 h-7 text-indigo-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">
-                {mode === 'login' ? t('login_title') : 'Create Account'}
+                {mode === 'login' ? t('login_title') : (language === 'vi' ? 'Tạo Tài khoản' : 'Create Account')}
               </h2>
               <p className="text-gray-500 text-sm mt-1">
-                {mode === 'login' ? t('login_subtitle') : 'Join Vision Coach today'}
+                {mode === 'login' ? t('login_subtitle') : (language === 'vi' ? 'Tham gia Vision Coach hôm nay' : 'Join Vision Coach today')}
               </p>
             </div>
 
             <div className="hidden lg:block mb-8">
               <h2 className="text-2xl font-bold text-gray-900">
-                {mode === 'login' ? t('login_title') : 'Create Account'}
+                {mode === 'login' ? t('login_title') : (language === 'vi' ? 'Tạo Tài khoản' : 'Create Account')}
               </h2>
               <p className="text-gray-500 text-sm mt-1">
-                {mode === 'login' ? 'Enter your credentials to access your dashboard' : 'Register a new account with password'}
+                {mode === 'login' ? (language === 'vi' ? 'Nhập thông tin đăng nhập để truy cập bảng điều khiển' : 'Enter your credentials to access your dashboard') : (language === 'vi' ? 'Đăng ký tài khoản mới với mật khẩu' : 'Register a new account with password')}
               </p>
             </div>
 
@@ -445,7 +446,7 @@ export default function AuthPage() {
                 {/* Password */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-gray-700 ml-1">
-                    {language === 'vi' ? 'Mật khẩu' : 'Password'}
+                    {language === 'vi' ? 'Mật khẩu (tùy chọn)' : 'Password (Optional)'}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -597,7 +598,7 @@ export default function AuthPage() {
                 {/* Password */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-gray-700 ml-1">
-                    {language === 'vi' ? 'Mật khẩu' : 'Password'}
+                    {language === 'vi' ? 'Mật khẩu (tùy chọn)' : 'Password (Optional)'}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -622,7 +623,7 @@ export default function AuthPage() {
                     </button>
                   </div>
                   {regErrors.password && <p className="text-red-500 text-xs ml-1 font-medium">{regErrors.password}</p>}
-                  <p className="text-xs text-gray-500 ml-1">{language === 'vi' ? 'Tối thiểu 6 ký tự' : 'Minimum 6 characters'}</p>
+                  <p className="text-xs text-gray-500 ml-1">{language === 'vi' ? 'Tối thiểu 6 ký tự (nếu có)' : 'Minimum 6 characters (if provided)'}</p>
                 </div>
 
                 {/* Confirm Password */}

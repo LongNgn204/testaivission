@@ -51,6 +51,21 @@ const app = express();
 // ⚙️ CẤU HÌNH SERVER
 const PORT = process.env.PORT || 3001; // Cổng mặc định 3001
 const JWT_SECRET = process.env.JWT_SECRET || 'vision-coach-secret-key-change-in-production-2024'; // Secret key để ký JWT
+
+// Validate JWT secret strength and configuration
+(function validateJwtSecret() {
+  const isDefault = JWT_SECRET === 'vision-coach-secret-key-change-in-production-2024';
+  if (!JWT_SECRET) {
+    console.error('❌ CRITICAL: JWT_SECRET is not set! Please configure a strong secret.');
+  } else if (isDefault) {
+    console.warn('⚠️ WARNING: Using default JWT_SECRET. Set a strong JWT_SECRET in environment variables.');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('❌ CRITICAL: Default JWT_SECRET cannot be used in production.');
+    }
+  } else if (JWT_SECRET.length < 32) {
+    console.warn('⚠️ WARNING: JWT_SECRET should be at least 32 characters for security.');
+  }
+})();
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.VITE_API_KEY; // API key cho Google Gemini
 
 // ============================================================
@@ -75,6 +90,28 @@ app.use(cors({
 // 📦 Body Parser Middleware: Phân tích JSON/URL-encoded request body
 app.use(express.json({ limit: '10mb' })); // Giới hạn JSON payload 10MB
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Giới hạn URL-encoded payload 10MB
+
+// HTTPS enforcement middleware
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.protocol !== 'https') {
+    return res.status(403).json({
+      success: false,
+      message: 'HTTPS required',
+      error: 'INSECURE_CONNECTION',
+    });
+  }
+  next();
+});
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Content-Security-Policy', "default-src 'self'");
+  next();
+});
 
 // 📝 Request Logging Middleware: Ghi log mỗi request (với màu sắc)
 app.use((req, res, next) => {
@@ -132,9 +169,82 @@ function rateLimiter(req, res, next) {
 // Áp dụng rate limiter cho tất cả routes
 app.use(rateLimiter);
 
+// ⚡ Auth-specific rate limiter (stricter than global)
+const authRateLimitMap = new Map();
+const AUTH_RATE_LIMIT_WINDOW = 60000; // 1 minute
+const AUTH_MAX_REQUESTS_PER_WINDOW = 5; // 5 attempts per minute
+
+/**
+ * Auth Rate Limiter Middleware
+ * - Prevents brute force attacks
+ * - Limits login/register attempts to 5 per minute per IP
+ */
+function authRateLimiter(req, res, next) {
+  const clientId = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  
+  if (!authRateLimitMap.has(clientId)) {
+    authRateLimitMap.set(clientId, { count: 1, resetTime: now + AUTH_RATE_LIMIT_WINDOW });
+    return next();
+  }
+  
+  const clientData = authRateLimitMap.get(clientId);
+  
+  if (now > clientData.resetTime) {
+    clientData.count = 1;
+    clientData.resetTime = now + AUTH_RATE_LIMIT_WINDOW;
+    return next();
+  }
+  
+  if (clientData.count >= AUTH_MAX_REQUESTS_PER_WINDOW) {
+    const retryAfter = Math.ceil((clientData.resetTime - now) / 1000);
+    return res.status(429).json({
+      success: false,
+      message: 'Too many login attempts. Please try again later.',
+      error: 'RATE_LIMIT_EXCEEDED',
+      retryAfter,
+    });
+  }
+  
+  clientData.count++;
+  next();
+}
+
 // ============================================================
 // 🛠️ UTILITY FUNCTIONS - Hàm hỗ trợ
 // ============================================================
+
+/**
+ * 🔒 Simple sanitization function
+ * - Remove dangerous characters
+ * - Limit length
+ * - Trim whitespace
+ */
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  
+  return input
+    .trim()
+    .replace(/[<>\"'`]/g, '') // Remove dangerous characters
+    .substring(0, 255); // Limit length
+}
+
+/**
+ * 🛡️ Security event logging
+ * - Centralized function to log security-relevant events
+ */
+function logSecurityEvent(eventType, details = {}) {
+  try {
+    const log = {
+      ts: new Date().toISOString(),
+      event: eventType,
+      ...details,
+    };
+    console.log(`[SECURITY] ${JSON.stringify(log)}`);
+  } catch (e) {
+    console.error('Security log error:', e);
+  }
+}
 
 /**
  * 🔐 Tạo JWT Token
@@ -408,13 +518,19 @@ app.get('/metrics', (req, res) => {
  * - Tạo session
  * - Trả về user info + token
  */
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', authRateLimiter, (req, res) => {
   try {
     // 📥 Lấy dữ liệu từ request body
-    const { name, age, phone } = req.body;
+    let { name, age, phone } = req.body;
+
+    // Sanitize inputs
+    name = sanitizeInput(name);
+    age = sanitizeInput(age);
+    phone = sanitizeInput(phone);
 
     // ✅ Validate input - Kiểm tra các trường bắt buộc
     if (!name || !age || !phone) {
+      logSecurityEvent('LOGIN_FAILED', { reason: 'MISSING_FIELDS', ip: req.ip, phone });
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: name, age, phone',
@@ -423,7 +539,8 @@ app.post('/api/auth/login', (req, res) => {
     }
 
     // ✅ Validate name - Tên phải có ít nhất 2 ký tự
-    if (name.trim().length < 2) {
+    if (name.length < 2) {
+      logSecurityEvent('LOGIN_FAILED', { reason: 'INVALID_NAME', ip: req.ip, phone });
       return res.status(400).json({
         success: false,
         message: 'Name must be at least 2 characters',
@@ -434,6 +551,7 @@ app.post('/api/auth/login', (req, res) => {
     // ✅ Validate age - Tuổi phải là số từ 5-120
     const ageNum = parseInt(age); // Chuyển string sang number
     if (isNaN(ageNum) || ageNum < 5 || ageNum > 120) {
+      logSecurityEvent('LOGIN_FAILED', { reason: 'INVALID_AGE', ip: req.ip, phone });
       return res.status(400).json({
         success: false,
         message: 'Age must be between 5 and 120',
@@ -477,6 +595,7 @@ app.post('/api/auth/login', (req, res) => {
 
     // 📝 Log thành công (màu xanh)
     console.log(`\x1b[32m✓ User logged in: ${userData.name} (${userId})\x1b[0m`);
+    logSecurityEvent('LOGIN_SUCCESS', { userId, ip: req.ip });
 
     // ✅ Trả về response thành công
     res.json({
@@ -499,6 +618,123 @@ app.post('/api/auth/login', (req, res) => {
       success: false,
       message: 'Login failed',
       error: error.message, // Chi tiết lỗi (chỉ trong development)
+    });
+  }
+});
+
+/**
+ * POST /api/auth/register
+ * User registration
+ */
+app.post('/api/auth/register', authRateLimiter, (req, res) => {
+  try {
+    let { name, email, phone, password, age } = req.body;
+
+    // Sanitize inputs
+    name = sanitizeInput(name);
+    email = sanitizeInput(email);
+    phone = sanitizeInput(phone);
+    age = sanitizeInput(age);
+
+    // Validate required fields
+    if (!name || !phone) {
+      logSecurityEvent('REGISTER_FAILED', { reason: 'MISSING_FIELDS', ip: req.ip, phone });
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: name, phone',
+        error: 'MISSING_FIELDS',
+      });
+    }
+
+    // Validate name
+    if (name.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be at least 2 characters',
+        error: 'INVALID_NAME',
+      });
+    }
+
+    // Validate phone
+    const phoneClean = phone.replace(/\D/g, '');
+    if (!/^0\d{9,10}$/.test(phoneClean)) {
+      logSecurityEvent('LOGIN_FAILED', { reason: 'INVALID_PHONE', ip: req.ip, phone });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid phone number format (Vietnamese format required)',
+        error: 'INVALID_PHONE',
+      });
+    }
+
+    // Check if user already exists
+    const userId = `user_${phoneClean}`;
+    if (db.users.has(userId)) {
+      return res.status(409).json({
+        success: false,
+        message: 'User already exists',
+        error: 'USER_EXISTS',
+      });
+    }
+
+    // Validate age if provided
+    if (age) {
+      const ageNum = parseInt(age);
+      if (isNaN(ageNum) || ageNum < 5 || ageNum > 120) {
+        return res.status(400).json({
+          success: false,
+          message: 'Age must be between 5 and 120',
+          error: 'INVALID_AGE',
+        });
+      }
+    }
+
+    // Create new user
+    const userData = db.createOrUpdateUser(userId, {
+      name: name.trim(),
+      age: age?.trim(),
+      phone: phoneClean,
+      email: email?.trim(),
+      ip: req.ip || req.connection.remoteAddress,
+    });
+
+    // Generate JWT token
+    const token = generateToken(userId, {
+      name: userData.name,
+      phone: userData.phone,
+      age: userData.age,
+    });
+
+    // Create session
+    db.createSession(token, {
+      userId,
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    });
+
+    // Log success
+    console.log(`✓ User registered: ${userData.name} (${userId})`);
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Registration successful',
+      user: {
+        id: userId,
+        name: userData.name,
+        age: userData.age,
+        phone: userData.phone,
+        email: userData.email,
+        loginTime: userData.lastLogin,
+        token,
+      },
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: error.message,
     });
   }
 });
@@ -582,26 +818,32 @@ app.post('/api/auth/verify', (req, res) => {
  * - Xóa session khỏi database
  * - Hỗ trợ token từ body hoặc Authorization header
  */
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', authenticateToken, (req, res) => {
   try {
-    // 📥 Lấy token từ body hoặc header (linh hoạt)
-    const { token } = req.body; // Token từ request body
-    const authHeader = req.headers['authorization']; // Token từ Authorization header
-    const headerToken = authHeader && authHeader.split(' ')[1]; // Tách "Bearer <token>"
-    
-    // Ưu tiên token từ body, nếu không có thì dùng từ header
-    const tokenToDelete = token || headerToken;
+    // 📥 Lấy token từ Authorization header (đã có do authenticateToken)
+    const authHeader = req.headers['authorization'];
+    const tokenFromHeader = authHeader && authHeader.split(' ')[1];
 
-    // 🗑️ Xóa session nếu có token
-    if (tokenToDelete) {
-      const session = db.getSession(tokenToDelete); // Kiểm tra session có tồn tại
-      if (session) {
-        db.deleteSession(tokenToDelete); // Xóa session khỏi database
-        console.log(`\x1b[33m✓ User logged out: ${session.userId}\x1b[0m`); // Log (màu vàng)
-      }
+    if (!tokenFromHeader) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token is required',
+        error: 'MISSING_TOKEN',
+      });
     }
 
-    // ✅ Trả về thành công (luôn thành công, kể cả khi không có session)
+    const session = db.getSession(tokenFromHeader);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Session not found',
+        error: 'SESSION_NOT_FOUND',
+      });
+    }
+
+    db.deleteSession(tokenFromHeader);
+    console.log(`\x1b[33m✓ User logged out: ${session.userId}\x1b[0m`);
+
     res.json({
       success: true,
       message: 'Logout successful',
@@ -613,6 +855,120 @@ app.post('/api/auth/logout', (req, res) => {
       success: false,
       message: 'Logout failed',
       error: error.message,
+    });
+  }
+});
+
+// ============================================================
+// ROUTES - TEST RESULTS
+// ============================================================
+
+/**
+ * POST /api/tests/save
+ * Save test result to database
+ */
+app.post('/api/tests/save', authenticateToken, (req, res) => {
+  try {
+    const { testType, testData, score, result } = req.body;
+    const userId = req.user.userId;
+
+    // Validate input
+    if (!testType || !testData) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: testType, testData',
+        error: 'MISSING_FIELDS',
+      });
+    }
+
+    // Create test result object
+    const testResult = {
+      id: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      testType,
+      testData,
+      score,
+      result,
+      timestamp: Date.now(),
+    };
+
+    // Initialize test results storage if needed
+    if (!db.testResults) {
+      db.testResults = new Map();
+    }
+
+    // Get or create user's test results array
+    if (!db.testResults.has(userId)) {
+      db.testResults.set(userId, []);
+    }
+
+    // Add test result
+    db.testResults.get(userId).push(testResult);
+
+    // Log success
+    console.log(`✓ Test result saved: ${userId} - ${testType}`);
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Test result saved successfully',
+      testResult,
+    });
+  } catch (error) {
+    console.error('Save test result error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save test result',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/tests/history
+ * Get test history for a user
+ */
+app.get('/api/tests/history', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Get test results from database
+    if (!db.testResults || !db.testResults.has(userId)) {
+      return res.json({
+        success: true,
+        message: 'No test history',
+        history: [],
+        total: 0,
+      });
+    }
+
+    // Get user's test results
+    const allResults = db.testResults.get(userId) || [];
+
+    // Sort by timestamp (newest first)
+    const sorted = allResults.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Apply pagination
+    const history = sorted.slice(offset, offset + limit);
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Test history retrieved successfully',
+      history,
+      total: sorted.length,
+      limit,
+      offset,
+    });
+  } catch (error) {
+    console.error('Get test history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get test history',
+      error: error.message,
+      history: [],
     });
   }
 });

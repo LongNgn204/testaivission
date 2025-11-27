@@ -16,7 +16,7 @@ export async function generateRoutine(
   env: any
 ): Promise<Response> {
   try {
-    const { answers, language } = await request.json();
+    const { answers, language } = await (request as unknown as Request).json() as any;
 
     // Validate input
     if (!answers || !language) {

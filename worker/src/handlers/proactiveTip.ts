@@ -16,7 +16,7 @@ export async function generateProactiveTip(
   env: any
 ): Promise<Response> {
   try {
-    const { lastTest, userProfile, language } = await request.json();
+    const { lastTest, userProfile, language } = await (request as unknown as Request).json() as any;
 
     // Validate input
     if (!language) {
@@ -52,7 +52,7 @@ export async function generateProactiveTip(
     );
 
     // Check cache
-    const cached = await cacheService.get(cacheKey);
+    const cached = await cacheService.get<any>(cacheKey);
     if (cached) {
       return new Response(
         JSON.stringify({
