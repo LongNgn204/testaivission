@@ -39,6 +39,7 @@ import { Header } from './components/Header';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { initializeReminderSystem } from './services/reminderService';
 import { initPerformanceOptimizations } from './utils/performanceUtils';
+import { verifyUserToken, getAuthToken, clearAuthToken } from './services/authService';
 
 // ⚡ LAZY LOADING (Tải các component khi cần):
 // - Giảm bundle size ban đầu
@@ -49,7 +50,7 @@ const History = lazy(() => import('./pages/History').then(m => ({ default: m.His
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const PersonalizedSetupPage = lazy(() => import('./pages/PersonalizedSetupPage').then(m => ({ default: m.PersonalizedSetupPage })));
 const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
+const LoginPageWithBackend = lazy(() => import('./pages/LoginPageWithBackend'));
 const SnellenTest = lazy(() => import('./components/SnellenTest').then(m => ({ default: m.SnellenTest })));
 const ColorBlindTest = lazy(() => import('./components/ColorBlindTest').then(m => ({ default: m.ColorBlindTest })));
 const AstigmatismTest = lazy(() => import('./components/AstigmatismTest').then(m => ({ default: m.AstigmatismTest })));
@@ -163,12 +164,35 @@ const MainAppLayout: React.FC = () => {
 const AppContent: React.FC = () => {
     const [authState, setAuthState] = React.useState<'checking' | 'guest' | 'authenticated'>('checking');
 
-    const syncAuthState = React.useCallback(() => {
+    const syncAuthState = React.useCallback(async () => {
         try {
             const userData = localStorage.getItem('user_data');
-            setAuthState(userData ? 'authenticated' : 'guest');
+            const token = getAuthToken();
+            
+            // If we have both user data and token, verify token with backend
+            if (userData && token) {
+                const verifyResult = await verifyUserToken(token);
+                
+                if (verifyResult.success) {
+                    // Token is valid, user is authenticated
+                    setAuthState('authenticated');
+                    console.log('✅ Token verified successfully');
+                } else {
+                    // Token is invalid, clear auth data
+                    console.warn('⚠️ Token verification failed, logging out');
+                    clearAuthToken();
+                    localStorage.removeItem('user_data');
+                    setAuthState('guest');
+                }
+            } else {
+                // No user data or token, user is guest
+                setAuthState('guest');
+            }
         } catch (error) {
-            console.error('Failed to read auth state', error);
+            console.error('Failed to verify auth state', error);
+            // On error, clear auth data to be safe
+            clearAuthToken();
+            localStorage.removeItem('user_data');
             setAuthState('guest');
         }
     }, []);
@@ -201,7 +225,7 @@ const AppContent: React.FC = () => {
                 <Routes>
                     <Route
                         path="/login"
-                        element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPage />}
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
                     />
                     <Route
                         path="/setup"

@@ -44,8 +44,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
             const history = storageService.getTestHistory();
             const context = history.length > 0 ? history[0] : null;
             
-            const { AIService } = await import('../../services/aiService');
-            const svc = new AIService();
+            const { ChatbotService } = await import('../../services/chatbotService');
+            const svc = new ChatbotService();
             const response = await svc.chat(userMessage, context, userProfile, language);
             
             setChatHistory(prev => [...prev, { role: 'bot', text: response }]);

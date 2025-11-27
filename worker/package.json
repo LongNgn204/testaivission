@@ -1,0 +1,30 @@
+{
+  "name": "vision-coach-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for Vision Coach application",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@google/genai": "^1.28.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240605.0",
+    "@types/node": "^22.14.0",
+    "itty-router": "^4.1.2",
+    "typescript": "~5.8.2",
+    "wrangler": "^3.60.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

@@ -1,0 +1,41 @@
+{
+  "name": "vision-coach-backend",
+  "version": "2.0.0",
+  "description": "Enhanced backend server for Vision Coach application with JWT auth, rate limiting, and session management",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test-login.js",
+    "lint": "echo \"No linter configured\"",
+    "clean": "echo \"Cleaning sessions...\""
+  },
+  "keywords": [
+    "vision",
+    "health",
+    "backend",
+    "express",
+    "jwt",
+    "ai",
+    "gemini"
+  ],
+  "author": "Vision Coach Team",
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^1.28.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.1.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

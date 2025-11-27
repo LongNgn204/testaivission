@@ -7,6 +7,7 @@ import { useRoutine } from '../../context/RoutineContext';
 import { StorageService } from '../../services/storageService';
 
 import { encode, decode, decodeAudioData } from '../../utils/audioUtils';
+import { AIService } from '../../services/aiService';
 
 // --- Function Declarations for Gemini ---
 const startTestFunctionDeclaration: FunctionDeclaration = {
@@ -144,7 +145,6 @@ BE A REAL DOCTOR: Professional, caring, easy to understand.`;
 
 const storageService = new StorageService();
 
-
 interface VoiceInterfaceProps {
     isOpen: boolean;
     onClose: () => void;
@@ -170,6 +170,8 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     const audioQueueRef = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextStartTimeRef = useRef(0);
     const idleTimerRef = useRef<number | null>(null);
+
+    const aiService = new AIService();
 
     const availableFunctions = {
         startTest: ({ testName }: { testName: string }) => {
@@ -278,105 +280,160 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
         setStatus('idle');
     }, []);
 
+    // Helper: timeout wrapper
+    const withTimeout = useCallback(<T,>(promise: Promise<T>, ms: number): Promise<T> => {
+        return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), ms)) as Promise<T>,
+        ]);
+    }, []);
+
     const startSession = useCallback(async () => {
-        if (!process.env.API_KEY || sessionPromiseRef.current) return;
+        // Resolve API key from Vite env (preferred) or process.env fallback
+        const apiKey: string | undefined = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_GEMINI_API_KEY)
+            || (typeof process !== 'undefined' && (process as any)?.env?.API_KEY);
+
+        if (!apiKey || sessionPromiseRef.current) {
+            console.error('VoiceInterface: Missing API key or session already exists');
+            return;
+        }
         setStatus('connecting');
 
-        aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        aiRef.current = new GoogleGenAI({ apiKey });
         
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+
+        // Resume contexts if suspended (Safari/Chrome autoplay policies)
+        if (inputAudioContextRef.current.state === 'suspended') {
+            await inputAudioContextRef.current.resume();
+        }
+        if (outputAudioContextRef.current.state === 'suspended') {
+            await outputAudioContextRef.current.resume();
+        }
         
         try {
             mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-        } catch (error) {
-            console.error("Microphone access denied:", error);
+        } catch (error: any) {
+            console.error('Microphone error:', error);
+            let msg = 'Microphone error';
+            if (error?.name === 'NotAllowedError') {
+                msg = language === 'vi' ? 'Cần cấp quyền truy cập microphone' : 'Microphone permission required';
+            } else if (error?.name === 'NotFoundError') {
+                msg = language === 'vi' ? 'Không tìm thấy microphone' : 'No microphone found';
+            } else if (error?.name === 'NotReadableError') {
+                msg = language === 'vi' ? 'Microphone đang được ứng dụng khác sử dụng' : 'Microphone is in use by another application';
+            }
+            alert(msg);
             setStatus('idle');
+            onClose();
             return;
         }
         
         try {
-            sessionPromiseRef.current = aiRef.current.live.connect({
-                model: 'gemini-2.5-flash-native-audio-preview-09-2025',
-                config: {
-                    responseModalities: [Modality.AUDIO],
-                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: language === 'vi' ? 'Kore' : 'Zephyr' } } },
-                    systemInstruction: getSystemInstruction(language),
-                    tools: [{ functionDeclarations: [startTestFunctionDeclaration, navigateToFunctionDeclaration] }],
-                    inputAudioTranscription: {},
-                    outputAudioTranscription: {},
-                },
-                callbacks: {
-                    onopen: () => {
-                        setStatus('listening');
-                        mediaSourceNodeRef.current = inputAudioContextRef.current!.createMediaStreamSource(mediaStreamRef.current!);
-                        scriptProcessorRef.current = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
-                        scriptProcessorRef.current.onaudioprocess = (event) => {
-                            const inputData = event.inputBuffer.getChannelData(0);
-                            const pcmBlob: Blob = {
-                                data: encode(new Uint8Array(new Int16Array(inputData.map(x => x * 32768)).buffer)),
-                                mimeType: 'audio/pcm;rate=16000',
-                            };
-                            sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                        };
-                        mediaSourceNodeRef.current.connect(scriptProcessorRef.current);
-                        scriptProcessorRef.current.connect(inputAudioContextRef.current!.destination);
+            sessionPromiseRef.current = await withTimeout(
+                aiRef.current.live.connect({
+                    model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+                    config: {
+                        responseModalities: [Modality.AUDIO],
+                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: language === 'vi' ? 'Kore' : 'Zephyr' } } },
+                        systemInstruction: getSystemInstruction(language),
+                        tools: [{ functionDeclarations: [startTestFunctionDeclaration, navigateToFunctionDeclaration] }],
+                        inputAudioTranscription: {},
+                        outputAudioTranscription: {},
                     },
-                    onmessage: async (message: LiveServerMessage) => {
-                        if (message.serverContent?.interrupted) stopAudioPlayback();
-                        if (message.serverContent?.inputTranscription?.text) setUserTranscript(prev => prev + message.serverContent!.inputTranscription!.text);
-                        if (message.serverContent?.outputTranscription?.text) setBotTranscript(prev => prev + message.serverContent!.outputTranscription!.text);
-                        if (message.serverContent?.turnComplete) {
-                            setUserTranscript('');
-                            setBotTranscript('');
-                        }
+                    callbacks: {
+                        onopen: () => {
+                            setStatus('listening');
+                            const inputCtx = inputAudioContextRef.current!;
+                            mediaSourceNodeRef.current = inputCtx.createMediaStreamSource(mediaStreamRef.current!);
+                            scriptProcessorRef.current = inputCtx.createScriptProcessor(4096, 1, 1);
 
-                        const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-                        if (audioData) {
-                            setStatus('speaking');
-                            const outputContext = outputAudioContextRef.current!;
-                            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputContext.currentTime);
-                            const audioBuffer = await decodeAudioData(decode(audioData), outputContext, 24000, 1);
-                            const source = outputContext.createBufferSource();
-                            source.buffer = audioBuffer;
-                            source.connect(outputContext.destination);
-                            source.start(nextStartTimeRef.current);
-                            nextStartTimeRef.current += audioBuffer.duration;
-                            audioQueueRef.current.add(source);
-                            source.onended = () => {
-                                audioQueueRef.current.delete(source);
-                                if (audioQueueRef.current.size === 0) setStatus('listening');
+                            // Proper Float32 -> Int16 conversion with clipping
+                            scriptProcessorRef.current.onaudioprocess = (event) => {
+                                const inputData = event.inputBuffer.getChannelData(0);
+                                const int16Data = new Int16Array(inputData.length);
+                                for (let i = 0; i < inputData.length; i++) {
+                                    const s = Math.max(-1, Math.min(1, inputData[i]));
+                                    int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+                                }
+                                const pcmBlob: Blob = {
+                                    data: encode(new Uint8Array(int16Data.buffer)),
+                                    mimeType: 'audio/pcm;rate=16000',
+                                };
+                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
                             };
-                        }
 
-                        if (message.toolCall?.functionCalls) {
-                            setStatus('thinking');
-                            for (const fc of message.toolCall.functionCalls) {
-                                const func = (availableFunctions as any)[fc.name];
-                                if (func) {
-                                    const result = func(fc.args);
-                                    sessionPromiseRef.current?.then(session => {
-                                        session.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response: { result } } });
-                                    });
+                            // Gain for mic boost
+                            const gainNode = inputCtx.createGain();
+                            gainNode.gain.value = 1.5; // +50%
+
+                            // Silent output chain to keep processor running without feedback
+                            const silentGain = inputCtx.createGain();
+                            silentGain.gain.value = 0; // mute
+
+                            mediaSourceNodeRef.current.connect(gainNode);
+                            gainNode.connect(scriptProcessorRef.current);
+                            scriptProcessorRef.current.connect(silentGain);
+                            silentGain.connect(inputCtx.destination);
+                        },
+                        onmessage: async (message: LiveServerMessage) => {
+                            if (message.serverContent?.interrupted) stopAudioPlayback();
+                            if (message.serverContent?.inputTranscription?.text) setUserTranscript(prev => prev + message.serverContent!.inputTranscription!.text);
+                            if (message.serverContent?.outputTranscription?.text) setBotTranscript(prev => prev + message.serverContent!.outputTranscription!.text);
+                            if (message.serverContent?.turnComplete) {
+                                setUserTranscript('');
+                                setBotTranscript('');
+                            }
+
+                            const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+                            if (audioData) {
+                                setStatus('speaking');
+                                const outputContext = outputAudioContextRef.current!;
+                                nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputContext.currentTime);
+                                const audioBuffer = await decodeAudioData(decode(audioData), outputContext, 24000, 1);
+                                const source = outputContext.createBufferSource();
+                                source.buffer = audioBuffer;
+                                source.connect(outputContext.destination);
+                                source.start(nextStartTimeRef.current);
+                                nextStartTimeRef.current += audioBuffer.duration;
+                                audioQueueRef.current.add(source);
+                                source.onended = () => {
+                                    audioQueueRef.current.delete(source);
+                                    if (audioQueueRef.current.size === 0) setStatus('listening');
+                                };
+                            }
+
+                            if (message.toolCall?.functionCalls) {
+                                setStatus('thinking');
+                                for (const fc of message.toolCall.functionCalls) {
+                                    const func = (availableFunctions as any)[fc.name];
+                                    if (func) {
+                                        const result = func(fc.args);
+                                        sessionPromiseRef.current?.then(session => {
+                                            session.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response: { result } } });
+                                        });
+                                    }
                                 }
                             }
-                        }
+                        },
+                        onerror: (e) => console.error('Session error:', e),
+                        onclose: () => cleanup(),
                     },
-                    onerror: (e) => console.error("Session error:", e),
-                    onclose: () => cleanup(),
-                },
-            });
+                }),
+                10000 // 10s timeout
+            );
 
             sessionPromiseRef.current.catch(err => {
-                console.error("Session connection failed:", err);
+                console.error('Session connection failed:', err);
                 setStatus('idle');
                 onClose();
             });
         } catch (error) {
-            console.error("Failed to start session:", error);
+            console.error('Failed to start session:', error);
             setStatus('idle');
         }
-    }, [language, navigate, cleanup, onClose]);
+    }, [language, navigate, cleanup, onClose, withTimeout]);
 
     useEffect(() => {
         if (isOpen) startSession();
