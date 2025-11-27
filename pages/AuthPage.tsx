@@ -24,7 +24,7 @@ import {
   isValidPhone,
   RegisterRequest,
   LoginRequest 
-} from '../services/authService-v2';
+} from '../services/authService';
 
 interface SavedAccount {
   name: string;

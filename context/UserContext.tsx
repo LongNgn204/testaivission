@@ -18,7 +18,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { getAuthToken, saveTestResult, getTestHistory } from '../services/authService-v2';
+import { getAuthToken, saveTestResult, getTestHistory } from '../services/authService';
 
 // ============================================================
 // TYPES
