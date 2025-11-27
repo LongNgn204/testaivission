@@ -22,13 +22,7 @@ interface UserData {
   loginTime: number;
 }
 
-// Demo accounts
-const DEMO_ACCOUNTS = [
-  { name: 'Nguyễn Văn An', age: '28', phone: '0912345678' },
-  { name: 'Trần Thị Bình', age: '35', phone: '0987654321' },
-  { name: 'Lê Minh Công', age: '42', phone: '0901234567' },
-];
-
+// Không còn demo accounts - người dùng phải đăng ký/đăng nhập thật
 const SAVED_ACCOUNTS_KEY = 'saved_accounts';
 
 export default function LoginPageWithBackend() {
@@ -143,21 +137,28 @@ export default function LoginPageWithBackend() {
     }
   };
 
-  // Handle demo login
-  const handleDemoLogin = async (demo: typeof DEMO_ACCOUNTS[0]) => {
+  // Handle register/login - Backend tự động tạo user mới nếu chưa tồn tại
+  const handleRegister = async () => {
+    if (!validateForm()) return;
+
     setIsLoading(true);
     setApiError('');
 
     try {
-      const response = await loginUser({
-        name: demo.name,
-        age: demo.age,
-        phone: demo.phone,
-      });
+      // Backend tự động tạo user mới nếu chưa tồn tại (dựa trên phone)
+      const credentials: LoginRequest = {
+        name: name.trim(),
+        age: age.trim(),
+        phone: phone.trim(),
+      };
+
+      const response = await loginUser(credentials);
 
       if (response.success && response.user) {
+        // Save token
         saveAuthToken(response.user.token);
 
+        // Save user data
         const userData: UserData = {
           name: response.user.name,
           age: response.user.age,
@@ -167,13 +168,19 @@ export default function LoginPageWithBackend() {
 
         saveAccountToHistory(userData);
         localStorage.setItem('user_data', JSON.stringify(userData));
+
+        // Dispatch event
         window.dispatchEvent(new Event('userLoggedIn'));
+
+        // Navigate
         navigate('/home');
       } else {
-        setApiError(response.error || 'Demo login failed');
+        setApiError(response.error || response.message || 'Đăng ký/Đăng nhập thất bại');
+        setErrors({ name: response.error || response.message });
       }
     } catch (error: any) {
-      setApiError(error.message || 'An error occurred');
+      setApiError(error.message || 'Có lỗi xảy ra');
+      setErrors({ name: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -283,6 +290,7 @@ export default function LoginPageWithBackend() {
             )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-5">
+              {/* Note: Backend tự động tạo user mới nếu chưa tồn tại (dựa trên phone) */}
               {/* Name Input */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-700 ml-1">
@@ -359,16 +367,21 @@ export default function LoginPageWithBackend() {
                   {isLoading ? (
                     <>
                       <Loader className="w-5 h-5 animate-spin" />
-                      Logging in...
+                      {language === 'vi' ? 'Đang xử lý...' : 'Processing...'}
                     </>
                   ) : (
                     <>
-                      {t('login_button_submit')}
+                      {language === 'vi' ? 'Đăng nhập / Đăng ký' : 'Login / Register'}
                       <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </span>
               </button>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                {language === 'vi' 
+                  ? '💡 Hệ thống tự động tạo tài khoản mới nếu số điện thoại chưa được đăng ký'
+                  : '💡 System will automatically create a new account if phone number is not registered'}
+              </p>
             </form>
 
             {/* Saved Accounts */}
@@ -399,27 +412,6 @@ export default function LoginPageWithBackend() {
               </div>
             )}
 
-            {/* Demo Accounts */}
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 text-center">
-                {t('or_use_demo')}
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {DEMO_ACCOUNTS.map((demo, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleDemoLogin(demo)}
-                    disabled={isLoading}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200 disabled:opacity-50"
-                  >
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 mb-2">
-                      {demo.name.split(' ').pop()?.charAt(0)}
-                    </div>
-                    <span className="text-xs font-medium text-gray-700 truncate w-full text-center">{demo.name.split(' ').pop()}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
           </div>
         </div>

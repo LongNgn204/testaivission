@@ -77,6 +77,13 @@ export const VoiceControlProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Yêu cầu quyền micro chủ động
   const requestMicPermission = useCallback(async (): Promise<MicPermission> => {
     try {
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('Microphone permission denied or unavailable: getUserMedia not supported');
+        setHasMicPermission('denied');
+        return 'denied';
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(t => t.stop());
       setHasMicPermission('granted');

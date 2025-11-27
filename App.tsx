@@ -35,6 +35,7 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { RoutineProvider } from './context/RoutineContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { VoiceControlProvider } from './context/VoiceControlContext';
+import { UserProvider } from './context/UserContext';
 import { Header } from './components/Header';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { initializeReminderSystem } from './services/reminderService';
@@ -51,6 +52,7 @@ const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m
 const PersonalizedSetupPage = lazy(() => import('./pages/PersonalizedSetupPage').then(m => ({ default: m.PersonalizedSetupPage })));
 const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
 const LoginPageWithBackend = lazy(() => import('./pages/LoginPageWithBackend'));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
 const SnellenTest = lazy(() => import('./components/SnellenTest').then(m => ({ default: m.SnellenTest })));
 const ColorBlindTest = lazy(() => import('./components/ColorBlindTest').then(m => ({ default: m.ColorBlindTest })));
 const AstigmatismTest = lazy(() => import('./components/AstigmatismTest').then(m => ({ default: m.AstigmatismTest })));
@@ -220,11 +222,15 @@ const AppContent: React.FC = () => {
     const isLoggedIn = authState === 'authenticated';
 
     return (
-        <HashRouter>
+        <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                     <Route
                         path="/login"
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <AuthPage />}
+                    />
+                    <Route
+                        path="/login-legacy"
                         element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
                     />
                     <Route
@@ -267,9 +273,11 @@ export default function App() {
         <ThemeProvider>
             <LanguageProvider>
                 <RoutineProvider>
-                    <VoiceControlProvider>
-                        <AppContent />
-                    </VoiceControlProvider>
+                    <UserProvider>
+                        <VoiceControlProvider>
+                            <AppContent />
+                        </VoiceControlProvider>
+                    </UserProvider>
                 </RoutineProvider>
             </LanguageProvider>
         </ThemeProvider>

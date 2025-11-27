@@ -182,15 +182,33 @@ export const useDashboardInsights = (
             }
 
             try {
-                const { AIService } = await import('../services/aiService');
-                const svc = new AIService();
-                const result = await svc.generateDashboardInsights(history, language);
+                // Sử dụng backend API thay vì gọi trực tiếp AIService
+                const { ChatbotService } = await import('../services/chatbotService');
+                const svc = new ChatbotService();
+                const backendInsights = await svc.dashboard(history, language as 'vi' | 'en');
+                
                 if (controller.signal.aborted) return;
-                setInsights(result);
-                persistInsights(result, fingerprint, language);
+                
+                // Chuyển đổi response từ backend sang format DashboardInsights
+                const insights = backendInsights as any;
+                if (insights.success) {
+                    const result: DashboardInsights = {
+                        score: insights.metrics?.score || 80,
+                        rating: (insights.status || 'GOOD') as DashboardInsights['rating'],
+                        trend: (insights.trends?.trend || 'STABLE') as DashboardInsights['trend'],
+                        overallSummary: insights.status || 'Tình trạng sức khỏe mắt ổn định.',
+                        positives: Array.isArray(insights.trends?.positives) ? insights.trends.positives : [],
+                        areasToMonitor: Array.isArray(insights.riskFactors) ? insights.riskFactors : [],
+                        proTip: insights.recommendations?.[0] || 'Tiếp tục duy trì thói quen tốt cho mắt.',
+                    };
+                    setInsights(result);
+                    persistInsights(result, fingerprint, language);
+                } else {
+                    throw new Error('Backend returned unsuccessful response');
+                }
             } catch (err) {
                 if (controller.signal.aborted) return;
-                console.error('Failed to load dashboard insights', err);
+                console.error('Failed to load dashboard insights from backend', err);
                 const fallback = buildFallbackInsights(history);
                 setInsights(fallback);
                 setError('AI đang bận, đã chuyển sang dữ liệu gần nhất.');

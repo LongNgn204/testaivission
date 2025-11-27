@@ -156,11 +156,31 @@ export const SnellenTest: React.FC = () => {
       const history = storageService.getTestHistory();
       let aiReport: AIReport | null = null;
       try {
-        const { AIService } = await import('../services/aiService');
-        const svc = new AIService();
-        aiReport = await svc.generateReport('snellen', testResult, history, language);
+        // Sử dụng backend API thay vì gọi trực tiếp AIService
+        const { ChatbotService } = await import('../services/chatbotService');
+        const svc = new ChatbotService();
+        const backendReport = await svc.report('snellen', testResult, history, language);
+        
+        // Chuyển đổi response từ backend sang format AIReport
+        const report = backendReport as any;
+        if (report.success) {
+          aiReport = {
+            id: report.id || Date.now().toString(),
+            testType: 'snellen',
+            timestamp: report.timestamp || new Date().toISOString(),
+            totalResponseTime: 0,
+            confidence: report.confidence || 0.85,
+            summary: report.summary || '',
+            recommendations: Array.isArray(report.recommendations) ? report.recommendations : [],
+            severity: (report.severity || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH',
+            trend: report.trend || 'STABLE',
+            causes: report.causes || '',
+            prediction: report.prediction || '',
+          };
+        }
       } catch (e) {
-        // No API key or AI error → fallback below
+        // Backend error → fallback below
+        console.error('Backend report generation error:', e);
         aiReport = null;
       }
 

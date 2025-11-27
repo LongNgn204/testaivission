@@ -221,9 +221,30 @@ export const AmslerGridTest: React.FC = () => {
       };
       let aiReport: AIReport | null = null;
       try {
-        const svc = new AIService();
-        aiReport = await svc.generateReport('amsler', aiPayload, history, language);
+        // Sử dụng backend API thay vì gọi trực tiếp AIService
+        const { ChatbotService } = await import('../services/chatbotService');
+        const svc = new ChatbotService();
+        const backendReport = await svc.report('amsler', aiPayload, history, language);
+        
+        // Chuyển đổi response từ backend sang format AIReport
+        const report = backendReport as any;
+        if (report.success) {
+          aiReport = {
+            id: report.id || Date.now().toString(),
+            testType: 'amsler',
+            timestamp: report.timestamp || new Date().toISOString(),
+            totalResponseTime: 0,
+            confidence: report.confidence || 0.85,
+            summary: report.summary || '',
+            recommendations: Array.isArray(report.recommendations) ? report.recommendations : [],
+            severity: (report.severity || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH',
+            trend: report.trend || 'STABLE',
+            causes: report.causes || '',
+            prediction: report.prediction || '',
+          };
+        }
       } catch (e) {
+        console.error('Backend report generation error:', e);
         aiReport = null;
       }
       const report: AIReport = aiReport || {
