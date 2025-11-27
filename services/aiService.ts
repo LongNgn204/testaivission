@@ -25,7 +25,23 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
 
-const API_KEY: string | undefined = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_GEMINI_API_KEY) || (typeof process !== 'undefined' && (process as any)?.env?.API_KEY);
+// ⚡ CRITICAL: Get API Key from environment
+const API_KEY: string | undefined = (() => {
+    // Try Vite environment first
+    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_GEMINI_API_KEY) {
+        return (import.meta as any).env.VITE_GEMINI_API_KEY;
+    }
+    // Try process.env
+    if (typeof process !== 'undefined' && (process as any)?.env?.VITE_GEMINI_API_KEY) {
+        return (process as any).env.VITE_GEMINI_API_KEY;
+    }
+    // Try window global
+    if (typeof window !== 'undefined' && (window as any).__GEMINI_API_KEY__) {
+        return (window as any).__GEMINI_API_KEY__;
+    }
+    console.warn('⚠️ VITE_GEMINI_API_KEY not found in environment');
+    return undefined;
+})();
 
 // ⚡ ULTRA-FAST AI CONFIGURATION - OPTIMIZED FOR SPEED & INTELLIGENCE
 const AI_CONFIG = {

@@ -291,27 +291,79 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     const startSession = useCallback(async () => {
         // Resolve API key from Vite env (preferred) or process.env fallback
         const apiKey: string | undefined = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_GEMINI_API_KEY)
+            || (typeof process !== 'undefined' && (process as any)?.env?.VITE_GEMINI_API_KEY)
             || (typeof process !== 'undefined' && (process as any)?.env?.API_KEY);
 
         if (!apiKey || sessionPromiseRef.current) {
             console.error('VoiceInterface: Missing API key or session already exists');
+            const msg = language === 'vi' 
+                ? 'Chưa cấu hình API Key. Vui lòng thêm VITE_GEMINI_API_KEY vào .env.local' 
+                : 'API Key not configured. Please add VITE_GEMINI_API_KEY to .env.local';
+            alert(msg);
+            onClose();
             return;
         }
         setStatus('connecting');
 
         aiRef.current = new GoogleGenAI({ apiKey });
         
-        inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-        outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        // Check if AudioContext is available
+        if (!window.AudioContext && !(window as any).webkitAudioContext) {
+            console.error('AudioContext not supported');
+            alert(language === 'vi' ? 'Trình duyệt không hỗ trợ audio' : 'Browser does not support audio');
+            setStatus('idle');
+            onClose();
+            return;
+        }
+
+        try {
+            inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+            outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        } catch (error) {
+            console.error('AudioContext creation error:', error);
+            alert(language === 'vi' ? 'Lỗi khởi tạo audio' : 'Audio initialization error');
+            setStatus('idle');
+            onClose();
+            return;
+        }
 
         // Resume contexts if suspended (Safari/Chrome autoplay policies)
-        if (inputAudioContextRef.current.state === 'suspended') {
-            await inputAudioContextRef.current.resume();
+        if (inputAudioContextRef.current?.state === 'suspended') {
+            try {
+                await inputAudioContextRef.current.resume();
+            } catch (e) {
+                console.warn('Could not resume input audio context:', e);
+            }
         }
-        if (outputAudioContextRef.current.state === 'suspended') {
-            await outputAudioContextRef.current.resume();
+        if (outputAudioContextRef.current?.state === 'suspended') {
+            try {
+                await outputAudioContextRef.current.resume();
+            } catch (e) {
+                console.warn('Could not resume output audio context:', e);
+            }
         }
         
+        // Require secure context (HTTPS) or localhost for mic access
+        const isLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
+        if (!window.isSecureContext && !isLocalhost) {
+            console.error('Microphone requires HTTPS or localhost. Current origin is not secure.');
+            alert(language === 'vi' 
+                ? 'Trình duyệt yêu cầu HTTPS hoặc truy cập qua localhost để dùng micro. Hãy mở trang bằng http://localhost:3000 hoặc bật HTTPS cho dev server.' 
+                : 'Browser requires HTTPS or localhost to use the microphone. Open the app at http://localhost:3000 or enable HTTPS for the dev server.');
+            setStatus('idle');
+            onClose();
+            return;
+        }
+
+        // Check if mediaDevices is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error('getUserMedia not supported');
+            alert(language === 'vi' ? 'Trình duyệt không hỗ trợ microphone' : 'Browser does not support microphone');
+            setStatus('idle');
+            onClose();
+            return;
+        }
+
         try {
             mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (error: any) {
@@ -323,6 +375,8 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
                 msg = language === 'vi' ? 'Không tìm thấy microphone' : 'No microphone found';
             } else if (error?.name === 'NotReadableError') {
                 msg = language === 'vi' ? 'Microphone đang được ứng dụng khác sử dụng' : 'Microphone is in use by another application';
+            } else if (error?.name === 'SecurityError') {
+                msg = language === 'vi' ? 'Lỗi bảo mật: Chỉ HTTPS được hỗ trợ' : 'Security error: Only HTTPS is supported';
             }
             alert(msg);
             setStatus('idle');
