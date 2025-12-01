@@ -6,7 +6,7 @@ Gemini AI giống như **bác sĩ ảo** được Google tạo ra. Nó:
 - 💬 Trả lời bằng ngôn ngữ tự nhiên
 - 📊 Phân tích kết quả test và đưa ra lời khuyên
 
-**Model đang dùng:** `gemini-2.0-flash`
+**Model đang dùng:** `gemini-2.5-flash` và `gemini-2.5-pro`
 - ⚡ Nhanh (trả lời < 1 giây)
 - 🆓 Miễn phí (trong giới hạn)
 - 🎯 Chính xác cao

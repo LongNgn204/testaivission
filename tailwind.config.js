@@ -8,38 +8,98 @@ export default {
   theme: {
     extend: {
       colors: {
-        // MÀU CHỦ ĐẠO (Thư giãn & Tin cậy)
+        // Modern EdTech Palette
         primary: {
-          DEFAULT: '#059669', // Emerald 600 (Nút chính, Icon)
-          hover: '#047857',   // Emerald 700
-          light: '#d1fae5',   // Emerald 100 (Nền icon)
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6', // Teal 500 - Main Brand Color
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+          DEFAULT: '#14b8a6',
         },
         secondary: {
-          DEFAULT: '#0ea5e9', // Sky 500 (Accent cho công nghệ/AI)
-          light: '#e0f2fe',
+          50: '#f0f9ff',
+          100: '#e0f2fe',
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8', // Sky 400 - AI/Tech Accent
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
+          DEFAULT: '#38bdf8',
         },
-        // MÀU NỀN (Chống mỏi mắt)
+        accent: {
+          50: '#fff1f2',
+          100: '#ffe4e6',
+          200: '#fecdd3',
+          300: '#fda4af',
+          400: '#fb7185', // Rose 400 - Alerts/Highlights
+          500: '#f43f5e',
+          600: '#e11d48',
+          700: '#be123c',
+          800: '#9f1239',
+          900: '#881337',
+          DEFAULT: '#fb7185',
+        },
+        dark: {
+          bg: '#0f172a', // Slate 900 - Deep Background
+          surface: '#1e293b', // Slate 800 - Card Surface
+          border: '#334155', // Slate 700
+        },
+        // Backward Compatibility & Semantic Aliases
         background: {
-          light: '#f0fdf4',   // Mint 50 (Thay cho gray-50) - Cực dịu
-          dark: '#022c22',    // Jungle 950 (Thay cho gray-900) - Sâu thẳm
+          light: '#f0fdfa', // primary-50
+          dark: '#0f172a',  // dark-bg
         },
         surface: {
-          light: '#ffffff',   // Card nổi bật trên nền Mint
-          dark: '#064e3b',    // Emerald 900
+          light: '#ffffff',
+          dark: '#1e293b',  // dark-surface
         },
-        // MÀU CHỮ (Tương phản tốt nhưng không gắt)
         text: {
-          main: '#064e3b',    // Emerald 900 (Thay cho đen)
-          sub: '#334155',     // Slate 700
-          dark: '#ecfdf5',    // Emerald 50 (Cho dark mode)
+          main: '#134e4a',  // primary-900
+          sub: '#334155',   // slate-700
+          dark: '#f0fdfa',  // primary-50
         }
       },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'], // Modern headings
+      },
       borderRadius: {
-        '3xl': '1.5rem', // Bo góc lớn hơn cho cảm giác mềm mại
+        'xl': '1rem',
+        '2xl': '1.5rem',
+        '3xl': '2rem',
       },
       boxShadow: {
-        'soft': '0 10px 40px -10px rgba(5, 150, 105, 0.1)', // Bóng mờ màu xanh
-        'glow': '0 0 20px rgba(14, 165, 233, 0.3)', // Glow cho AI
+        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+        'glass-sm': '0 4px 16px 0 rgba(31, 38, 135, 0.2)',
+        'neon': '0 0 10px rgba(45, 212, 191, 0.5), 0 0 20px rgba(45, 212, 191, 0.3)',
+      },
+      animation: {
+        'float': 'float 6s ease-in-out infinite',
+        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+        'spin-slow': 'spin 3s linear infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-20px)' },
+        },
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      backdropBlur: {
+        'xs': '2px',
       }
     }
   },

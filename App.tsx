@@ -19,9 +19,18 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { RoutineProvider } from './context/RoutineContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AIProvider } from './context/AIContext'; // Import AIProvider
+import { ToastProvider } from './context/ToastContext'; // Import ToastProvider
+import { ErrorBoundary } from './components/ErrorBoundary'; // Import ErrorBoundary
 import { Header } from './components/Header';
+import { SkipToContent } from './components/SkipToContent';
 import { initializeReminderSystem } from './services/reminderService';
 import { initPerformanceOptimizations } from './utils/performanceUtils';
+import { setupGlobalErrorHandling } from './utils/errorHandler'; // Import error setup
+import { DebugPanel } from './components/DebugPanel'; // Import DebugPanel
+import { AnalyticsDashboard } from './components/AnalyticsDashboard'; // Import AnalyticsDashboard
+import { initializeGoogleAnalytics } from './utils/googleAnalytics'; // Import GA setup
+import { AiKeyWarning } from './components/AiKeyWarning';
 
 // ⚡ LAZY LOADING: Load components only when needed (HUGE speed boost!)
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
@@ -38,6 +47,7 @@ const DuochromeTest = lazy(() => import('./components/DuochromeTest').then(m => 
 const HospitalLocator = lazy(() => import('./components/HospitalLocator'));
 const RemindersPage = lazy(() => import('./pages/RemindersPage'));
 const ProgressPage = lazy(() => import('./pages/ProgressPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
 const VisionCoach = lazy(() => import('./components/VisionCoach').then(m => ({ default: m.VisionCoach })));
 const TestInstructionsPlayer = lazy(() => import('./components/TestInstructionsPlayer').then(m => ({ default: m.TestInstructionsPlayer })));
 
@@ -73,11 +83,13 @@ const MainAppLayout: React.FC = () => {
 
     return (
         <div className="min-h-screen font-sans relative flex flex-col">
+            <AiKeyWarning />
+            <SkipToContent />
             <Header />
             <Suspense fallback={<div className="h-16" />}>
                 <TestInstructionsPlayer />
             </Suspense>
-            <main className="flex-grow">
+            <main id="main-content" role="main" className="flex-grow pt-24">
                 <Suspense fallback={<LoadingFallback />}>
                     <Routes>
                         <Route index element={<Home />} />
@@ -91,6 +103,7 @@ const MainAppLayout: React.FC = () => {
                         <Route path="hospitals" element={<HospitalLocator />} />
                         <Route path="reminders" element={<RemindersPage />} />
                         <Route path="progress" element={<ProgressPage />} />
+                        <Route path="chat" element={<ChatPage />} /> {/* Add Chat Route */}
                         <Route path="*" element={<Navigate to="/home" replace />} />
                     </Routes>
                 </Suspense>
@@ -159,8 +172,8 @@ const AppContent: React.FC = () => {
             <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/setup" element={<PersonalizedSetupPage />} />
-                    <Route path="/home/*" element={<MainAppLayout />} />
+                    <Route path="/setup" element={<ProtectedRoute><PersonalizedSetupPage /></ProtectedRoute>} />
+                    <Route path="/home/*" element={<ProtectedRoute><MainAppLayout /></ProtectedRoute>} />
                     {/* Always show WelcomePage at root */}
                     <Route path="/" element={<WelcomePage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
@@ -171,13 +184,32 @@ const AppContent: React.FC = () => {
 };
 
 export default function App() {
+  // Setup global error handling and analytics on app initialization
+  React.useEffect(() => {
+    setupGlobalErrorHandling();
+    
+    // Initialize Google Analytics if measurement ID is available
+    const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
+    if (measurementId) {
+      initializeGoogleAnalytics(measurementId);
+    }
+  }, []);
+
   return (
+    <ErrorBoundary>
     <ThemeProvider>
         <LanguageProvider>
             <RoutineProvider>
-                <AppContent />
+                <AIProvider>
+              <ToastProvider>
+                    <AppContent />
+                {/* <DebugPanel /> */}
+                {/* <AnalyticsDashboard /> */}
+              </ToastProvider>
+                </AIProvider>
             </RoutineProvider>
         </LanguageProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }

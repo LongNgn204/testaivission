@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // Fix: Import BrainCircuit directly from lucide-react
 import { RotateCcw, Download, Share2, BrainCircuit } from 'lucide-react';
 import { ColorBlindTestService, Plate } from '../services/colorBlindService';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 import { StorageService } from '../services/storageService';
 import { ColorBlindResult, AIReport, StoredTestResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,7 +12,6 @@ import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
 
 const colorBlindService = new ColorBlindTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 const IshiharaPlate: React.FC<{ text: string; plateId?: number }> = ({ text, plateId = 0 }) => {
@@ -192,6 +191,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 };
 
 export const ColorBlindTest: React.FC = () => {
+  const aiService = useAI();
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');

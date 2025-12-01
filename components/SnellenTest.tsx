@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 // Fix: Import BrainCircuit directly from lucide-react
 import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft, RotateCcw, Download, Share2, BrainCircuit } from 'lucide-react';
 import { SnellenTestService, levels } from '../services/snellenService';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 import { StorageService } from '../services/storageService';
 import { SnellenResult, AIReport, StoredTestResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,7 +12,6 @@ import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
 
 const snellenService = new SnellenTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 interface SnellenQuestion {
@@ -128,6 +127,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 };
 
 export const SnellenTest: React.FC = () => {
+  const aiService = useAI();
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');

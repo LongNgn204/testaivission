@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 // Fix: Import BrainCircuit directly from lucide-react
 import { RotateCcw, Download, Share2, BrainCircuit } from 'lucide-react';
 import { DuochromeTestService, DuochromeUserInput } from '../services/duochromeService';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 import { StorageService } from '../services/storageService';
 import { DuochromeResult, AIReport, StoredTestResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,7 +12,6 @@ import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
 
 const duochromeService = new DuochromeTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 const Loader: React.FC = () => {
@@ -132,6 +131,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 };
 
 export const DuochromeTest: React.FC = () => {
+  const aiService = useAI();
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');

@@ -3,10 +3,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Volume2, X, Loader2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 import { decode, decodeAudioData, playAudioBuffer } from '../utils/audioUtils';
 
-const aiService = new AIService();
+
 
 // General instructions (spoken first for ALL tests)
 const GENERAL_INSTRUCTIONS: (keyof typeof import('../i18n').translations.en)[] = [
@@ -25,6 +25,7 @@ const TEST_INSTRUCTIONS_MAP: Record<string, (keyof typeof import('../i18n').tran
 };
 
 export const TestInstructionsPlayer: React.FC = () => {
+  const aiService = useAI();
     const { t, language } = useLanguage();
     const location = useLocation();
     const [isToastVisible, setIsToastVisible] = useState(false);

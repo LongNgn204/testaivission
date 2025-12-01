@@ -4,18 +4,19 @@ import { RoutineActivity } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useRoutine } from '../context/RoutineContext';
 import { decode, decodeAudioData, playAudioBuffer } from '../utils/audioUtils';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 
 const TOTAL_CYCLES = 5;
 const STEP_DURATION = 15; // seconds
 
-const aiService = new AIService();
+
 
 type AudioKey = 'intro' | 'focus_near' | 'focus_far' | 'finished';
 
 export const InteractiveExerciseModal: React.FC<{ activity: RoutineActivity; onClose: () => void }> = ({ activity, onClose }) => {
     const { t, language } = useLanguage();
     const { markActivityAsCompleted } = useRoutine();
+    const aiService = useAI();
     
     const phrases = useMemo(() => ({
         intro: t('interactive_exercise_intro'),

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, User, Phone, Calendar, LogIn, Zap } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { userLoginSchema } from '../utils/validation';
 
 interface UserData {
   name: string;
@@ -63,28 +64,19 @@ export default function LoginPage() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: { name?: string; age?: string; phone?: string } = {};
-
-    if (!name.trim()) {
-      newErrors.name = language === 'vi' ? 'Vui lòng nhập tên' : 'Please enter your name';
-    } else if (name.trim().length < 2) {
-      newErrors.name = language === 'vi' ? 'Tên phải có ít nhất 2 ký tự' : 'Name must be at least 2 characters';
+    // Validate with Zod schema (centralized rules)
+    const parsed = userLoginSchema.safeParse({ name, age, phone });
+    if (!parsed.success) {
+      const fieldErrors: { name?: string; age?: string; phone?: string } = {};
+      for (const issue of parsed.error.issues) {
+        const path = (issue.path?.[0] as 'name' | 'age' | 'phone') || 'name';
+        fieldErrors[path] = issue.message;
     }
-
-    if (!age.trim()) {
-      newErrors.age = language === 'vi' ? 'Vui lòng nhập tuổi' : 'Please enter your age';
-    } else if (isNaN(Number(age)) || Number(age) < 5 || Number(age) > 120) {
-      newErrors.age = language === 'vi' ? 'Tuổi phải từ 5-120' : 'Age must be between 5-120';
+      setErrors(fieldErrors);
+      return false;
     }
-
-    if (!phone.trim()) {
-      newErrors.phone = language === 'vi' ? 'Vui lòng nhập số điện thoại' : 'Please enter phone number';
-    } else if (!/^0\d{9,10}$/.test(phone.trim())) {
-      newErrors.phone = language === 'vi' ? 'Số điện thoại không hợp lệ (VD: 0912345678)' : 'Invalid phone number';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors({});
+    return true;
   };
 
   const handleLogin = () => {
@@ -168,6 +160,7 @@ export default function LoginPage() {
               </label>
               <input
                 type="text"
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className={`w-full px-4 py-3 rounded-lg border ${
@@ -188,6 +181,8 @@ export default function LoginPage() {
               </label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 className={`w-full px-4 py-3 rounded-lg border ${
@@ -210,13 +205,15 @@ export default function LoginPage() {
               </label>
               <input
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className={`w-full px-4 py-3 rounded-lg border ${
                   errors.phone 
                     ? 'border-red-500 focus:ring-red-500' 
                     : 'border-gray-300 focus:ring-blue-500'
-                } dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:border-transparent transition-all`}
+                } dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:border-transparent transition-all min-h-[44px]`}
                 placeholder="0912345678"
               />
               {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}

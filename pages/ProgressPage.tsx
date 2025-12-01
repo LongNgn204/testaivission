@@ -3,10 +3,9 @@ import { useLanguage } from '../context/LanguageContext';
 import { TrendingUp, TrendingDown, Minus, Activity, Eye, Droplet, Palette, Grid, TestTube } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { StoredTestResult, TestType } from '../types';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 
 const storage = new StorageService();
-const aiService = new AIService();
 
 const scoreToNumber = (score: string): number => {
   switch (score) {
@@ -80,6 +79,8 @@ const SimpleLineChart: React.FC<{ points: { x: string; y: number }[] }> = ({ poi
 
 export default function ProgressPage() {
   const { language } = useLanguage();
+  // Use AI service inside component to respect React Hooks rules
+  const aiService = useAI();
   const history: StoredTestResult[] = storage.getTestHistory();
   const [insights, setInsights] = useState<any>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);

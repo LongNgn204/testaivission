@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 // Fix: Import BrainCircuit directly from lucide-react
 import { RotateCcw, Check, Download, Share2, BrainCircuit } from 'lucide-react';
 import { AmslerGridTestService } from '../services/amslerGridService';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 import { StorageService } from '../services/storageService';
 import { AmslerGridResult, AIReport, StoredTestResult } from '../types';
 import { AmslerGrid } from './AmslerGrid';
@@ -13,7 +13,6 @@ import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
 
 const amslerService = new AmslerGridTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 const Loader: React.FC = () => {
@@ -185,6 +184,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 };
 
 export const AmslerGridTest: React.FC = () => {
+  const aiService = useAI();
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');
