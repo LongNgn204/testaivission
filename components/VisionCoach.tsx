@@ -305,12 +305,18 @@ export const VisionCoach: React.FC = () => {
         setStatus('thinking');
 
         try {
-            const history = storageService.getTestHistory();
-            const context = history.length > 0 ? history[0] : null;
+            let botResponse = '';
+            await aiService.generateChatResponse(userMessage, language, (chunk) => {
+                botResponse += chunk;
+                setChatHistory(prev => {
+                    const lastMsg = prev[prev.length - 1];
+                    if (lastMsg && lastMsg.role === 'bot') {
+                        return [...prev.slice(0, -1), { role: 'bot', text: botResponse }];
+                    }
+                    return [...prev, { role: 'bot', text: botResponse }];
+                });
+            });
 
-            const response = await aiService.chat(userMessage, context, userProfile, language);
-
-            setChatHistory(prev => [...prev, { role: 'bot', text: response }]);
             setStatus('idle');
         } catch (error) {
             console.error('Chat error:', error);

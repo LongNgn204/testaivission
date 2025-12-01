@@ -31,6 +31,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
+    <!-- ⚡ Fonts: Optimized Google Fonts with font-display=swap for better performance -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap">
+    </noscript>
+    
+    <!-- Fallback fonts in case Google Fonts fails to load -->
+    <style>
+      @font-face {
+        font-family: 'Inter Fallback';
+        src: local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), sans-serif;
+        ascent-override: 90%;
+        descent-override: 22%;
+        line-gap-override: 0%;
+      }
+      
+      @font-face {
+        font-family: 'Outfit Fallback';
+        src: local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), sans-serif;
+        ascent-override: 90%;
+        descent-override: 22%;
+        line-gap-override: 0%;
+      }
+    </style>
+    
     <!-- Tailwind CSS now processed via PostCSS + Vite -->
   <script type="importmap">
 {
@@ -47,11 +72,6 @@
   }
 }
 </script>
-    <!-- ⚡ Fonts: Preload stylesheet to improve LCP and avoid @import in CSS -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap">
-    </noscript>
 </head>
   <body>
     <!-- Global styles & animations now in index.css (PostCSS processed) -->

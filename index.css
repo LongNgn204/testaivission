@@ -7,10 +7,19 @@
 @layer base {
   body {
     @apply bg-background-light text-text-main dark:bg-background-dark dark:text-text-dark antialiased font-sans;
+    /* Font rendering optimization */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern" 1;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;
+    /* Ensure headings render beautifully */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern" 1, "liga" 1;
   }
 
   /* Custom Scrollbar */

@@ -74,9 +74,9 @@ export const translations = {
     welcome_title: "Chăm sóc đôi mắt của bạn, được hỗ trợ bởi AI",
     welcome_subtitle: "Khám phá một cách thông minh hơn để hiểu và cải thiện sức khỏe thị lực của bạn. Bắt đầu hành trình của bạn ngay hôm nay.",
     welcome_info_title: "Tại sao việc chăm sóc mắt lại quan trọng?",
-    welcome_info_p1: "Đôi mắt là cửa sổ tâm hồn, nhưng chúng cũng rất nhạy cảm với các yếu tố như ánh sáng xanh từ màn hình, môi trường và tuổi tác. Chăm sóc mắt thường xuyên giúp phát hiện sớm các vấn-đề tiềm ẩn, giảm nguy cơ mắc các bệnh về mắt và duy trì thị lực tốt nhất.",
+    welcome_info_p1: "Đôi mắt là cửa sổ tâm hồn, nhưng chúng cũng rất nhạy cảm với các yếu tố như ánh sáng xanh từ màn hình, môi trường và tuổi tác. Chăm sóc mắt thường xuyên giúp phát hiện sớm các vấn đề tiềm ẩn, giảm nguy cơ mắc các bệnh về mắt và duy trì thị lực tốt nhất.",
     welcome_info_tests_title: "Các bài test có sẵn",
-    welcome_info_tests_list: "Ứng dụng này cung cấp các bài test được AI hỗ trợ để kiểm tra các khía cạnh khác nhau của thị lực, bao gồm: Kiểm tra thị lực (Snellen), Loạn thị, Mù màu, và Lưới Amsler (phát hiện các vấn-đề về võng mạc).",
+    welcome_info_tests_list: "Ứng dụng này cung cấp các bài test được AI hỗ trợ để kiểm tra các khía cạnh khác nhau của thị lực, bao gồm: Kiểm tra thị lực (Snellen), Loạn thị, Mù màu, và Lưới Amsler (phát hiện các vấn đề về võng mạc).",
     get_started: "Bắt đầu",
     welcome_slogan: "Chăm sóc hôm nay, cho tầm nhìn ngày mai.",
 
@@ -492,6 +492,11 @@ export const translations = {
     // Welcome Page
     welcome_title: "Care for Your Eyes, Powered by AI",
     welcome_subtitle: "Discover a smarter way to understand and improve your vision health. Start your journey today.",
+    welcome_info_title: "Why Eye Care Matters",
+    welcome_info_p1: "Your eyes are sensitive to blue light from screens, the environment, and aging. Regular eye care helps detect issues early and maintain the best vision.",
+    welcome_info_tests_title: "Available Tests",
+    welcome_info_tests_list: "This app provides AI-assisted tests to evaluate different aspects of vision, including: Snellen (visual acuity), Astigmatism, Color Blindness, and the Amsler Grid (retinal issues).",
+    welcome_slogan: "Care today, vision tomorrow.",
     get_started: "Get Started",
 
     // Navigation

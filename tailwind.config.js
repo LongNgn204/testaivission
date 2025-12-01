@@ -69,8 +69,28 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Outfit', 'sans-serif'], // Modern headings
+        sans: [
+          'Inter',
+          'Inter Fallback',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif'
+        ],
+        display: [
+          'Outfit',
+          'Outfit Fallback',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif'
+        ], // Modern headings
       },
       borderRadius: {
         'xl': '1rem',
