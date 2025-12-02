@@ -50,17 +50,25 @@ export const onRequest: PagesFunction = async (context) => {
     // Build the request to Google Gemini API
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${body.model}:generateContent?key=${apiKey}`;
 
+    // Normalize generation config to include both camelCase and snake_case keys
+    const cfg: any = body.config || {};
+    const generationConfig: Record<string, any> = { ...cfg };
+    if (cfg.responseMimeType) generationConfig.response_mime_type = cfg.responseMimeType;
+    if (cfg.responseSchema) generationConfig.response_schema = cfg.responseSchema;
+    if (cfg.maxOutputTokens !== undefined) generationConfig.max_output_tokens = cfg.maxOutputTokens;
+    if (cfg.topP !== undefined) generationConfig.top_p = cfg.topP;
+    if (cfg.topK !== undefined) generationConfig.top_k = cfg.topK;
+
     const geminiRequest = {
       contents: [
         {
+          role: 'user',
           parts: [
-            {
-              text: body.contents,
-            },
+            { text: body.contents },
           ],
         },
       ],
-      generationConfig: body.config,
+      generationConfig,
     };
 
     const response = await fetch(geminiUrl, {
@@ -75,7 +83,10 @@ export const onRequest: PagesFunction = async (context) => {
 
     if (!response.ok) {
       console.error('Gemini API error:', data);
-      return new Response(JSON.stringify(data), {
+      return new Response(JSON.stringify({
+        error: data.error || data,
+        request: geminiRequest,
+      }), {
         status: response.status,
         headers: corsHeaders,
       });

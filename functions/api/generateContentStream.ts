@@ -50,6 +50,7 @@ export const onRequest: PagesFunction = async (context) => {
     const geminiRequest = {
       contents: [
         {
+          role: 'user',
           parts: [
             {
               text: body.contents,
@@ -57,7 +58,7 @@ export const onRequest: PagesFunction = async (context) => {
           ],
         },
       ],
-      generationConfig: body.config,
+      generationConfig: body.config ?? {},
     };
 
     const response = await fetch(geminiUrl, {

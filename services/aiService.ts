@@ -7,7 +7,10 @@ import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights,
 // ⚡ ULTRA-FAST AI CONFIGURATION - OPTIMIZED FOR SPEED & POWER
 const AI_CONFIG = {
   gemini: {
-    model: 'gemini-2.5-pro',
+    models: {
+      pro: (import.meta as any).env?.VITE_GEMINI_MODEL_PRO || 'gemini-2.5-pro',
+      flash: (import.meta as any).env?.VITE_GEMINI_MODEL_FLASH || 'gemini-2.5-flash',
+    },
     temperature: 0.2,
     maxTokens: 2048,
     topP: 0.8,
@@ -74,6 +77,11 @@ export class AIService {
       logger.error('Failed to dynamically import @google/genai', err);
       this.enabled = false;
     }
+  }
+
+  private getModel(kind: 'pro' | 'flash'): string {
+    const m = AI_CONFIG.gemini.models;
+    return kind === 'flash' ? (m.flash || m.pro) : (m.pro || m.flash);
   }
 
   private async callGeminiAPI(model: string, contents: string, config: any = {}) {
@@ -249,7 +257,7 @@ export class AIService {
     const prompt = `You are Eva, a friendly AI vision coach. Offer ONE short, encouraging, helpful tip (max 25 words) in ${langInstruction} based on context. Respond ONLY with the tip.\n\nCONTEXT:\n- User Profile: ${userProfile ? JSON.stringify(userProfile) : 'Not available.'}\n- Last Test: ${lastTest ? JSON.stringify({ type: lastTest.testType, severity: lastTest.report.severity }) : 'Not available.'}`;
 
     try {
-      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, prompt, {
+      const response = await this.callGeminiAPI(this.getModel('flash'), prompt, {
         temperature: 0.6,
         maxOutputTokens: 100,
       });
@@ -272,7 +280,7 @@ export class AIService {
 
     return this.withRetry(async () => {
       logger.info('Generating personalized routine...', { answers });
-      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, `${prompt}\nUSER PROFILE:\n${JSON.stringify(answers)}`, {
+      const response = await this.callGeminiAPI(this.getModel('pro'), `${prompt}\nUSER PROFILE:\n${JSON.stringify(answers)}`, {
         temperature: 0.5,
         maxOutputTokens: AI_CONFIG.gemini.maxTokens,
         responseMimeType: 'application/json',
@@ -325,7 +333,7 @@ export class AIService {
 
     return this.withRetry(async () => {
       logger.info('Generating dashboard insights...', { historyCount: history.length });
-      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, `${prompt}\nTEST HISTORY (latest first, max 15):\n${JSON.stringify(history.slice(0, 15).map(r => ({ test: r.testType, date: r.date, severity: r.report.severity })), null, 2)}`, {
+      const response = await this.callGeminiAPI(this.getModel('pro'), `${prompt}\nTEST HISTORY (latest first, max 15):\n${JSON.stringify(history.slice(0, 15).map(r => ({ test: r.testType, date: r.date, severity: r.report.severity })), null, 2)}`, {
         temperature: 0.2,
         maxOutputTokens: AI_CONFIG.gemini.maxTokens,
         responseMimeType: 'application/json',
@@ -365,7 +373,7 @@ export class AIService {
     try {
       if (this.useProxy) {
         // Use proxy streaming
-        const reader = await this.callGeminiStreamAPI(AI_CONFIG.gemini.model, prompt, {
+        const reader = await this.callGeminiStreamAPI(this.getModel('flash'), prompt, {
           temperature: 0.1,
           maxOutputTokens: 150,
         });
@@ -397,7 +405,7 @@ export class AIService {
       } else {
         // Direct streaming
         const stream = await this.ai.models.generateContentStream({
-          model: AI_CONFIG.gemini.model,
+          model: this.getModel('flash'),
           contents: prompt,
           config: { temperature: 0.1, maxOutputTokens: 150 },
         });
@@ -463,7 +471,7 @@ export class AIService {
     const responseSchema = this.createResponseSchema(language);
 
     return this.withRetry(async () => {
-      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, prompt, {
+      const response = await this.callGeminiAPI(this.getModel('pro'), prompt, {
         temperature: AI_CONFIG.gemini.temperature,
         maxOutputTokens: AI_CONFIG.gemini.maxTokens,
         responseMimeType: 'application/json',
