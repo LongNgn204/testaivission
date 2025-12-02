@@ -1,350 +1,541 @@
+<<<<<<< HEAD
+import { logger } from './loggingService';
+import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
 
+// Lưu ý: Để giảm initial JS, SDK @google/genai được import động trong ensureAI()
+// Các schema dùng kiểu chuỗi thuần thay vì hằng số Type để không cần import sớm.
 
-
-
-
+// ⚡ ULTRA-FAST AI CONFIGURATION - OPTIMIZED FOR SPEED & POWER
+const AI_CONFIG = {
+  gemini: {
+    model: 'gemini-2.5-pro',
+    temperature: 0.2,
+    maxTokens: 2048,
+    topP: 0.8,
+    topK: 30,
+  },
+  tts: {
+    cacheDuration: 60 * 60 * 1000,
+    maxCacheSize: 500,
+    voice: { vi: 'vi-VN', en: 'en-US' },
+    rate: 1.0,
+    pitch: 1.0,
+    volume: 1.0,
+  },
+  streaming: { enabled: true, bufferSize: 128 },
+=======
+/**
+ * =================================================================
+ * 🤖 AIService - Tầng giao tiếp với Google Gemini (báo cáo, dashboard, coach, TTS)
+ * =================================================================
+ *
+ * CHỨC NĂNG CHÍNH:
+ * - generateReport: Phân tích kết quả từng bài test → AIReport (JSON an toàn)
+ * - generateDashboardInsights: Tóm tắt xu hướng sức khỏe mắt → DashboardInsights (JSON)
+ * - generateProactiveTip: Gợi ý ngắn dạng voice khi idle
+ * - generatePersonalizedRoutine: Lập lịch trình tuần dựa vào AnswerState
+ * - chat: Trả lời hội thoại ngắn của Vision Coach (text)
+ * - generateSpeech: Phát âm văn bản (Web Speech API) + cache utterance
+ *
+ * CÁCH DÙNG:
+ *   const ai = new AIService();
+ *   const report = await ai.generateReport('snellen', data, history, 'vi');
+ *   const insights = await ai.generateDashboardInsights(history, 'vi');
+ *   const tip = await ai.generateProactiveTip(last, profile, 'vi');
+ *   const cacheKey = await ai.generateSpeech('Xin chào', 'vi');
+ *
+ * CHÚ Ý ENV:
+ * - Ưu tiên: import.meta.env.VITE_GEMINI_API_KEY (Vite)
+ * - Fallback: API_KEY (Node/CI)
+ */
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
 
-// ⚡ ULTRA-FAST AI CONFIGURATION - OPTIMIZED FOR SPEED
-const AI_CONFIG = {
-  gemini: { 
-    model: 'gemini-2.0-flash', // 🔥 STABLE: Gemini 2.0 Flash (production-ready)
-    temperature: 0.15, // ⚡ FASTER: Lower temp = faster generation (from 0.25)
-    maxTokens: 3000, // 🩺 MEDICAL: Increased for detailed clinical reports (200-250 word summaries + 8-10 recommendations)
-    topP: 0.75, // ⚡ FASTER: More focused (from 0.85)
-    topK: 20 // ⚡ FASTER: Quicker token selection (from 25)
-  },
-  tts: {
-    cacheDuration: 60 * 60 * 1000, // ⚡ ULTRA-LONG CACHE: 60 minutes for instant responses
-    maxCacheSize: 500, // ⚡ MASSIVE CACHE: Store even more for instant hits
-    voice: {
-      vi: 'vi-VN', // Vietnamese voice
-      en: 'en-US'  // English voice
-    },
-    rate: 1.0, // Speaking rate
-    pitch: 1.0, // Voice pitch
-    volume: 1.0 // Voice volume
-  },
-  streaming: {
-    enabled: true, // 🌊 STREAMING: Real-time response chunks
-    bufferSize: 128 // ⚡ ULTRA-FAST: Tiny buffer for instant streaming (from 256)
-  }
-};
-
-// � BÁC SĨ CHUYÊN KHOA SCHEMA: Chi tiết như bác sĩ thực thụ
-const createResponseSchema = (language: 'vi' | 'en') => {
-    const L = language === 'vi' ? 'VI' : 'EN';
-    
-    if (language === 'vi') {
-        return {
-            type: Type.OBJECT,
-            properties: {
-                confidence: { 
-                    type: Type.NUMBER, 
-                    description: `Độ tin cậy chẩn đoán (0.85-0.98). Dựa trên độ chính xác kết quả test và lịch sử bệnh án.`
-                },
-                summary: { 
-                    type: Type.STRING, 
-                    description: `200-250 từ TIẾNG VIỆT. PHÂN TÍCH LÂM SÀNG CHI TIẾT như bác sĩ đọc bệnh án:
-                    - Chẩn đoán chính xác với thuật ngữ y khoa
-                    - Giải thích từng chỉ số kết quả test (độ chính xác %, điểm số, mức độ)
-                    - So sánh với tiêu chuẩn bình thường (baseline)
-                    - Ý nghĩa lâm sàng và ảnh hưởng đến sinh hoạt
-                    - Đánh giá tình trạng hiện tại (tốt/trung bình/xấu)
-                    - Dùng ví dụ cụ thể để bệnh nhân hiểu rõ`
-                },
-                trend: { 
-                    type: Type.STRING, 
-                    description: `80-100 từ TIẾNG VIỆT. PHÂN TÍCH XU HƯỚNG BỆNH LÝ như bác sĩ theo dõi:
-                    - So sánh với các lần test trước (cải thiện/xấu đi/ổn định)
-                    - Nhận diện xu hướng nguy hiểm (nếu có)
-                    - Dự đoán diễn biến (1-3 tháng tới)
-                    - Giai đoạn bệnh hiện tại
-                    - Tốc độ tiến triển`
-                },
-                causes: { 
-                    type: Type.STRING, 
-                    description: `80-100 từ TIẾNG VIỆT. PHÂN TÍCH NGUYÊN NHÂN như bác sĩ hỏi bệnh:
-                    - Liệt kê 4-5 nguyên nhân có khả năng cao nhất
-                    - Giải thích cơ chế gây bệnh (sinh lý bệnh)
-                    - Yếu tố nguy cơ (di truyền, lối sống, tuổi tác, môi trường)
-                    - Tác nhân trực tiếp (ánh sáng xanh, căng thẳng mắt, thiếu chất...)
-                    - Dựa trên bằng chứng y khoa`
-                },
-                recommendations: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: `8-10 KHUYẾN CÁO TIẾNG VIỆT như bác sĩ kê đơn chi tiết:
-                    
-                    1. KHẨN CẤP (nếu nghiêm trọng):
-                       - "⚠️ KHẨN CẤP: Gặp bác sĩ nhãn khoa trong 24-48 giờ vì..."
-                    
-                    2. ĐIỀU TRỊ TẠI NHÀ (3-4 mục):
-                       - Bài tập mắt cụ thể (tên, cách làm, tần suất)
-                       - Thuốc nhỏ mắt (loại, liều lượng, thời gian)
-                       - Vitamin/dinh dưỡng (A, Omega-3, Lutein...)
-                       - Nghỉ ngơi đúng cách
-                    
-                    3. THAY ĐỔI LỐI SỐNG (2-3 mục):
-                       - Quy tắc 20-20-20 chi tiết
-                       - Điều chỉnh ánh sáng làm việc
-                       - Giảm thời gian màn hình
-                       - Tư thế đúng
-                    
-                    4. THEO DÕI (1-2 mục):
-                       - "Tái khám sau 2 tuần/1 tháng"
-                       - "Test lại để đánh giá tiến triển"
-                    
-                    5. PHÒNG NGỪA BIẾN CHỨNG:
-                       - Các dấu hiệu cần đến bệnh viện ngay
-                    
-                    Mỗi khuyến cáo PHẢI giải thích TẠI SAO và LÀM THẾ NÀO.`
-                },
-                severity: { 
-                    type: Type.STRING, 
-                    description: `LOW/MEDIUM/HIGH - Phân loại mức độ nghiêm trọng theo tiêu chuẩn y khoa`
-                },
-                prediction: { 
-                    type: Type.STRING, 
-                    description: `80-100 từ TIẾNG VIỆT. TIÊN LƯỢNG như bác sĩ:
-                    - Kết quả có thể đạt được nếu tuân thủ điều trị (%)
-                    - Thời gian hồi phục dự kiến (cụ thể: 2 tuần, 1 tháng, 3 tháng)
-                    - Các mốc theo dõi quan trọng
-                    - Khả năng cải thiện hoàn toàn/một phần
-                    - Động viên tinh thần (hy vọng nhưng thực tế)
-                    - Lưu ý về tuân thủ điều trị`
-                },
-            },
-            required: ["confidence", "summary", "trend", "recommendations", "severity", "causes", "prediction"]
-        };
-    } else {
-        return {
-            type: Type.OBJECT,
-            properties: {
-                confidence: { 
-                    type: Type.NUMBER, 
-                    description: `Diagnostic confidence (0.85-0.98). Based on test accuracy and medical history.`
-                },
-                summary: { 
-                    type: Type.STRING, 
-                    description: `200-250 words ENGLISH. DETAILED CLINICAL ANALYSIS like a doctor reading medical records:
-                    - Precise diagnosis with medical terminology
-                    - Explain each test metric (accuracy %, score, severity)
-                    - Compare with normal standards (baseline)
-                    - Clinical significance and daily life impact
-                    - Current condition assessment (good/average/poor)
-                    - Use specific examples for patient understanding`
-                },
-                trend: { 
-                    type: Type.STRING, 
-                    description: `80-100 words ENGLISH. PATHOLOGICAL TREND ANALYSIS:
-                    - Compare with previous tests (improving/worsening/stable)
-                    - Identify dangerous trends (if any)
-                    - Predict progression (1-3 months ahead)
-                    - Current disease stage
-                    - Progression rate`
-                },
-                causes: { 
-                    type: Type.STRING, 
-                    description: `80-100 words ENGLISH. CAUSE ANALYSIS like medical investigation:
-                    - List 4-5 most likely causes
-                    - Explain disease mechanism (pathophysiology)
-                    - Risk factors (genetics, lifestyle, age, environment)
-                    - Direct triggers (blue light, eye strain, deficiencies...)
-                    - Evidence-based`
-                },
-                recommendations: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                    description: `8-10 RECOMMENDATIONS ENGLISH like detailed prescription:
-                    
-                    1. URGENT (if severe):
-                       - "⚠️ URGENT: See ophthalmologist within 24-48 hours because..."
-                    
-                    2. HOME TREATMENT (3-4 items):
-                       - Specific eye exercises (name, method, frequency)
-                       - Eye drops (type, dosage, duration)
-                       - Vitamins/nutrition (A, Omega-3, Lutein...)
-                       - Proper rest
-                    
-                    3. LIFESTYLE CHANGES (2-3 items):
-                       - Detailed 20-20-20 rule
-                       - Adjust work lighting
-                       - Reduce screen time
-                       - Correct posture
-                    
-                    4. FOLLOW-UP (1-2 items):
-                       - "Re-check after 2 weeks/1 month"
-                       - "Retest to assess progress"
-                    
-                    5. COMPLICATION PREVENTION:
-                       - Warning signs requiring immediate medical attention
-                    
-                    Each recommendation MUST explain WHY and HOW.`
-                },
-                severity: { 
-                    type: Type.STRING, 
-                    description: `LOW/MEDIUM/HIGH - Severity classification by medical standards`
-                },
-                prediction: { 
-                    type: Type.STRING, 
-                    description: `80-100 words ENGLISH. PROGNOSIS:
-                    - Expected outcomes with treatment compliance (%)
-                    - Estimated recovery time (specific: 2 weeks, 1 month, 3 months)
-                    - Important monitoring milestones
-                    - Likelihood of full/partial recovery
-                    - Encouragement (hopeful yet realistic)
-                    - Treatment adherence notes`
-                },
-            },
-            required: ["confidence", "summary", "trend", "recommendations", "severity", "causes", "prediction"]
-        };
+// ⚡ CRITICAL: Get API Key from environment
+const API_KEY: string | undefined = (() => {
+    // Try Vite environment first
+    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_GEMINI_API_KEY) {
+        return (import.meta as any).env.VITE_GEMINI_API_KEY;
     }
+    // Try process.env
+    if (typeof process !== 'undefined' && (process as any)?.env?.VITE_GEMINI_API_KEY) {
+        return (process as any).env.VITE_GEMINI_API_KEY;
+    }
+    // Try window global
+    if (typeof window !== 'undefined' && (window as any).__GEMINI_API_KEY__) {
+        return (window as any).__GEMINI_API_KEY__;
+    }
+    console.warn('⚠️ VITE_GEMINI_API_KEY not found in environment');
+    return undefined;
+})();
+
+// ⚡ ULTRA-FAST AI CONFIGURATION - OPTIMIZED FOR SPEED & INTELLIGENCE
+const AI_CONFIG = {
+   gemini: {
+      model: 'gemini-2.5-flash', // 🚀 UPGRADED: Gemini 2.5 Flash (Latest High-Performance Model)
+      temperature: 0.3, // 🧠 BALANCED: Slightly higher for more natural creativity
+      maxTokens: 4000, // 📝 EXTENDED: For deeper, more comprehensive analysis
+      topP: 0.8, // 🎯 FOCUSED: High relevance
+      topK: 40 // 🧠 DIVERSE: Better vocabulary selection
+   },
+   tts: {
+      cacheDuration: 60 * 60 * 1000, // ⚡ ULTRA-LONG CACHE: 60 minutes for instant responses
+      maxCacheSize: 500, // ⚡ MASSIVE CACHE: Store even more for instant hits
+      voice: {
+         vi: 'vi-VN', // Vietnamese voice
+         en: 'en-US'  // English voice
+      },
+      rate: 1.0, // Speaking rate
+      pitch: 1.0, // Voice pitch
+      volume: 1.0 // Voice volume
+   },
+   streaming: {
+      enabled: true, // 🌊 STREAMING: Real-time response chunks
+      bufferSize: 128 // ⚡ ULTRA-FAST: Tiny buffer for instant streaming
+   }
 };
 
+// Persona mô tả bác sĩ Eva để nhắc AI giữ giọng điệu tự nhiên như bác sĩ 10 năm kinh nghiệm
+const DOCTOR_PERSONA = `
+Bạn là bác sĩ chuyên khoa MẮT (ophthalmologist) tên Eva, có hơn 10 năm kinh nghiệm lâm sàng tại bệnh viện tuyến trung ương.
+- Luôn giải thích rõ ràng, đồng cảm, ưu tiên sức khỏe bệnh nhân.
+- Luôn nhắc bệnh nhân đi khám trực tiếp nếu phát hiện dấu hiệu nguy hiểm.
+- So sánh kết quả hiện tại với lịch sử, nhắc tới số liệu cụ thể.
+- Không dùng lời đao to búa lớn, nói tự nhiên, tiếng Việt đời thường (hoặc tiếng Anh tự nhiên nếu được yêu cầu).
+`;
+
+// Tóm tắt lịch sử kiểm tra để đưa vào prompt, giúp AI hiểu bối cảnh nhanh
+const buildHistoryDigest = (history: StoredTestResult[]) => {
+   if (!history.length) {
+      return 'Chưa có lịch sử bài test.';
+   }
+
+   return history
+      .slice(0, 6)
+      .map((item) => {
+         const date = new Date(item.date).toLocaleDateString();
+         const score = (item.resultData as any)?.score || (item.report as any)?.score || 'N/A';
+         const severity = item.report?.severity || 'unknown';
+         return `- ${item.testType.toUpperCase()} (${date}): score ${score}, severity ${severity}`;
+      })
+      .join('\n');
+};
+
+// 👨‍⚕️ BÁC SĨ CHUYÊN KHOA SCHEMA: Chi tiết, Sâu sắc & Tự nhiên
+const createResponseSchema = (language: 'vi' | 'en') => {
+   if (language === 'vi') {
+      return {
+         type: Type.OBJECT,
+         properties: {
+            confidence: {
+               type: Type.NUMBER,
+               description: `Độ tin cậy chẩn đoán (0.85-0.99). Dựa trên phân tích sâu các dữ liệu.`
+            },
+            summary: {
+               type: Type.STRING,
+               description: `250-300 từ TIẾNG VIỆT. PHÂN TÍCH LÂM SÀNG SÂU SẮC & TỰ NHIÊN:
+                    - Sử dụng ngôn ngữ tự nhiên, đồng cảm, như bác sĩ đang nói chuyện trực tiếp.
+                    - Tránh dùng từ ngữ máy móc, khô khan.
+                    - Chẩn đoán chính xác với tư duy y khoa biện chứng.
+                    - Giải thích cặn kẽ ý nghĩa của từng chỉ số một cách dễ hiểu.
+                    - Kết nối các dữ liệu để đưa ra nhận định tổng thể.`
+            },
+            trend: {
+               type: Type.STRING,
+               description: `100-150 từ TIẾNG VIỆT. PHÂN TÍCH XU HƯỚNG & DỰ BÁO:
+                    - Nhận diện các mẫu hình (patterns) tinh vi trong lịch sử.
+                    - Dự báo rủi ro tiềm ẩn trước khi chúng xảy ra.
+                    - Đánh giá tốc độ lão hóa hoặc phục hồi của mắt.`
+            },
+            causes: {
+               type: Type.STRING,
+               description: `80-100 từ TIẾNG VIỆT. PHÂN TÍCH NGUYÊN NHÂN:
+                    - Liệt kê 4-5 nguyên nhân có khả năng cao nhất.
+                    - Giải thích cơ chế gây bệnh (sinh lý bệnh) một cách đơn giản.
+                    - Yếu tố nguy cơ (di truyền, lối sống, tuổi tác, môi trường).`
+            },
+            recommendations: {
+               type: Type.ARRAY,
+               items: { type: Type.STRING },
+               description: `8-10 LỜI KHUYÊN CỤ THỂ TIẾNG VIỆT:
+                    1. KHẨN CẤP (nếu cần): "⚠️ Cần đi khám ngay..."
+                    2. ĐIỀU TRỊ TẠI NHÀ: Bài tập, thuốc nhỏ mắt (nếu cần), dinh dưỡng.
+                    3. THAY ĐỔI LỐI SỐNG: Quy tắc 20-20-20, ánh sáng, tư thế.
+                    4. THEO DÕI: Khi nào cần test lại.
+                    Mỗi lời khuyên cần giải thích TẠI SAO và LÀM THẾ NÀO.`
+            },
+            severity: {
+               type: Type.STRING,
+               description: `LOW/MEDIUM/HIGH - Phân loại mức độ nghiêm trọng theo tiêu chuẩn y khoa`
+            },
+            prediction: {
+               type: Type.STRING,
+               description: `80-100 từ TIẾNG VIỆT. TIÊN LƯỢNG:
+                    - Khả năng phục hồi.
+                    - Thời gian dự kiến.
+                    - Lời động viên tích cực.`
+            },
+         },
+         required: ["confidence", "summary", "trend", "recommendations", "severity", "causes", "prediction"]
+      };
+   } else {
+      return {
+         type: Type.OBJECT,
+         properties: {
+            confidence: {
+               type: Type.NUMBER,
+               description: `Diagnostic confidence (0.85-0.99).`
+            },
+            summary: {
+               type: Type.STRING,
+               description: `250-300 words ENGLISH. DEEP & NATURAL CLINICAL ANALYSIS:
+                    - Use natural, empathetic language. Avoid robotic phrasing.
+                    - Precise diagnosis.
+                    - Explain metrics thoroughly.`
+            },
+            trend: {
+               type: Type.STRING,
+               description: `100-150 words ENGLISH. TREND ANALYSIS.`
+            },
+            causes: {
+               type: Type.STRING,
+               description: `80-100 words ENGLISH. CAUSE ANALYSIS.`
+            },
+            recommendations: {
+               type: Type.ARRAY,
+               items: { type: Type.STRING },
+               description: `8-10 DETAILED RECOMMENDATIONS.`
+            },
+            severity: {
+               type: Type.STRING,
+               description: `LOW/MEDIUM/HIGH`
+            },
+            prediction: {
+               type: Type.STRING,
+               description: `80-100 words ENGLISH. PROGNOSIS.`
+            },
+         },
+         required: ["confidence", "summary", "trend", "recommendations", "severity", "causes", "prediction"]
+      };
+   }
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
+};
+
+const E2E_MODE = (import.meta as any).env?.VITE_E2E_MODE === 'true';
 
 export class AIService {
-  private ai: GoogleGenAI;
+<<<<<<< HEAD
+  private ai: any | null = null; // GoogleGenAI instance (dynamic)
   private voicesLoaded = false;
-  
+  private readonly geminiApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined;
+  private enabled = true;
+
   constructor() {
-    if (!process.env.API_KEY) {
-      throw new Error("API_KEY environment variable not set");
+    if (!this.geminiApiKey) {
+      console.warn('Gemini API key missing. AI features are disabled.');
+      this.enabled = false;
     }
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    // 🎙️ Ensure voices are loaded
+
     if ('speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = () => {
         this.voicesLoaded = true;
         console.log('🎙️ TTS Voices loaded:', window.speechSynthesis.getVoices().length);
       };
-      // Trigger voice loading
       window.speechSynthesis.getVoices();
     }
   }
 
-  // 🚀 ULTRA-OPTIMIZED TTS CACHE with LRU eviction
-  private ttsCache = new Map<string, { data: string, timestamp: number, hits: number }>();
+  private async ensureAI() {
+    if (!this.enabled) return;
+    if (this.ai) return;
+    try {
+      const mod: any = await import('@google/genai');
+      const GoogleGenAI = mod.GoogleGenAI || (mod as any).default?.GoogleGenAI || mod;
+      this.ai = new GoogleGenAI({ apiKey: this.geminiApiKey });
+    } catch (error) {
+      const err = this.toError(error);
+      logger.error('Failed to dynamically import @google/genai', err);
+      this.enabled = false;
+    }
+  }
 
-  // 🗣️ Utterance cache để play lại
-  private utteranceCache = new Map<string, { utterance: SpeechSynthesisUtterance, timestamp: number, hits: number }>();
+  // ==== Utilities ====
+  private toError(error: unknown): Error {
+    if (error instanceof Error) return error;
+    if (typeof error === 'string') return new Error(error);
+    try { return new Error(JSON.stringify(error)); } catch { return new Error('Unknown error'); }
+  }
 
-  // 🎙️ Helper: Đợi voices load xong
+  private getErrorContext(error: unknown): Record<string, unknown> {
+    if (!error || typeof error !== 'object') return {};
+    const errObj = error as Record<string, any>;
+    return {
+      status: errObj.status ?? errObj.statusCode ?? errObj.response?.status,
+      statusText: errObj.statusText ?? errObj.response?.statusText,
+      cause: errObj.cause,
+      data: errObj.response?.data ?? errObj.response?.body,
+    };
+  }
+
+  // ==== TTS Cache ====
+  private utteranceCache = new Map<string, { utterance: SpeechSynthesisUtterance; timestamp: number; hits: number }>();
+
   private async waitForVoices(): Promise<SpeechSynthesisVoice[]> {
     return new Promise((resolve) => {
       const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        resolve(voices);
-        return;
-      }
-      
-      window.speechSynthesis.onvoiceschanged = () => {
-        resolve(window.speechSynthesis.getVoices());
-      };
+      if (voices.length > 0) return resolve(voices);
+      window.speechSynthesis.onvoiceschanged = () => resolve(window.speechSynthesis.getVoices());
     });
   }
 
+  // ==== TTS ====
   async generateSpeech(text: string, language: 'vi' | 'en'): Promise<string | null> {
     try {
-        const startTime = Date.now();
-        
-        if (!('speechSynthesis' in window)) {
+      if (!('speechSynthesis' in window)) {
+        logger.warn('Web Speech API not supported for speech synthesis', { feature: 'speechSynthesis' });
+        return null;
+      }
+
+      const cacheKey = `${language}:${text}`;
+      const cached = this.utteranceCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < AI_CONFIG.tts.cacheDuration) {
+        cached.hits++;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(cached.utterance);
+        return cacheKey;
+      }
+
+      const voices = await this.waitForVoices();
+      let selectedVoice: SpeechSynthesisVoice | null = null;
+      selectedVoice = voices.find(v => v.lang === (language === 'vi' ? 'vi-VN' : 'en-US') && v.name.includes('Google'))
+        || voices.find(v => v.lang === (language === 'vi' ? 'vi-VN' : 'en-US'))
+        || null;
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = AI_CONFIG.tts.voice[language];
+      if (selectedVoice) utterance.voice = selectedVoice;
+      utterance.rate = AI_CONFIG.tts.rate;
+      utterance.pitch = AI_CONFIG.tts.pitch;
+      utterance.volume = AI_CONFIG.tts.volume;
+
+      this.utteranceCache.set(cacheKey, { utterance, timestamp: Date.now(), hits: 0 });
+      if (this.utteranceCache.size > AI_CONFIG.tts.maxCacheSize) {
+        let lruKey = '';
+        let oldest = Infinity;
+        for (const [k, v] of this.utteranceCache) {
+          if (v.timestamp < oldest) { oldest = v.timestamp; lruKey = k; }
+        }
+        if (lruKey) this.utteranceCache.delete(lruKey);
+      }
+
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+      return cacheKey;
+    } catch (error) {
+      const err = this.toError(error);
+      logger.error(`Failed to generate speech`, err, this.getErrorContext(error));
+      return null;
+    }
+  }
+
+  // ==== AI Helpers ====
+  private createResponseSchema(language: 'vi' | 'en') {
+    return {
+      type: 'object',
+      properties: {
+        confidence: { type: 'number' },
+        summary: { type: 'string' },
+        trend: { type: 'string' },
+        causes: { type: 'string' },
+        recommendations: { type: 'array', items: { type: 'string' } },
+        severity: { type: 'string' },
+        prediction: { type: 'string' },
+      },
+      required: ['confidence', 'summary', 'trend', 'recommendations', 'severity', 'causes', 'prediction'],
+    } as const;
+  }
+
+  private createRoutineSchema() {
+    const activity = { type: 'object', properties: { type: { type: 'string' }, key: { type: 'string' }, name: { type: 'string' }, duration: { type: 'number' } }, required: ['type', 'key', 'name', 'duration'] };
+    return {
+      type: 'object',
+      properties: {
+        Monday: { type: 'array', items: activity },
+        Tuesday: { type: 'array', items: activity },
+        Wednesday: { type: 'array', items: activity },
+        Thursday: { type: 'array', items: activity },
+        Friday: { type: 'array', items: activity },
+        Saturday: { type: 'array', items: activity },
+        Sunday: { type: 'array', items: activity },
+      },
+      required: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    } as const;
+  }
+
+  async generateProactiveTip(lastTest: StoredTestResult | null, userProfile: AnswerState | null, language: 'vi' | 'en'): Promise<string | null> {
+    if (!this.enabled) return null;
+    await this.ensureAI();
+    if (!this.ai) return null;
+
+    const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
+    const prompt = `You are Eva, a friendly AI vision coach. Offer ONE short, encouraging, helpful tip (max 25 words) in ${langInstruction} based on context. Respond ONLY with the tip.\n\nCONTEXT:\n- User Profile: ${userProfile ? JSON.stringify(userProfile) : 'Not available.'}\n- Last Test: ${lastTest ? JSON.stringify({ type: lastTest.testType, severity: lastTest.report.severity }) : 'Not available.'}`;
+
+    try {
+      const response = await this.ai.models.generateContent({
+        model: AI_CONFIG.gemini.model,
+        contents: prompt,
+        config: { temperature: 0.6, maxOutputTokens: 100 },
+      });
+      return response.text?.trim() || null;
+    } catch (error) {
+      const err = this.toError(error);
+      logger.error('Gemini proactive tip error', err, this.getErrorContext(error));
+      return null;
+    }
+  }
+
+  async generatePersonalizedRoutine(answers: { worksWithComputer: string; wearsGlasses: string; goal: string }, language: 'vi' | 'en'): Promise<WeeklyRoutine> {
+    if (!this.enabled) return this.getDefaultRoutine(language);
+    await this.ensureAI();
+    if (!this.ai) return this.getDefaultRoutine(language);
+
+    const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
+    const prompt = `AI, create a personalized 7-day eye care plan based on profile. Mon-Fri: 1 test & 1 exercise. Sat-Sun: rest ([]). Names in ${langInstruction}. Keys: 'snellen','colorblind','astigmatism','amsler','duochrome' tests; 'exercise_20_20_20','exercise_palming','exercise_focus_change' exercises. Respond ONLY valid JSON.`;
+=======
+   private ai: any;
+
+   constructor() {
+      // Không bắt buộc API key khi chỉ dùng Web Speech (generateSpeech)
+      // Chỉ khởi tạo Gemini client khi có key; nếu không, các hàm AI sẽ tự fallback/throw để caller xử lý
+      if (API_KEY) {
+         this.ai = new GoogleGenAI({ apiKey: API_KEY });
+      } else {
+         this.ai = null;
+      }
+
+      // 🎙️ Ensure voices are loaded (cho Web Speech API)
+      if ('speechSynthesis' in window) {
+         window.speechSynthesis.onvoiceschanged = () => {
+            console.log('🎙️ TTS Voices loaded:', window.speechSynthesis.getVoices().length);
+         };
+         // Trigger voice loading
+         window.speechSynthesis.getVoices();
+      }
+   }
+
+   // 🗣️ Utterance cache để play lại
+   private utteranceCache = new Map<string, { utterance: SpeechSynthesisUtterance, timestamp: number, hits: number }>();
+
+   // 🎙️ Helper: Đợi voices load xong
+   private async waitForVoices(): Promise<SpeechSynthesisVoice[]> {
+      return new Promise((resolve) => {
+         const voices = window.speechSynthesis.getVoices();
+         if (voices.length > 0) {
+            resolve(voices);
+            return;
+         }
+
+         window.speechSynthesis.onvoiceschanged = () => {
+            resolve(window.speechSynthesis.getVoices());
+         };
+      });
+   }
+
+   async generateSpeech(text: string, language: 'vi' | 'en'): Promise<string | null> {
+      try {
+         const startTime = Date.now();
+
+         if (!('speechSynthesis' in window)) {
             console.error('Web Speech API not supported');
             return null;
-        }
+         }
 
-        // 💾 SMART CACHE: Check utterance cache
-        const cacheKey = `${language}:${text}`;
-        const cached = this.utteranceCache.get(cacheKey);
-        
-        if (cached && Date.now() - cached.timestamp < AI_CONFIG.tts.cacheDuration) {
+         // 💾 SMART CACHE: Check utterance cache
+         const cacheKey = `${language}:${text}`;
+         const cached = this.utteranceCache.get(cacheKey);
+
+         if (cached && Date.now() - cached.timestamp < AI_CONFIG.tts.cacheDuration) {
             cached.hits++;
             console.log(`⚡ TTS Cache HIT (${cached.hits}x) - 0ms:`, text.substring(0, 40));
-            
+
             // Play lại từ cache
             window.speechSynthesis.cancel(); // Stop any current speech
             window.speechSynthesis.speak(cached.utterance);
             return cacheKey; // Return cache key as identifier
-        }
+         }
 
-        // 🎯 WEB SPEECH API: Đợi và tìm giọng tốt nhất
-        const voices = await this.waitForVoices();
-        let selectedVoice: SpeechSynthesisVoice | null = null;
+         // 🎯 WEB SPEECH API: Đợi và tìm giọng tốt nhất
+         const voices = await this.waitForVoices();
+         let selectedVoice: SpeechSynthesisVoice | null = null;
 
-        if (language === 'vi') {
+         if (language === 'vi') {
             // Ưu tiên: Google Tiếng Việt > Microsoft Tiếng Việt > bất kỳ giọng vi-VN nào
             selectedVoice = voices.find(v => v.lang === 'vi-VN' && v.name.includes('Google')) ||
-                           voices.find(v => v.lang === 'vi-VN' && v.name.includes('Microsoft')) ||
-                           voices.find(v => v.lang.startsWith('vi')) ||
-                           null;
-            
-            if (selectedVoice) {
-                console.log('🎙️ Selected Vietnamese voice:', selectedVoice.name);
-            } else {
-                console.warn('⚠️ No Vietnamese voice found, using default');
-            }
-        } else {
+               voices.find(v => v.lang === 'vi-VN' && v.name.includes('Microsoft')) ||
+               voices.find(v => v.lang.startsWith('vi')) ||
+               null;
+         } else {
             // Tiếng Anh: Ưu tiên giọng nữ Google/Microsoft
             selectedVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google') && v.name.includes('Female')) ||
-                           voices.find(v => v.lang === 'en-US' && v.name.includes('Microsoft') && v.name.includes('Zira')) ||
-                           voices.find(v => v.lang === 'en-US') ||
-                           null;
-        }
+               voices.find(v => v.lang === 'en-US' && v.name.includes('Microsoft') && v.name.includes('Zira')) ||
+               voices.find(v => v.lang === 'en-US') ||
+               null;
+         }
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = AI_CONFIG.tts.voice[language];
-        if (selectedVoice) {
+         const utterance = new SpeechSynthesisUtterance(text);
+         utterance.lang = AI_CONFIG.tts.voice[language];
+         if (selectedVoice) {
             utterance.voice = selectedVoice;
-        }
-        utterance.rate = AI_CONFIG.tts.rate;
-        utterance.pitch = AI_CONFIG.tts.pitch;
-        utterance.volume = AI_CONFIG.tts.volume;
+         }
+         utterance.rate = AI_CONFIG.tts.rate;
+         utterance.pitch = AI_CONFIG.tts.pitch;
+         utterance.volume = AI_CONFIG.tts.volume;
 
-        // 💾 Cache utterance để play lại
-        this.utteranceCache.set(cacheKey, { 
-            utterance, 
-            timestamp: Date.now(), 
-            hits: 0 
-        });
+         // 💾 Cache utterance để play lại
+         this.utteranceCache.set(cacheKey, {
+            utterance,
+            timestamp: Date.now(),
+            hits: 0
+         });
 
-        // 🧹 LRU EVICTION
-        if (this.utteranceCache.size > AI_CONFIG.tts.maxCacheSize) {
+         // 🧹 LRU EVICTION
+         if (this.utteranceCache.size > AI_CONFIG.tts.maxCacheSize) {
             let leastUsedKey = '';
             let leastHits = Infinity;
-            
+
             this.utteranceCache.forEach((value, key) => {
-                if (value.hits < leastHits) {
-                    leastHits = value.hits;
-                    leastUsedKey = key;
-                }
+               if (value.hits < leastHits) {
+                  leastHits = value.hits;
+                  leastUsedKey = key;
+               }
             });
-            
+
             if (leastUsedKey) {
-                this.utteranceCache.delete(leastUsedKey);
-                console.log('🗑️ TTS Cache: Evicted least-used entry');
+               this.utteranceCache.delete(leastUsedKey);
+               console.log('🗑️ TTS Cache: Evicted least-used entry');
             }
-        }
+         }
 
-        const elapsed = Date.now() - startTime;
-        console.log(`⚡ TTS Generated in ${elapsed}ms:`, text.substring(0, 40));
+         const elapsed = Date.now() - startTime;
+         console.log(`⚡ TTS Generated in ${elapsed}ms:`, text.substring(0, 40));
 
-        // Play speech
-        window.speechSynthesis.cancel(); // Stop any current speech
-        window.speechSynthesis.speak(utterance);
-        
-        return cacheKey; // Return cache key as identifier
-    } catch (error) {
-        console.error(`Failed to generate speech for text "${text}":`, error);
-        return null;
-    }
-  }
-  
-  async generateProactiveTip(lastTest: StoredTestResult | null, userProfile: AnswerState | null, language: 'vi' | 'en'): Promise<string | null> {
-    const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
-    const prompt = `
-        You are Eva, a friendly and proactive AI vision coach. The user has been idle in the voice assistant panel. Your goal is to offer ONE short, encouraging, and helpful tip based on their profile and recent activity.
+         // Play speech
+         window.speechSynthesis.cancel(); // Stop any current speech
+         window.speechSynthesis.speak(utterance);
+
+         return cacheKey; // Return cache key as identifier
+      } catch (error) {
+         console.error(`Failed to generate speech for text "${text}":`, error);
+         return null;
+      }
+   }
+
+   async generateProactiveTip(lastTest: StoredTestResult | null, userProfile: AnswerState | null, language: 'vi' | 'en'): Promise<string | null> {
+      const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
+      const prompt = `
+        ${DOCTOR_PERSONA}
+
+        Bạn đang đóng vai một bác sĩ đang chủ động nhắc bệnh nhân. Người dùng đang ở trạng thái idle. Hãy đưa ra 1 câu gợi ý ngắn gọn, tự nhiên, thân thiện.
 
         RULES:
         1.  **Be Conversational:** Start with a friendly opener like "Just a thought..." or "While you're here...".
@@ -356,42 +547,214 @@ export class AIService {
 
         CONTEXT:
         - User Profile: ${userProfile ? JSON.stringify(userProfile) : 'Not available.'}
-        - Last Test Result: ${lastTest ? JSON.stringify({type: lastTest.testType, severity: lastTest.report.severity}) : 'Not available.'}
-
-        EXAMPLE RESPONSES:
-        - (if user works with computer): "Just a thought, since you work on the computer often, remember to take short breaks to relax your eyes."
-        - (if last test was amsler with high severity): "I noticed your last Amsler grid test showed some issues, it's always a good idea to monitor that closely."
-        - (if no context): "Remember, blinking regularly is a great way to keep your eyes moist and comfortable."
+        - Last Test Result: ${lastTest ? JSON.stringify({ type: lastTest.testType, severity: lastTest.report.severity }) : 'Not available.'}
     `;
 
-    try {
-        const response = await this.ai.models.generateContent({
+      try {
+         const response = await this.ai.models.generateContent({
             model: AI_CONFIG.gemini.model,
             contents: prompt,
             config: {
-                temperature: 0.6,
-                maxOutputTokens: 100,
+               temperature: 0.6,
+               maxOutputTokens: 100,
             },
-        });
-        return response.text.trim();
-    } catch (error) {
-        console.error('Gemini API error during proactive tip generation:', error);
-        return null;
-    }
-}
+         });
+         return response.text.trim();
+      } catch (error) {
+         console.error('Gemini API error during proactive tip generation:', error);
+         return null;
+      }
+   }
 
 
-  async generatePersonalizedRoutine(answers: { worksWithComputer: string; wearsGlasses: string; goal: string }, language: 'vi' | 'en'): Promise<WeeklyRoutine> {
-    const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
-    const prompt = `
-      You are an AI assistant creating a personalized weekly eye care plan.
+   async generatePersonalizedRoutine(answers: { worksWithComputer: string; wearsGlasses: string; goal: string }, language: 'vi' | 'en'): Promise<WeeklyRoutine> {
+      const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
+      const prompt = `
+      ${DOCTOR_PERSONA}
+
+      Bạn đang lập kế hoạch chăm sóc mắt cá nhân hóa cho bệnh nhân dựa trên kinh nghiệm bác sĩ nhãn khoa 10 năm.
       Based on the user's profile, create a structured and balanced 7-day routine.
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 
-      USER PROFILE:
-      - Works with computers frequently: ${answers.worksWithComputer}
-      - Wears glasses: ${answers.wearsGlasses}
-      - Main goal: ${answers.goal}
+    const responseSchema = this.createRoutineSchema();
 
+<<<<<<< HEAD
+    return this.withRetry(async () => {
+      logger.info('Generating personalized routine...', { answers });
+      const response = await this.ai.models.generateContent({
+        model: AI_CONFIG.gemini.model,
+        contents: `${prompt}\nUSER PROFILE:\n${JSON.stringify(answers)}`,
+        config: { temperature: 0.5, maxOutputTokens: AI_CONFIG.gemini.maxTokens, responseMimeType: 'application/json', responseSchema },
+      });
+      const routine = JSON.parse(response.text.trim());
+      logger.info('Generated routine');
+      return routine;
+    }).catch((error) => {
+      logger.error('Routine generation failed, fallback to default', error as Error, { answers });
+      return this.getDefaultRoutine(language);
+    });
+  }
+
+  private getDefaultRoutine(language: 'vi' | 'en'): WeeklyRoutine {
+    const isVi = language === 'vi';
+    return {
+      Monday: [{ type: 'test', key: 'snellen', name: isVi ? 'Kiểm tra thị lực Snellen' : 'Snellen Test', duration: 3 }],
+      Tuesday: [{ type: 'exercise', key: 'exercise_20_20_20', name: isVi ? 'Bài tập 20-20-20' : '20-20-20 Exercise', duration: 2 }],
+      Wednesday: [],
+      Thursday: [{ type: 'test', key: 'amsler', name: isVi ? 'Kiểm tra lưới Amsler' : 'Amsler Grid Test', duration: 2 }],
+      Friday: [{ type: 'exercise', key: 'exercise_palming', name: isVi ? 'Bài tập thư giãn mắt' : 'Eye Relaxation Exercise', duration: 2 }],
+      Saturday: [],
+      Sunday: [],
+    };
+  }
+
+  async generateDashboardInsights(history: StoredTestResult[], language: 'vi' | 'en'): Promise<DashboardInsights> {
+    if (!this.enabled) {
+      // Fallback very light insights when AI disabled
+      return { score: 70, rating: 'GOOD', trend: history.length >= 3 ? 'STABLE' : 'INSUFFICIENT_DATA', overallSummary: language === 'vi' ? 'Chưa bật AI. Điểm mặc định tham khảo.' : 'AI disabled. Showing placeholder insights.', positives: [], areasToMonitor: [], proTip: language === 'vi' ? 'Bật AI để nhận phân tích chi tiết.' : 'Enable AI for detailed insights.' } as DashboardInsights;
+    }
+    await this.ensureAI();
+    if (!this.ai) {
+      return { score: 70, rating: 'GOOD', trend: 'INSUFFICIENT_DATA', overallSummary: 'AI unavailable.', positives: [], areasToMonitor: [], proTip: 'Enable AI.' } as DashboardInsights;
+    }
+
+    const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
+    const prompt = `AI Health Analyst, generate a "Vision Wellness Dashboard" JSON in ${langInstruction}. Follow constraints, respond ONLY valid JSON.`;
+    const responseSchema = {
+      type: 'object',
+      properties: {
+        score: { type: 'number' },
+        rating: { type: 'string' },
+        trend: { type: 'string' },
+        overallSummary: { type: 'string' },
+        positives: { type: 'array', items: { type: 'string' } },
+        areasToMonitor: { type: 'array', items: { type: 'string' } },
+        proTip: { type: 'string' },
+      },
+      required: ['score', 'rating', 'trend', 'overallSummary', 'positives', 'areasToMonitor', 'proTip'],
+    } as const;
+
+    return this.withRetry(async () => {
+      logger.info('Generating dashboard insights...', { historyCount: history.length });
+      const response = await this.ai.models.generateContent({
+        model: AI_CONFIG.gemini.model,
+        contents: `${prompt}\nTEST HISTORY (latest first, max 15):\n${JSON.stringify(history.slice(0, 15).map(r => ({ test: r.testType, date: r.date, severity: r.report.severity })), null, 2)}`,
+        config: { temperature: 0.2, maxOutputTokens: AI_CONFIG.gemini.maxTokens, responseMimeType: 'application/json', responseSchema },
+      });
+      const result = JSON.parse(response.text.trim());
+      logger.info('Dashboard insights generated', { score: result.score, trend: result.trend });
+      return result;
+    });
+  }
+
+  // ==== Chat streaming ====
+  private lastChatAt = 0;
+  private minChatIntervalMs = 800;
+  private chatInFlight = false;
+
+  async generateChatResponse(userMessage: string, language: 'vi' | 'en', onUpdate: (chunk: string) => void): Promise<void> {
+    if (!this.enabled) {
+      onUpdate(language === 'vi' ? 'AI đang tắt. Vui lòng thêm API key.' : 'AI disabled. Please add API key.');
+      return;
+    }
+    await this.ensureAI();
+    if (!this.ai) {
+      onUpdate(language === 'vi' ? 'AI không khả dụng.' : 'AI unavailable.');
+      return;
+    }
+
+    const now = Date.now();
+    if (this.chatInFlight) {
+      onUpdate(language === 'vi' ? '⏳ Đang xử lý câu trước...' : '⏳ Processing previous message...');
+      return;
+    }
+    if (now - this.lastChatAt < this.minChatIntervalMs) {
+      onUpdate(language === 'vi' ? '⏱️ Vui lòng đợi một chút rồi thử lại.' : '⏱️ Please wait a moment and try again.');
+      return;
+    }
+    this.chatInFlight = true;
+
+    const prompt = `As Eva (a friendly AI eye doctor), give a brief, helpful answer in ${language === 'vi' ? 'VIETNAMESE' : 'ENGLISH'} to the user's question. Question: "${userMessage}"`;
+
+    try {
+      const stream = await this.ai.models.generateContentStream({
+        model: AI_CONFIG.gemini.model,
+        contents: prompt,
+        config: { temperature: 0.1, maxOutputTokens: 150 },
+      });
+
+      for await (const chunk of stream) {
+        const chunkText = (chunk as any).text;
+        if (chunkText) onUpdate(chunkText);
+      }
+    } catch (error) {
+      const err = this.toError(error);
+      logger.error('Gemini chat streaming error', err, this.getErrorContext(error));
+      onUpdate(language === 'vi' ? 'Xin lỗi, tôi gặp lỗi. Thử lại nhé.' : 'Sorry, an error occurred. Please try again.');
+    } finally {
+      this.chatInFlight = false;
+      this.lastChatAt = Date.now();
+    }
+  }
+
+  // ==== Retry helper ====
+  private async withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+    let lastError: Error | undefined;
+    for (let i = 0; i < retries; i++) {
+      try { return await fn(); } catch (error: any) {
+        lastError = error;
+        if (i < retries - 1) {
+          logger.warn(`API call failed. Retrying in ${delay}ms...`, { attempt: i + 1, maxRetries: retries, error: error.message });
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2;
+        }
+      }
+    }
+    logger.error('API call failed after all retries.', lastError as Error, { function: fn.name });
+    throw lastError;
+  }
+
+  // ==== Report generation ====
+  private createPrompt(testType: TestType, data: any, history: StoredTestResult[], language: 'vi' | 'en'): string {
+    const isVi = language === 'vi';
+    const baseInstruction = isVi
+      ? 'BẠN LÀ BÁC SĨ EVA - CHUYÊN GIA NHÃN KHOA. Phân tích dữ liệu test, đưa ra chẩn đoán chi tiết, chuyên nghiệp bằng TIẾNG VIỆT theo JSON.'
+      : 'YOU ARE DR. EVA - OPHTHALMOLOGY EXPERT. Analyze the test data and provide a detailed, professional diagnosis in ENGLISH using JSON.';
+
+    const guidelines: Record<TestType, string> = {
+      snellen: isVi ? 'Snellen: Đánh giá thị lực (20/20 là chuẩn)...' : 'Snellen: Assess visual acuity (20/20 is standard)...',
+      colorblind: isVi ? 'Ishihara: Đánh giá mù màu...' : 'Ishihara: Assess color blindness...',
+      amsler: isVi ? 'Amsler: Sàng lọc bệnh lý hoàng điểm...' : 'Amsler: Screen for macular disease...',
+      astigmatism: isVi ? 'Astigmatism: Kiểm tra loạn thị...' : 'Astigmatism: Check for astigmatism...',
+      duochrome: isVi ? 'Duochrome: Kiểm tra độ chính xác của kính...' : 'Duochrome: Check prescription accuracy...',
+    } as any;
+
+    const relevant = history.filter(h => h.testType === testType).slice(0, 3).map(h => ({ date: h.date, result: h.resultData, severity: h.report.severity }));
+
+    return `${baseInstruction}\n\nGUIDELINE FOR ${String(testType).toUpperCase()}:\n${guidelines[testType]}\n\nHISTORY:\n${relevant.length ? JSON.stringify(relevant, null, 2) : 'No relevant history.'}\n\nDATA:\n${JSON.stringify(data, null, 2)}`;
+  }
+
+  async generateReport(testType: TestType, testData: any, history: StoredTestResult[], language: 'vi' | 'en'): Promise<AIReport> {
+    if (!this.enabled) throw new Error('AI disabled');
+    await this.ensureAI();
+    if (!this.ai) throw new Error('AI unavailable');
+
+    const startTime = Date.now();
+    const prompt = this.createPrompt(testType, testData, history, language);
+    const responseSchema = this.createResponseSchema(language);
+
+    return this.withRetry(async () => {
+      const response = await this.ai.models.generateContent({
+        model: AI_CONFIG.gemini.model,
+        contents: prompt,
+        config: { temperature: AI_CONFIG.gemini.temperature, maxOutputTokens: AI_CONFIG.gemini.maxTokens, responseMimeType: 'application/json', responseSchema },
+      });
+
+      const text = response?.text;
+      if (!text) {
+        const blockReason = (response as any)?.candidates?.[0]?.finishReason;
+        throw new Error(`Gemini returned no content. Reason: ${blockReason || 'Unknown'}`);
+=======
       RULES:
       1.  **Structure:**
           -   Monday to Friday: MUST contain exactly TWO activities: one 'test' and one 'exercise'.
@@ -410,74 +773,77 @@ export class AIService {
           -   Respond ONLY with the valid JSON object that adheres to the schema. Do not add any other text or markdown.
     `;
 
-    const activitySchema = {
-      type: Type.OBJECT,
-      properties: {
-        type: { type: Type.STRING, description: "Must be 'test' or 'exercise'." },
-        key: { type: Type.STRING, description: "The unique key for the activity (e.g., 'snellen', 'exercise_20_20_20')." },
-        name: { type: Type.STRING, description: `The display name of the activity in ${langInstruction}.` },
-        duration: { type: Type.NUMBER, description: "Estimated duration in minutes (e.g., 2, 5)." }
-      },
-      required: ["type", "key", "name", "duration"]
-    };
+      const activitySchema = {
+         type: Type.OBJECT,
+         properties: {
+            type: { type: Type.STRING, description: "Must be 'test' or 'exercise'." },
+            key: { type: Type.STRING, description: "The unique key for the activity (e.g., 'snellen', 'exercise_20_20_20')." },
+            name: { type: Type.STRING, description: `The display name of the activity in ${langInstruction}.` },
+            duration: { type: Type.NUMBER, description: "Estimated duration in minutes (e.g., 2, 5)." }
+         },
+         required: ["type", "key", "name", "duration"]
+      };
 
-    const responseSchema = {
-      type: Type.OBJECT,
-      properties: {
-        Monday: { type: Type.ARRAY, items: activitySchema },
-        Tuesday: { type: Type.ARRAY, items: activitySchema },
-        Wednesday: { type: Type.ARRAY, items: activitySchema },
-        Thursday: { type: Type.ARRAY, items: activitySchema },
-        Friday: { type: Type.ARRAY, items: activitySchema },
-        Saturday: { type: Type.ARRAY, items: activitySchema },
-        Sunday: { type: Type.ARRAY, items: activitySchema },
-      },
-      required: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    };
+      const responseSchema = {
+         type: Type.OBJECT,
+         properties: {
+            Monday: { type: Type.ARRAY, items: activitySchema },
+            Tuesday: { type: Type.ARRAY, items: activitySchema },
+            Wednesday: { type: Type.ARRAY, items: activitySchema },
+            Thursday: { type: Type.ARRAY, items: activitySchema },
+            Friday: { type: Type.ARRAY, items: activitySchema },
+            Saturday: { type: Type.ARRAY, items: activitySchema },
+            Sunday: { type: Type.ARRAY, items: activitySchema },
+         },
+         required: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+      };
 
-    try {
-        const response = await this.ai.models.generateContent({
+      try {
+         const response = await this.ai.models.generateContent({
             model: AI_CONFIG.gemini.model,
             contents: prompt,
             config: {
-                temperature: 0.5,
-                maxOutputTokens: AI_CONFIG.gemini.maxTokens,
-                responseMimeType: "application/json",
-                responseSchema: responseSchema
+               temperature: 0.5,
+               maxOutputTokens: AI_CONFIG.gemini.maxTokens,
+               responseMimeType: "application/json",
+               responseSchema: responseSchema
             },
-        });
+         });
 
-        const text = response.text.trim();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
+         const text = response.text.trim();
+         const jsonMatch = text.match(/\{[\s\S]*\}/);
+         if (!jsonMatch) {
             throw new Error("No valid JSON object found in Gemini's response.");
-        }
-        return JSON.parse(jsonMatch[0]);
+         }
+         return JSON.parse(jsonMatch[0]);
 
-    } catch (error) {
-        console.error('Gemini API error during routine generation:', error);
-        // Return a default, safe routine on failure
-        return this.getDefaultRoutine(language);
-    }
-  }
-  
-  private getDefaultRoutine(language: 'vi' | 'en'): WeeklyRoutine {
-    const isVi = language === 'vi';
-    return {
-      Monday: [{ type: 'test', key: 'snellen', name: isVi ? 'Kiểm tra thị lực Snellen' : 'Snellen Test', duration: 3 }],
-      Tuesday: [{ type: 'exercise', key: 'exercise_20_20_20', name: isVi ? 'Bài tập 20-20-20' : '20-20-20 Exercise', duration: 2 }],
-      Wednesday: [],
-      Thursday: [{ type: 'test', key: 'amsler', name: isVi ? 'Kiểm tra lưới Amsler' : 'Amsler Grid Test', duration: 2 }],
-      Friday: [{ type: 'exercise', key: 'exercise_palming', name: isVi ? 'Bài tập thư giãn mắt' : 'Eye Relaxation Exercise', duration: 2 }],
-      Saturday: [],
-      Sunday: [],
-    };
-  }
+      } catch (error) {
+         console.error('Gemini API error during routine generation:', error);
+         // Return a default, safe routine on failure
+         return this.getDefaultRoutine(language);
+      }
+   }
 
-  async generateDashboardInsights(history: StoredTestResult[], language: 'vi' | 'en'): Promise<DashboardInsights> {
-    const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
-    const prompt = `
-      You are a sophisticated AI health analyst. Your task is to generate a "Vision Wellness Dashboard" based on the user's test history.
+   private getDefaultRoutine(language: 'vi' | 'en'): WeeklyRoutine {
+      const isVi = language === 'vi';
+      return {
+         Monday: [{ type: 'test', key: 'snellen', name: isVi ? 'Kiểm tra thị lực Snellen' : 'Snellen Test', duration: 3 }],
+         Tuesday: [{ type: 'exercise', key: 'exercise_20_20_20', name: isVi ? 'Bài tập 20-20-20' : '20-20-20 Exercise', duration: 2 }],
+         Wednesday: [],
+         Thursday: [{ type: 'test', key: 'amsler', name: isVi ? 'Kiểm tra lưới Amsler' : 'Amsler Grid Test', duration: 2 }],
+         Friday: [{ type: 'exercise', key: 'exercise_palming', name: isVi ? 'Bài tập thư giãn mắt' : 'Eye Relaxation Exercise', duration: 2 }],
+         Saturday: [],
+         Sunday: [],
+      };
+   }
+
+   async generateDashboardInsights(history: StoredTestResult[], language: 'vi' | 'en'): Promise<DashboardInsights> {
+      const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
+      const historyDigest = buildHistoryDigest(history);
+      const prompt = `
+      ${DOCTOR_PERSONA}
+
+      You are preparing a concise "Vision Wellness Dashboard" for the patient. Respond strictly in ${langInstruction}.
 
       RULES:
       1.  **Analyze the entire history:** Consider test type, severity, recency, and frequency to identify trends. Be specific in your analysis by referencing actual test results where appropriate.
@@ -492,173 +858,147 @@ export class AIService {
       6.  **Language:** All text output MUST be in ${langInstruction}.
       7.  **Response Format:** Respond ONLY with a valid JSON object that adheres to the provided schema.
 
-      TEST HISTORY (Most recent first):
-      ${JSON.stringify(history.slice(0, 15).map(r => ({test: r.testType, date: r.date, severity: r.report.severity, result: r.resultData})), null, 2)}
+      PATIENT HISTORY DIGEST:
+      ${historyDigest}
+
+      RAW TEST SNAPSHOT (most recent 12):
+      ${JSON.stringify(history.slice(0, 12).map(r => ({ test: r.testType, date: r.date, severity: r.report.severity, result: r.resultData })), null, 2)}
     `;
 
-    const responseSchema = {
-        type: Type.OBJECT,
-        properties: {
+      const responseSchema = {
+         type: Type.OBJECT,
+         properties: {
             score: { type: Type.NUMBER, description: "The calculated vision wellness score from 0 to 100." },
             rating: { type: Type.STRING, description: "The qualitative rating: 'EXCELLENT', 'GOOD', 'AVERAGE', or 'NEEDS_ATTENTION'." },
             trend: { type: Type.STRING, description: "The trend: 'IMPROVING', 'STABLE', 'DECLINING', or 'INSUFFICIENT_DATA'." },
-            overallSummary: { type: Type.STRING, description: `A comprehensive summary (40-60 words) in ${langInstruction}.`},
+            overallSummary: { type: Type.STRING, description: `A comprehensive summary (40-60 words) in ${langInstruction}.` },
             positives: { type: Type.ARRAY, items: { type: Type.STRING }, description: `A list of 1-2 positive points in ${langInstruction}.` },
             areasToMonitor: { type: Type.ARRAY, items: { type: Type.STRING }, description: `A list of 1-2 areas to monitor in ${langInstruction}.` },
             proTip: { type: Type.STRING, description: `A single, actionable Pro Tip (20-30 words) in ${langInstruction}.` },
-        },
-        required: ["score", "rating", "trend", "overallSummary", "positives", "areasToMonitor", "proTip"]
-    };
+         },
+         required: ["score", "rating", "trend", "overallSummary", "positives", "areasToMonitor", "proTip"]
+      };
 
-    try {
-        const response = await this.ai.models.generateContent({
+      try {
+         const response = await this.ai.models.generateContent({
             model: AI_CONFIG.gemini.model,
             contents: prompt,
             config: {
-                temperature: 0.2,
-                maxOutputTokens: AI_CONFIG.gemini.maxTokens,
-                responseMimeType: "application/json",
-                responseSchema: responseSchema,
+               temperature: 0.2,
+               maxOutputTokens: AI_CONFIG.gemini.maxTokens,
+               responseMimeType: "application/json",
+               responseSchema: responseSchema,
             },
-        });
-        const text = response.text.trim();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
+         });
+         const text = response.text.trim();
+         const jsonMatch = text.match(/\{[\s\S]*\}/);
+         if (!jsonMatch) {
             throw new Error("No valid JSON object found in Gemini's response for dashboard insights.");
-        }
-        return JSON.parse(jsonMatch[0]);
-    } catch (error) {
-        console.error('Gemini API error during dashboard insights generation:', error);
-        throw new Error('Failed to generate dashboard insights');
-    }
-  }
+         }
+         return JSON.parse(jsonMatch[0]);
+      } catch (error) {
+         console.error('Gemini API error during dashboard insights generation:', error);
+         throw new Error('Failed to generate dashboard insights');
+      }
+   }
 
-  // Simple conversational response generator for chatbot UI
-  // ⚡ CHAT CACHE for ultra-fast repeated questions
-  private chatCache = new Map<string, { text: string, timestamp: number }>();
-  private readonly CHAT_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
-  async generateChatResponse(userMessage: string, language: 'vi' | 'en'): Promise<string> {
-    const L = language === 'vi' ? 'VI' : 'EN';
-    
-    // ⚡ INSTANT CACHE CHECK
-    const cacheKey = `${language}:${userMessage.toLowerCase().trim()}`;
-    const cached = this.chatCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < this.CHAT_CACHE_DURATION) {
-        console.log('⚡ Chat cache HIT - instant response!');
-        return cached.text;
-    }
+   async generateChatResponse(userMessage: string, language: 'vi' | 'en'): Promise<string> {
+      // This method is kept for backward compatibility but we use chat() method now
+      return this.chat(userMessage, null, null, language);
+   }
 
-    // ⚡ ULTRA-SHORT PROMPT for maximum speed
-    const prompt = `Eva. ${L}. Brief.\nQ: ${userMessage}\nA:`;
 
-    try {
+   async generateReport(testType: TestType, testData: any, history: StoredTestResult[], language: 'vi' | 'en'): Promise<AIReport> {
       const startTime = Date.now();
-      const response = await this.ai.models.generateContent({
-        model: AI_CONFIG.gemini.model,
-        contents: prompt,
-        config: {
-          temperature: 0.05, // ⚡ ULTRA-LOW: Fastest possible (from 0.1)
-          maxOutputTokens: 150, // ⚡ SHORTER: Even faster (from 200)
-          candidateCount: 1,
-          topP: 0.6, // ⚡ ULTRA-FOCUSED
-          topK: 8, // ⚡ MINIMAL: Fastest selection
-        },
-      });
+      const prompt = this.createPrompt(testType, testData, history, language);
+      const responseSchema = createResponseSchema(language);
 
-      const text = (response && (response.text || response.candidates?.[0]?.content?.parts?.[0]?.text)) || '';
-      const elapsed = Date.now() - startTime;
-      console.log(`⚡ Chat response: ${elapsed}ms`);
-      
-      // ⚡ CACHE THE RESPONSE
-      const trimmedText = text.trim();
-      if (trimmedText) {
-          this.chatCache.set(cacheKey, { text: trimmedText, timestamp: Date.now() });
-          
-          // ⚡ AUTO-CLEANUP: Keep cache size manageable
-          if (this.chatCache.size > 50) {
-              const oldestKey = Array.from(this.chatCache.entries())
-                  .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0];
-              this.chatCache.delete(oldestKey);
-          }
-      }
-      
-      return trimmedText;
-    } catch (error) {
-      console.error('❌ Gemini chat error:', error);
-      return language === 'vi' ? 'Xin lỗi, tôi gặp lỗi. Thử lại nhé.' : 'Sorry, error occurred. Try again.';
-    }
-  }
-
-
-  async generateReport(testType: TestType, testData: any, history: StoredTestResult[], language: 'vi' | 'en'): Promise<AIReport> {
-    const startTime = Date.now();
-    const prompt = this.createPrompt(testType, testData, history, language);
-    const responseSchema = createResponseSchema(language);
-
-    try {
-      // SPEED UP: Use streaming for faster first-byte response
-      const response = await this.ai.models.generateContent({
-        model: AI_CONFIG.gemini.model,
-        contents: prompt,
-        config: {
-          temperature: AI_CONFIG.gemini.temperature,
-          maxOutputTokens: AI_CONFIG.gemini.maxTokens,
-          responseMimeType: "application/json",
-          responseSchema: responseSchema,
-          // SPEED UP: Enable candidate count for faster generation
-          candidateCount: 1,
-        },
-      });
-
-      const text = response?.text;
-      if (typeof text !== 'string' || text.trim() === '') {
-        const blockReason = response?.candidates?.[0]?.finishReason;
-        const safetyRatings = response?.candidates?.[0]?.safetyRatings;
-        console.error("Gemini API returned empty or invalid content.", { blockReason, safetyRatings });
-        throw new Error(`Gemini analysis returned no content. Reason: ${blockReason || 'Unknown'}`);
-      }
-      
-      let analysisResult;
       try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          console.error("No valid JSON object found in Gemini's response.", text);
-          throw new Error("No valid JSON object found in Gemini's response.");
-        }
-        analysisResult = JSON.parse(jsonMatch[0]);
-      } catch (e: any) {
-        console.error("Failed to parse JSON response from Gemini.", text, e);
-        throw new Error(`Failed to parse JSON response from Gemini. Error: ${e.message}`);
+         // SPEED UP: Use streaming for faster first-byte response
+         const response = await this.ai.models.generateContent({
+            model: AI_CONFIG.gemini.model,
+            contents: prompt,
+            config: {
+               temperature: AI_CONFIG.gemini.temperature,
+               maxOutputTokens: AI_CONFIG.gemini.maxTokens,
+               responseMimeType: "application/json",
+               responseSchema: responseSchema,
+               // SPEED UP: Enable candidate count for faster generation
+               candidateCount: 1,
+            },
+         });
+
+         const text = response?.text;
+         if (typeof text !== 'string' || text.trim() === '') {
+            const blockReason = response?.candidates?.[0]?.finishReason;
+            const safetyRatings = response?.candidates?.[0]?.safetyRatings;
+            console.error("Gemini API returned empty or invalid content.", { blockReason, safetyRatings });
+            throw new Error(`Gemini analysis returned no content. Reason: ${blockReason || 'Unknown'}`);
+         }
+
+         let analysisResult: any;
+         try {
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+               console.error("No valid JSON object found in Gemini's response.", text);
+               throw new Error("No valid JSON object found in Gemini's response.");
+            }
+            analysisResult = JSON.parse(jsonMatch[0]);
+         } catch (e: any) {
+            console.error("Failed to parse JSON response from Gemini.", text, e);
+            throw new Error(`Failed to parse JSON response from Gemini. Error: ${e.message}`);
+         }
+
+
+         return {
+            id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            testType,
+            timestamp: new Date().toISOString(),
+            totalResponseTime: Date.now() - startTime,
+            confidence: parseFloat((analysisResult.confidence * 100).toFixed(2)),
+            summary: analysisResult.summary,
+            causes: analysisResult.causes,
+            recommendations: analysisResult.recommendations,
+            severity: analysisResult.severity,
+            prediction: analysisResult.prediction,
+            trend: analysisResult.trend,
+         };
+
+      } catch (error) {
+         console.error('Gemini API error during report generation:', error);
+         throw new Error('Gemini analysis failed');
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
       }
+   }
 
-
-      return {
-        id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+<<<<<<< HEAD
+      const analysis = JSON.parse(text);
+      const report: AIReport = {
+        id: `report_${Date.now()}`,
         testType,
         timestamp: new Date().toISOString(),
         totalResponseTime: Date.now() - startTime,
-        confidence: parseFloat((analysisResult.confidence * 100).toFixed(2)),
-        summary: analysisResult.summary,
-        causes: analysisResult.causes,
-        recommendations: analysisResult.recommendations,
-        severity: analysisResult.severity,
-        prediction: analysisResult.prediction,
-        trend: analysisResult.trend,
-      };
+        confidence: parseFloat((analysis.confidence * 100).toFixed(2)),
+        summary: analysis.summary,
+        causes: analysis.causes,
+        recommendations: analysis.recommendations,
+        severity: analysis.severity,
+        prediction: analysis.prediction,
+        trend: analysis.trend,
+      } as AIReport;
 
-    } catch (error) {
-      console.error('Gemini API error during report generation:', error);
-      throw new Error('Gemini analysis failed');
-    }
+      logger.info(`Report generated for ${testType}`, { severity: report.severity, confidence: report.confidence });
+      return report;
+    });
   }
-  
-  private createPrompt(testType: TestType, data: any, history: StoredTestResult[], language: 'vi' | 'en'): string {
-    const isVi = language === 'vi';
-    
-    // � BÁC SĨ CHUYÊN KHOA: Chi tiết, chuyên nghiệp như bác sĩ thực thụ
-    const baseInstruction = isVi 
-    ? `🚨 CHỈ TIẾNG VIỆT - KHÔNG TIẾNG ANH! 🚨
+=======
+   private createPrompt(testType: TestType, data: any, history: StoredTestResult[], language: 'vi' | 'en'): string {
+      const isVi = language === 'vi';
+
+      //  BÁC SĨ CHUYÊN KHOA: Chi tiết, chuyên nghiệp như bác sĩ thực thụ
+      const baseInstruction = isVi
+         ? `🚨 CHỈ TIẾNG VIỆT - KHÔNG TIẾNG ANH! 🚨
 
 Bạn là Bác sĩ Eva - BÁC SĨ CHUYÊN KHOA NHÃN KHOA với 15+ năm kinh nghiệm lâm sàng.
 
@@ -839,7 +1179,7 @@ CÁCH VIẾT BÁO CÁO LÂM SÀNG:
 ✅ JSON thuần, không markdown.
 
 HÃY VIẾT NHƯ MỘT BÁC SĨ THỰC THỤ đang tư vấn cho bệnh nhân!`
-    : `🚨 ENGLISH ONLY - NO VIETNAMESE! 🚨
+         : `🚨 ENGLISH ONLY - NO VIETNAMESE! 🚨
 
 You are Dr. Eva - BOARD-CERTIFIED OPHTHALMOLOGIST with 15+ years clinical experience.
 
@@ -1021,10 +1361,10 @@ CLINICAL REPORT WRITING:
 
 WRITE LIKE A REAL DOCTOR consulting a patient!`;
 
-    // 🎯 ENHANCED TEST GUIDELINES: Detailed, proactive, insightful
-    let testSpecificInstruction = '';
-    switch (testType) {
-        case 'snellen':
+      // 🎯 ENHANCED TEST GUIDELINES: Detailed, proactive, insightful
+      let testSpecificInstruction = '';
+      switch (testType) {
+         case 'snellen':
             testSpecificInstruction = isVi ? `
 🎯 SNELLEN (Thị Lực) - TIÊU CHUẨN Y HỌC CHÍNH XÁC 93%:
 
@@ -1059,8 +1399,8 @@ WRITE LIKE A REAL DOCTOR consulting a patient!`;
   → "Thị lực đạt 50% so với chuẩn WHO (20/20)"
   → "Độ chính xác 85% (tốt, >80%)"
   → "Severity: LOW (nhờ accuracy cao)"
-  → Confidence: 0.94` 
-            : `
+  → Confidence: 0.94`
+               : `
 🎯 SNELLEN (Visual Acuity) - 93% MEDICAL ACCURACY STANDARD:
 
 📊 REQUIRED DATA:
@@ -1096,7 +1436,7 @@ WRITE LIKE A REAL DOCTOR consulting a patient!`;
   → "Severity: LOW (due to high accuracy)"
   → Confidence: 0.94`;
             break;
-        case 'amsler':
+         case 'amsler':
             testSpecificInstruction = `
 🎯 AMSLER (Sức Khỏe Hoàng Điểm):
 Triệu chứng: sóng→AMD/dịch, mờ→drusen, thiếu→scotoma, méo→biến dạng hình ảnh
@@ -1104,7 +1444,7 @@ Vị trí: trên/dưới-trái/phải=hoàng điểm trên/dưới (TRUNG TÂM=n
 Mức độ: 0→LOW, 1-2 triệu chứng/vùng→LOW, 3-4→MEDIUM, 5+ hoặc trung tâm→HIGH
 Liên kết triệu chứng với các góc phần tư`;
             break;
-        case 'colorblind':
+         case 'colorblind':
             testSpecificInstruction = isVi ? `
 🎯 ISHIHARA (Mù màu) - TIÊU CHUẨN Y HỌC CHÍNH XÁC 93%:
 
@@ -1142,7 +1482,7 @@ Liên kết triệu chứng với các góc phần tư`;
   → Severity: HIGH
   → Confidence: 0.95
   → "Bạn chỉ nhận diện đúng 2/12 bảng (17%), thấp hơn rất nhiều so với tiêu chuẩn bình thường là 90% (11-12/12 bảng)"`
-            : `
+               : `
 🎯 ISHIHARA (Color Blindness) - 93% MEDICAL ACCURACY STANDARD:
 
 📊 REQUIRED DATA:
@@ -1180,7 +1520,7 @@ Liên kết triệu chứng với các góc phần tư`;
   → Confidence: 0.95
   → "You correctly identified only 2 out of 12 plates (17%), much lower than the normal standard of 90% (11-12/12 plates)"`;
             break;
-        case 'astigmatism':
+         case 'astigmatism':
             testSpecificInstruction = `
 🎯 LOẠN THỊ (Độ Cong Giác Mạc):
 Kiểm tra CẢ HAI mắt: rightEye/leftEye hasAstigmatism+type
@@ -1188,108 +1528,164 @@ Loại: không=đều, dọc/ngang=đơn giản, chéo=phức tạp
 Mức độ: cả hai không→LOW, 1 mắt đơn giản→LOW, cả hai hoặc 1 mắt chéo→MEDIUM, cả hai chéo→HIGH
 So sánh mắt phải với mắt trái`;
             break;
-        case 'duochrome':
+         case 'duochrome':
             testSpecificInstruction = `
 🎯 DUOCHROME (Kiểm Tra Toa Kính):
 Kết quả mỗi mắt: bình thường=cân bằng, cận thị=đỏ rõ hơn/kính quá độ, viễn thị=xanh rõ hơn/kính thiếu độ
 Mức độ: cả hai bình thường→LOW, 1 mắt bất thường→LOW, cả hai giống nhau→MEDIUM, hỗn hợp→HIGH(chênh lệch độ hai mắt)
 Giải thích phải/trái và ảnh hưởng của kính`;
             break;
-    }
+      }
 
-    const relevantHistory = history
-        .filter(item => item.testType === testType)
-        .slice(0, 3) // Get the last 3 relevant tests
-        .map(item => ({ date: item.date, result: item.resultData }));
+      const relevantHistory = history
+         .filter(item => item.testType === testType)
+         .slice(0, 3) // Get the last 3 relevant tests
+         .map(item => ({ date: item.date, result: item.resultData }));
 
-    const dataString = JSON.stringify(data, null, 2);
-    const historyString = JSON.stringify(relevantHistory, null, 2);
+      const dataString = JSON.stringify(data, null, 2);
+      const historyString = JSON.stringify(relevantHistory, null, 2);
 
-    return `${baseInstruction}\n\n${testSpecificInstruction}\n\n**TEST HISTORY (for trend analysis):**\n${historyString}\n\n**CURRENT TEST DATA:**\n${dataString}`;
-  }
+      return `${baseInstruction}\n\n${testSpecificInstruction}\n\n**TEST HISTORY (for trend analysis):**\n${historyString}\n\n**CURRENT TEST DATA:**\n${dataString}`;
+   }
 
-  /**
-   * 💬 Chat với AI Eva (Text-based conversation)
-   */
-  async chat(
-    userMessage: string,
-    lastTestResult: StoredTestResult | null,
-    userProfile: AnswerState | null,
-    language: 'vi' | 'en'
-  ): Promise<string> {
-    const startTime = Date.now();
-    
-    const systemInstruction = language === 'vi' 
-      ? `Bạn là Bác sĩ Eva - Trợ lý Bác sĩ Chuyên khoa Nhãn khoa thông minh.
+   /**
+    * 💬 Chat với AI Eva (Text-based conversation)
+    * Tích hợp hoàn toàn với Talk to Eva
+    */
+   async chat(
+      userMessage: string,
+      lastTestResult: StoredTestResult | null,
+      userProfile: AnswerState | null,
+      language: 'vi' | 'en'
+   ): Promise<string> {
+      const startTime = Date.now();
+
+      if (!this.ai) {
+         throw new Error('AI service not initialized. Missing API key.');
+      }
+
+      const systemInstruction = language === 'vi'
+         ? `Bạn là Bác sĩ Eva - Trợ lý Bác sĩ Chuyên khoa Nhãn khoa thông minh.
 
 PHONG CÁCH TRẢ LỜI:
-- Chuyên nghiệp nhưng thân thiện, dễ hiểu
-- Trả lời ngắn gọn (50-100 từ) nhưng đầy đủ thông tin
-- Dùng thuật ngữ y khoa kèm giải thích đơn giản
-- Nếu cần khám bác sĩ, nói rõ lý do và mức độ khẩn cấp
-- Luôn dựa trên bằng chứng y khoa
+- Chuyên nghiệp nhưng thân thiện, dễ hiểu, như một người bạn bác sĩ.
+- Trả lời ngắn gọn (50-100 từ) nhưng đầy đủ thông tin.
+- Dùng thuật ngữ y khoa kèm giải thích đơn giản.
+- Nếu cần khám bác sĩ, nói rõ lý do và mức độ khẩn cấp.
+- Luôn dựa trên bằng chứng y khoa.
+- Thể hiện sự đồng cảm và quan tâm.
 
 KHI TRẢ LỜI:
-1. Phân tích kết quả test gần nhất (nếu có)
-2. Đưa ra lời khuyên cụ thể, thực tế
-3. Giải thích "Tại sao" và "Làm thế nào"
-4. Động viên và khích lệ người dùng`
-      : `You are Dr. Eva - AI Medical Assistant specializing in Ophthalmology.
+1. Phân tích kết quả test gần nhất (nếu có) để đưa ra lời khuyên sát thực tế.
+2. Đưa ra lời khuyên cụ thể, thực tế (ví dụ: bài tập mắt, chế độ ăn).
+3. Giải thích "Tại sao" và "Làm thế nào".
+4. Động viên và khích lệ người dùng.`
+         : `You are Dr. Eva - AI Medical Assistant specializing in Ophthalmology.
 
 RESPONSE STYLE:
-- Professional but friendly and easy to understand
-- Concise (50-100 words) but complete
-- Use medical terms with simple explanations
-- If medical consultation needed, explain why and urgency level
-- Always based on medical evidence
+- Professional but friendly and easy to understand, like a doctor friend.
+- Concise (50-100 words) but complete.
+- Use medical terms with simple explanations.
+- If medical consultation needed, explain why and urgency level.
+- Always based on medical evidence.
+- Show empathy and care.
 
 WHEN RESPONDING:
-1. Analyze latest test results (if available)
-2. Provide specific, practical advice
-3. Explain "Why" and "How"
-4. Encourage and motivate user`;
+1. Analyze latest test results (if available) to give relevant advice.
+2. Provide specific, practical advice (e.g., eye exercises, diet).
+3. Explain "Why" and "How".
+4. Encourage and motivate user.`;
 
-    let contextInfo = '';
-    
-    if (lastTestResult) {
-      const testType = language === 'vi' 
-        ? { snellen: 'Thị lực', colorblind: 'Mù màu', astigmatism: 'Loạn thị', amsler: 'Lưới Amsler', duochrome: 'Duochrome' }[lastTestResult.testType]
-        : lastTestResult.testType;
-      
-      contextInfo = language === 'vi'
-        ? `\n\nKẾT QUẢ TEST GẦN NHẤT:\nLoại test: ${testType}\nNgày: ${new Date(lastTestResult.date).toLocaleDateString('vi-VN')}\nDữ liệu: ${JSON.stringify(lastTestResult.resultData)}`
-        : `\n\nLATEST TEST RESULT:\nTest type: ${testType}\nDate: ${new Date(lastTestResult.date).toLocaleDateString('en-US')}\nData: ${JSON.stringify(lastTestResult.resultData)}`;
-    }
-    
-    if (userProfile) {
-      const profileText = language === 'vi'
-        ? `\n\nHỒ SƠ NGƯỜI DÙNG:\nLàm việc với máy tính: ${userProfile.worksWithComputer}\nĐeo kính: ${userProfile.wearsGlasses}\nMục tiêu: ${userProfile.goal}`
-        : `\n\nUSER PROFILE:\nComputer work: ${userProfile.worksWithComputer}\nWears glasses: ${userProfile.wearsGlasses}\nGoal: ${userProfile.goal}`;
-      contextInfo += profileText;
-    }
+      let contextInfo = '';
 
-    const fullPrompt = `${systemInstruction}${contextInfo}\n\n${language === 'vi' ? 'CÂU HỎI' : 'QUESTION'}: ${userMessage}`;
+      if (lastTestResult) {
+         const testTypeMap = {
+            snellen: language === 'vi' ? 'Thị lực' : 'Visual Acuity',
+            colorblind: language === 'vi' ? 'Mù màu' : 'Color Blindness',
+            astigmatism: language === 'vi' ? 'Loạn thị' : 'Astigmatism',
+            amsler: language === 'vi' ? 'Lưới Amsler' : 'Amsler Grid',
+            duochrome: language === 'vi' ? 'Duochrome' : 'Duochrome'
+         };
+         const testType = testTypeMap[lastTestResult.testType as keyof typeof testTypeMap];
 
-    try {
-      const response = await this.ai.models.generateContent({
-        model: AI_CONFIG.gemini.model,
-        contents: fullPrompt,
-        config: {
-          temperature: 0.7,
-          maxOutputTokens: 500,
-          topP: AI_CONFIG.gemini.topP,
-          topK: AI_CONFIG.gemini.topK,
-        }
-      });
+         contextInfo = language === 'vi'
+            ? `\n\nKẾT QUẢ TEST GẦN NHẤT:\nLoại test: ${testType}\nNgày: ${new Date(lastTestResult.date).toLocaleDateString('vi-VN')}\nĐộ nghiêm trọng: ${lastTestResult.report.severity}\nDữ liệu: ${JSON.stringify(lastTestResult.resultData)}`
+            : `\n\nLATEST TEST RESULT:\nTest type: ${testType}\nDate: ${new Date(lastTestResult.date).toLocaleDateString('en-US')}\nSeverity: ${lastTestResult.report.severity}\nData: ${JSON.stringify(lastTestResult.resultData)}`;
+      }
 
-      const elapsed = Date.now() - startTime;
-      console.log(`💬 Chat response generated in ${elapsed}ms`);
+      if (userProfile) {
+         const profileText = language === 'vi'
+            ? `\n\nHỒ SƠ NGƯỜI DÙNG:\nLàm việc với máy tính: ${userProfile.worksWithComputer}\nĐeo kính: ${userProfile.wearsGlasses}\nMục tiêu: ${userProfile.goal}`
+            : `\n\nUSER PROFILE:\nComputer work: ${userProfile.worksWithComputer}\nWears glasses: ${userProfile.wearsGlasses}\nGoal: ${userProfile.goal}`;
+         contextInfo += profileText;
+      }
 
-      const text = response.text;
-      return text || (language === 'vi' ? 'Xin lỗi, tôi không thể trả lời câu hỏi này.' : 'Sorry, I cannot answer this question.');
-    } catch (error) {
-      console.error('Chat error:', error);
-      throw error;
-    }
-  }
+      const fullPrompt = `${systemInstruction}${contextInfo}\n\n${language === 'vi' ? 'CÂU HỎI' : 'QUESTION'}: ${userMessage}`;
+
+      try {
+         const response = await this.ai.models.generateContent({
+            model: AI_CONFIG.gemini.model,
+            contents: fullPrompt,
+            config: {
+               temperature: 0.7,
+               maxOutputTokens: 500,
+               topP: AI_CONFIG.gemini.topP,
+               topK: AI_CONFIG.gemini.topK,
+            }
+         });
+
+         const elapsed = Date.now() - startTime;
+         console.log(`💬 Chat response generated in ${elapsed}ms`);
+
+         const text = response.text;
+         return text || (language === 'vi' ? 'Xin lỗi, tôi không thể trả lời câu hỏi này.' : 'Sorry, I cannot answer this question.');
+      } catch (error) {
+         console.error('Chat error:', error);
+         throw error;
+      }
+   }
+
+   /**
+    * 📊 Kiểm tra tất cả AI Reports - Xác minh tính chính xác
+    * Được gọi từ Dashboard/History để verify reports
+    */
+   async verifyAllReports(history: StoredTestResult[], language: 'vi' | 'en'): Promise<{ verified: number; errors: string[] }> {
+      const errors: string[] = [];
+      let verified = 0;
+
+      for (const result of history) {
+         try {
+            const report = result.report;
+            
+            // Kiểm tra các trường bắt buộc
+            if (!report.summary || report.summary.length < 50) {
+               errors.push(`${result.testType} (${result.date}): Summary quá ngắn`);
+               continue;
+            }
+
+            if (!report.recommendations || report.recommendations.length === 0) {
+               errors.push(`${result.testType} (${result.date}): Không có recommendations`);
+               continue;
+            }
+
+            if (!['LOW', 'MEDIUM', 'HIGH'].includes(report.severity)) {
+               errors.push(`${result.testType} (${result.date}): Severity không hợp lệ`);
+               continue;
+            }
+
+            if (report.confidence < 0.75 || report.confidence > 1) {
+               errors.push(`${result.testType} (${result.date}): Confidence không hợp lệ`);
+               continue;
+            }
+
+            verified++;
+         } catch (e) {
+            errors.push(`${result.testType} (${result.date}): ${String(e)}`);
+         }
+      }
+
+      console.log(`✅ Verified ${verified}/${history.length} reports. Errors: ${errors.length}`);
+      return { verified, errors };
+   }
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 }

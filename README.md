@@ -1,346 +1,272 @@
+# Suc Khoe AI - AI-Powered Vision Testing Platform
 
-# ⚡ Sức Khỏe AI - Ultra-Fast Vision Testing Platform
+An intelligent web application for comprehensive eye health testing with AI-powered analysis, voice control, and personalized insights.
 
-An AI-powered vision testing platform with **voice control**, **personalized routines**, and **lightning-fast performance**.
-
-## 🚀 Performance Optimizations (NEW!)
-
-### Speed Improvements:
-- ⚡ **Lazy Loading**: Components load only when needed (70% faster initial load)
-- ⚡ **Code Splitting**: Vendor chunks separated (React, AI, PDF libraries)
-- ⚡ **AI Caching**: Chat & TTS responses cached (instant repeated queries)
-- ⚡ **Service Worker**: Offline support & instant page loads
-- ⚡ **PWA Ready**: Install as app, works offline
-- ⚡ **Optimized Configs**: Reduced tokens, faster AI responses
-
-### Build Optimizations:
-```bash
-# Production build (minified, optimized)
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### Performance Metrics:
-- **Initial Load**: < 2s (was 5s+)
-- **Chat Response**: < 1s (was 3s+)
-- **TTS Generation**: < 500ms with cache
-- **Page Transitions**: < 200ms
-
-## 📦 Tech Stack
-
-- **Frontend**: React 19 + TypeScript + Vite
-- **AI**: Google Gemini 2.0 Flash (Experimental)
-- **Styling**: Tailwind CSS
-- **Voice**: Web Speech API
-- **PWA**: Service Worker + Manifest
-
-🌐 **View app: https://testaivision.pages.dev/ 
+**Live Demo:** https://testaivision.pages.dev/
 
 ---
 
-## ✨ Key Features
+## Features
 
-### 🔬 **5 Professional Vision Tests**
-- **Snellen Test** - Visual acuity measurement (20/20 vision)
+### Vision Tests
+- **Snellen Test** - Visual acuity measurement (20/20 vision standard)
 - **Color Blindness Test** - Ishihara plates with AI analysis
 - **Astigmatism Test** - Detect corneal irregularities
 - **Amsler Grid Test** - Macular degeneration screening with heatmap
 - **Duochrome Test** - Red-green balance testing
 
-### 🤖 **AI-Powered Intelligence**
-- **Eva AI Assistant** - 2-way voice conversation chatbot (Speech Recognition + Text-to-Speech)
-- **Smart Dashboard** - AI-generated insights with trend analysis (IMPROVING/STABLE/DECLINING)
+### AI & Voice
+- **Eva AI Assistant** - 2-way voice conversation (Speech Recognition + Text-to-Speech)
+- **Smart Dashboard** - AI-generated insights with trend analysis
 - **Personalized Reports** - Automated PDF generation with recommendations
-- **Voice Coach** - Real-time test instructions in 2 languages (VI/EN)
+- **Voice Instructions** - Real-time test guidance in Vietnamese/English
 
-### 📊 **Progress Tracking & Analytics**
-- **Visual Charts** - Snellen trend line chart, test type bar chart, Amsler heatmap
-- **AI Insights** - Score, rating, strengths, areas to monitor, pro tips
-- **Test History** - Complete record with timestamps and results
-- **Export to PDF** - Professional reports with charts
+### Progress Tracking
+- **Visual Charts** - Snellen trends, test distribution, Amsler heatmaps
+- **Test History** - Complete records with timestamps and results
+- **AI Insights** - Score ratings, strengths, areas to monitor, pro tips
+- **Export to PDF** - Professional reports with charts and analysis
 
-### 🎯 **Gamification System**
-- **7 Achievement Badges** - Beginner, Test Master, 7-Day Streak, 30-Day Streak, Exercise Enthusiast, Perfect Vision, Explorer
-- **Streak Tracking** - Daily continuity with current/longest streak display
-- **Points System** - Tests (10 pts), Exercises (5 pts), Streaks (20 pts), Badges (100 pts)
-- **5 Eye Exercises** - 20-20-20 Rule, Palming, Figure 8, Near-Far Focus, Blinking (with timer)
+### Gamification
+- **7 Achievement Badges** - Unlock badges through consistent testing
+- **Streak Tracking** - Daily continuity rewards
+- **Points System** - Earn points for tests, exercises, and streaks
+- **5 Eye Exercises** - 20-20-20 Rule, Palming, Figure 8, Near-Far Focus, Blinking
 
-### 🏥 **Hospital Locator**
-- **GPS-Based Search** - Find nearest eye hospitals with Haversine distance calculation
-- **5 Top Hospitals** - Pre-loaded database (Vietnam National Eye, HCM City Eye, Japan IVS, Kangnam, Saigon Eye)
-- **Advanced Filters** - Specialty (Lasik, Cataract, Retinal, etc.), Emergency 24/7, Sort by distance/rating
-- **Google Maps Integration** - One-click directions, website links
+### Hospital Locator
+- **GPS-Based Search** - Find nearest eye hospitals
+- **Advanced Filters** - Search by specialty, emergency services, ratings
+- **Google Maps Integration** - One-click directions and contact info
 
-### 🔔 **Smart Reminders**
-- **Custom Notifications** - Test reminders, exercise alerts with Web Notification API
-- **Frequency Options** - Daily, Weekly, Bi-weekly, Monthly
-- **Auto-Check System** - Background checker runs every 60 seconds
+### Smart Reminders
+- **Custom Notifications** - Test and exercise reminders
+- **Flexible Scheduling** - Daily, Weekly, Bi-weekly, Monthly options
+- **Browser Notifications** - Non-intrusive alerts
 
-### 🎨 **Premium UX/UI**
+### User Experience
 - **Dark Mode** - System/Light/Dark theme switcher
 - **Bilingual** - Full Vietnamese/English support
-- **Responsive Design** - Mobile-first, tablet, desktop optimized
-- **Smooth Animations** - Fade-in effects, gradient backgrounds, loading states
-- **Accessibility** - WCAG compliant, screen reader friendly
+- **Responsive Design** - Mobile-first, optimized for all devices
+- **Smooth Animations** - Modern, polished user experience
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### **Prerequisites**
-- **Node.js** v18+ (with npm)
-- **Google Gemini API Key** (get it at https://aistudio.google.com/app/apikey)
+### Prerequisites
+- Node.js v18+ (with npm)
+- Google Gemini API Key (free at https://aistudio.google.com/app/apikey)
 
-### **Installation**
+### Installation
 
-1. **Install dependencies:**
+1. **Clone and install:**
    ```bash
+   git clone <repository-url>
+   cd d-git-test
    npm install
    ```
 
-2. **Set API Key:**
-   - Open `.env.local`
+2. **Set up environment:**
+   - Create `.env.local` file in project root
    - Add your Gemini API key:
      ```
      GEMINI_API_KEY=your_api_key_here
      ```
 
-3. **Run the app:**
+3. **Run development server:**
    ```bash
    npm run dev
    ```
 
-4. **Open browser:**
-   - Navigate to `http://localhost:5173` (or the port shown in terminal)
-   - Grant microphone permission for voice features (optional)
-   - Grant notification permission for reminders (optional)
-   - Grant location permission for hospital locator (optional)
+4. **Open in browser:**
+   - Navigate to `http://localhost:5173`
+   - Grant permissions for microphone (optional), notifications (optional), location (optional)
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-### **Frontend**
-- **React 19.2.0** - UI framework
-- **TypeScript 5.8.2** - Type safety
-- **Vite 6.4.1** - Build tool & dev server
-- **React Router 6.23.1** - Client-side routing
-- **Tailwind CSS 3.x** - Utility-first styling (via CDN)
-- **Lucide React** - Icon library
+### Frontend
+- React 19.2 + TypeScript 5.8
+- Vite 6.4 (build tool)
+- Tailwind CSS 3.x (styling)
+- React Router 6.23 (routing)
+- Lucide React (icons)
 
-### **AI/ML**
-- **Google Gemini AI** - gemini-2.0-flash (chat, analysis)
-- **Google Cloud Text-to-Speech API** - High-quality voice synthesis (vi-VN-Wavenet-A, en-US-Wavenet-F)
-- **Web Speech API** - Speech Recognition (webkitSpeechRecognition)
+### AI & Voice
+- Google Gemini 2.0 Flash (chat & analysis)
+- Web Speech API (speech recognition)
+- Google Cloud Text-to-Speech (voice synthesis)
 
-### **Storage & APIs**
-- **LocalStorage** - Test history, chat, reminders, badges, streaks, preferences
-- **Geolocation API** - GPS positioning for hospital finder
-- **Notification API** - Browser notifications for reminders
-- **Canvas API** - Amsler grid drawing, color blind test rendering
+### Storage & APIs
+- LocalStorage (test history, preferences)
+- Geolocation API (hospital finder)
+- Notification API (reminders)
+- Canvas API (Amsler grid, color tests)
 
-### **Export**
-- **jsPDF 2.5.1** - PDF generation
-- **html2canvas 1.4.1** - Chart screenshot for reports
+### Export
+- jsPDF (PDF generation)
+- html2canvas (chart screenshots)
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-suckhoeai/
-├── components/
-│   ├── AmslerGrid.tsx           # Amsler grid drawing component
-│   ├── AmslerGridTest.tsx       # Amsler test logic
-│   ├── AstigmatismTest.tsx      # Astigmatism wheel test
-│   ├── AstigmatismWheel.tsx     # Radial line rendering
-│   ├── Chatbot.tsx              # 2-way voice AI chat (ENHANCED)
-│   ├── ColorBlindTest.tsx       # Ishihara plate test
-│   ├── DuochromeTest.tsx        # Red-green balance test
-│   ├── Header.tsx               # Navigation bar (7 routes)
-│   ├── HospitalLocator.tsx      # GPS hospital finder (NEW)
-│   ├── SnellenTest.tsx          # Visual acuity test
-│   ├── TestInstructionsPlayer.tsx # Voice instructions
-│   ├── UserInfo.tsx             # User profile display
-│   └── VisionCoach.tsx          # Floating AI coach button
-├── pages/
-│   ├── Home.tsx                 # Dashboard with AI insights
-│   ├── History.tsx              # Test history with filters
-│   ├── ProgressPage.tsx         # Charts & AI analysis (NEW)
-│   ├── RemindersPage.tsx        # Gamification hub (NEW)
-│   ├── AboutPage.tsx            # App information
-│   ├── WelcomePage.tsx          # Onboarding screen
-│   └── PersonalizedSetupPage.tsx # Initial user setup
-├── services/
-│   ├── aiService.ts             # Gemini AI integration (OPTIMIZED)
-│   ├── reminderService.ts       # Gamification logic (NEW)
-│   ├── storageService.ts        # LocalStorage wrapper
-│   └── [test]Service.ts         # Individual test logic
-├── context/
-│   ├── LanguageContext.tsx      # i18n state management
-│   ├── ThemeContext.tsx         # Dark mode controller
-│   ├── UserContext.tsx          # User profile state
-│   └── RoutineContext.tsx       # Daily routine tracking
-├── hooks/
-│   ├── useSpeechRecognition.ts  # Voice input hook
-│   ├── useTextToSpeech.ts       # Voice output hook
-│   └── usePdfExport.ts          # PDF generation hook
-├── i18n/
-│   └── index.ts                 # Translations (VI/EN)
-├── types.ts                     # TypeScript interfaces
-├── App.tsx                      # Main app component (11 routes)
-└── index.html                   # Entry HTML with Tailwind CDN
-
+d-git-test/
+├── components/          # React components
+│   ├── vision tests    # Snellen, Color Blind, Astigmatism, Amsler, Duochrome
+│   ├── VisionCoach.tsx # AI chatbot
+│   ├── Header.tsx      # Navigation
+│   └── ...
+├── pages/              # Page components
+│   ├── Home.tsx        # Dashboard
+│   ├── History.tsx     # Test history
+│   ├── ProgressPage.tsx # Analytics
+│   ├── RemindersPage.tsx # Gamification
+│   ├── AuthPage.tsx    # Login
+│   └── ...
+├── services/           # Business logic
+│   ├── aiService.ts    # Gemini AI integration
+│   ├── reminderService.ts # Gamification
+│   ├── [test]Service.ts # Individual test logic
+│   └── ...
+├── context/            # State management
+├── hooks/              # Custom React hooks
+├── i18n/               # Translations (VI/EN)
+├── utils/              # Utility functions
+├── assets/             # Images & logos
+├── App.tsx             # Main app component
+├── index.tsx           # Entry point
+└── index.css           # Global styles
 ```
 
 ---
 
-## 🎮 Usage Guide
+## How to Use
 
-### **1. Complete Your First Test**
-- Click **"Bắt đầu kiểm tra"** on Home page
+### 1. Take Your First Test
+- Click "Bat dau kiem tra" on the Home page
 - Choose a test (Snellen recommended for beginners)
-- Follow voice instructions
-- View AI-generated results
+- Follow voice instructions or read on-screen guidance
+- View AI-generated analysis of your results
 
-### **2. Set Up Reminders**
-- Navigate to **Reminders** page
-- Click **"+ Thêm nhắc nhở"**
-- Set frequency and time
-- Enable notifications when prompted
+### 2. Set Up Reminders
+- Navigate to Reminders page
+- Click "+ Them nhac nho"
+- Choose frequency (Daily, Weekly, etc.)
+- Enable browser notifications
 
-### **3. Track Your Progress**
-- Go to **Progress** page
+### 3. Track Progress
+- Go to Progress page
 - View Snellen trend chart
-- Read Eva's AI insights (score, rating, trend)
+- Read Eva's AI insights
 - Export PDF report
 
-### **4. Find Hospitals**
-- Open **Hospitals** page
+### 4. Find Eye Care
+- Open Hospitals page
 - Allow location access
-- Filter by specialty or emergency
-- Click **Google Maps** for directions
+- Filter by specialty or emergency services
+- Click for Google Maps directions
 
-### **5. Chat with Eva**
-- Visit **Chat** page
-- Click **"Nói"** (Speak) button or type
-- Ask about eye health, test results, or tips
-- Eva responds with voice + text
+### 5. Chat with Eva
+- Click the chat button
+- Use voice or type your questions
+- Get personalized eye health advice
 
-### **6. Earn Badges**
+### 6. Earn Badges
 - Complete tests daily for streaks
-- Do eye exercises (5 types available)
+- Do eye exercises
 - Unlock 7 achievements
 - Track points on Reminders page
 
 ---
 
-## 🔑 Key Technical Achievements
+## Performance Features
 
-### **Performance Optimizations**
-- ✅ **60-70% token reduction** in AI prompts (ultra-compact)
-- ✅ **LRU cache** for TTS audio (prevents redundant API calls)
-- ✅ **Lazy loading** for test components
-- ✅ **Debounced voice input** (prevents duplicate AI requests)
-
-### **Bug Fixes Completed**
-- ✅ Fixed chatbot repetition issue (duplicate functions, stale closures)
-- ✅ Added `isProcessing` flag to prevent concurrent API calls
-- ✅ Converted to `useCallback` with proper dependencies
-- ✅ Removed `setTimeout` workarounds
-
-### **Production-Ready Features**
-- ✅ Error boundaries for crash handling
-- ✅ Loading states on all async operations
-- ✅ Empty states with helpful CTAs
-- ✅ Responsive design (mobile/tablet/desktop)
-- ✅ Dark mode support across all pages
-- ✅ TypeScript strict mode (no `any` types)
+- Lazy Loading - Components load only when needed
+- Code Splitting - Vendor chunks optimized for faster loading
+- AI Caching - Chat responses cached for instant retrieval
+- Service Worker - Offline support and instant page loads
+- PWA Ready - Install as app, works offline
 
 ---
 
-## 🌐 Browser Compatibility
+## Browser Support
 
 | Feature | Chrome | Edge | Safari | Firefox |
 |---------|--------|------|--------|---------|
-| Core Tests | ✅ | ✅ | ✅ | ✅ |
-| Voice Chat | ✅ | ✅ | ⚠️ Limited | ❌ |
-| Geolocation | ✅ | ✅ | ✅ | ✅ |
-| Notifications | ✅ | ✅ | ⚠️ Limited | ✅ |
-| Dark Mode | ✅ | ✅ | ✅ | ✅ |
+| Core Tests | Yes | Yes | Yes | Yes |
+| Voice Chat | Yes | Yes | Limited | No |
+| Geolocation | Yes | Yes | Yes | Yes |
+| Notifications | Yes | Yes | Limited | Yes |
 
-**Note:** Web Speech API (voice features) works best in Chrome/Edge.
+Note: Voice features work best in Chrome/Edge.
 
 ---
 
-## 📝 Environment Variables
+## Deployment
 
+### Build for Production
 ```bash
-# .env.local
+npm run build
+```
+
+### Deploy to Static Hosting
+Deploy the `dist/` folder to:
+- Vercel (recommended - zero config)
+- Netlify (drag & drop)
+- GitHub Pages
+- Firebase Hosting
+
+### Environment Setup
+- Set `GEMINI_API_KEY` in your hosting platform's environment variables
+- Ensure HTTPS is enabled (required for Geolocation & Notifications)
+
+---
+
+## Environment Variables
+
+Create `.env.local` file:
+```bash
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-**Security Note:** Never commit `.env.local` to version control. API key is exposed in browser (suitable for demos, not production).
+Security Note: This API key is exposed in the browser (suitable for demos). For production, consider using a backend proxy.
 
 ---
 
-## 🚢 Deployment
-
-### **Static Hosting (Recommended)**
-1. Build production bundle:
-   ```bash
-   npm run build
-   ```
-2. Deploy `dist/` folder to:
-   - **Vercel** (zero config)
-   - **Netlify** (drag & drop)
-   - **GitHub Pages** (set base URL)
-   - **Firebase Hosting**
-
-### **Environment Setup for Production**
-- Set `GEMINI_API_KEY` in hosting platform's environment variables
-- Enable HTTPS (required for Geolocation & Notifications)
-- Configure CORS if using custom domain
-
----
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the **MIT License** - see LICENSE file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **Google Gemini AI** - AI model & API
-- **Tailwind CSS** - Styling framework
-- **Lucide Icons** - Icon library
-- **React Community** - Core framework
-- **Vietnamese Eye Health Community** - Hospital data
+This project is licensed under the MIT License - see LICENSE file for details.
 
 ---
 
-## 📞 Support
+## Acknowledgments
 
-- **Issues:** Report bugs on GitHub Issues
-- **Email:** support@suckhoeai.com (placeholder)
-- **Chat:** Ask Eva in the app!
+- Google Gemini AI - AI model and API
+- Tailwind CSS - Styling framework
+- React Community - Core framework
+- Vietnamese Eye Health Community - Hospital data and feedback
 
 ---
 
-<div align="center">
-  <p><strong>Made with ❤️ for better eye health</strong></p>
-  <p>🌟 Star this repo if you find it helpful!</p>
-</div>
+## Support & Feedback
+
+- Report Issues: Open an issue on GitHub
+- Feature Requests: Discuss in GitHub Discussions
+- Chat with Eva: Ask questions directly in the app!
+
+---
+
+Made with love for better eye health. Star this repo if you find it helpful!

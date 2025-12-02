@@ -1,10 +1,10 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Eye, Droplets, Target, Grid, CircleDot, Trash2, Calendar, FileText } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { StoredTestResult, TestType, SnellenResult, ColorBlindResult, AstigmatismResult, AmslerGridResult, DuochromeResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { ReportDetailModal } from '../components/ReportDetailModal';
+import { getTestHistory } from '../services/authService';
 
 const storageService = new StorageService();
 
@@ -55,6 +55,13 @@ const ResultSummary: React.FC<{ result: StoredTestResult }> = ({ result }) => {
 export const History: React.FC = () => {
   const [history, setHistory] = useState<StoredTestResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<StoredTestResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState<number | undefined>(undefined);
+  const [limit] = useState<number>(10);
+  const [offset, setOffset] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
   const { t, language } = useLanguage();
 
   const TITLES: Record<TestType, string> = {
@@ -65,14 +72,88 @@ export const History: React.FC = () => {
     duochrome: t('duochrome_test'),
   };
 
-  useEffect(() => {
-    setHistory(storageService.getTestHistory());
+  // Map backend record to StoredTestResult shape (with placeholder AI report)
+  const mapBackendToStored = useCallback((item: any): StoredTestResult => {
+    const ts = item.timestamp || Date.now();
+    return {
+      id: item.id,
+      testType: item.testType as TestType,
+      date: new Date(ts).toISOString(),
+      resultData: item.testData, // assume same structure used when saving
+      report: {
+        id: `report_${item.id}`,
+        testType: item.testType as TestType,
+        timestamp: new Date(ts).toISOString(),
+        totalResponseTime: 0,
+        confidence: 0,
+        summary: 'No AI report available for this record.',
+        recommendations: [],
+        severity: 'LOW',
+      },
+    };
   }, []);
+
+  const loadPage = useCallback(async () => {
+    if (isLoading || !hasMore) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await getTestHistory('', limit, offset);
+      if (!res.success) {
+        // Fallback to local if backend not available
+        const local = storageService.getTestHistory();
+        setHistory(local);
+        setHasMore(false);
+        setTotal(local.length);
+        return;
+      }
+      const mapped = (res.history || []).map(mapBackendToStored);
+      setHistory(prev => [...prev, ...mapped]);
+      const newTotal = res.total ?? (prev => prev + mapped.length);
+      setTotal(typeof newTotal === 'number' ? newTotal : (total ?? 0));
+      const nextOffset = offset + (res.limit ?? limit);
+      setOffset(nextOffset);
+      setHasMore(mapped.length > 0 && (res.total === undefined || nextOffset < (res.total as number)));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load history');
+      // Fallback local once
+      const local = storageService.getTestHistory();
+      if (local.length && history.length === 0) {
+        setHistory(local);
+        setHasMore(false);
+        setTotal(local.length);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, hasMore, limit, offset, mapBackendToStored, history.length, total]);
+
+  useEffect(() => {
+    // initial load
+    loadPage();
+  }, []);
+
+  useEffect(() => {
+    // infinite scroll via IntersectionObserver
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadPage();
+        }
+      });
+    }, { rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadPage]);
 
   const handleClearHistory = () => {
     if (window.confirm(t('confirm_clear_history'))) {
       storageService.clearHistory();
       setHistory([]);
+      setTotal(0);
+      setHasMore(false);
     }
   };
 
@@ -92,7 +173,16 @@ export const History: React.FC = () => {
           )}
         </div>
 
-        {history.length === 0 ? (
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
+        )}
+
+        <div className="flex items-center justify-between mb-4 text-sm text-gray-500 dark:text-gray-400">
+          <span>{language === 'vi' ? 'Đã tải' : 'Loaded'}: {history.length}{typeof total === 'number' ? ` / ${total}` : ''}</span>
+          <span>{language === 'vi' ? 'Trang' : 'Offset'}: {offset}</span>
+        </div>
+
+        {history.length === 0 && !isLoading ? (
           <div className="text-center py-20 bg-gray-100 dark:bg-gray-800 rounded-xl">
               <FileText size={48} className="mx-auto text-gray-400 mb-4"/>
               <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">{t('history_empty_title')}</h2>
@@ -131,6 +221,13 @@ export const History: React.FC = () => {
                 </div>
               );
             })}
+            <div ref={sentinelRef} className="h-8" />
+            {isLoading && (
+              <div className="text-center text-sm text-gray-500 dark:text-gray-400">{language === 'vi' ? 'Đang tải...' : 'Loading...'}</div>
+            )}
+            {!hasMore && total !== undefined && (
+              <div className="text-center text-xs text-gray-400">{language === 'vi' ? 'Đã tải toàn bộ lịch sử' : 'All history loaded'}</div>
+            )}
           </div>
         )}
       </div>

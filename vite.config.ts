@@ -1,12 +1,13 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 3000,
+        port: 5173,
         host: '0.0.0.0',
         // ⚡ PERFORMANCE BOOST: Faster HMR
         hmr: {
@@ -23,11 +24,16 @@ export default defineConfig(({ mode }) => {
           babel: {
             compact: mode === 'production',
           },
+        }),
+        visualizer({
+          filename: 'stats.html',
+          template: 'treemap',
+          gzipSize: true,
+          brotliSize: true,
         })
       ],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        // 'process.env': {} // Removed to avoid conflicts, using import.meta.env in code
       },
       resolve: {
         alias: {

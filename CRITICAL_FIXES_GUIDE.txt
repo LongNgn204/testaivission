@@ -1,0 +1,639 @@
+================================================================================
+CRITICAL FIXES GUIDE - Vision Coach Application
+================================================================================
+
+This guide provides step-by-step fixes for all CRITICAL issues found during
+comprehensive testing.
+
+================================================================================
+FIX #1: ADD /api/tests/save ENDPOINT
+================================================================================
+
+Location: server.js (add after line 550)
+
+Code to add:
+
+/**
+ * POST /api/tests/save
+ * Save test result to database
+ */
+app.post('/api/tests/save', authenticateToken, (req, res) => {
+  try {
+    const { testType, testData, score, result } = req.body;
+    const userId = req.user.userId;
+
+    // Validate input
+    if (!testType || !testData) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: testType, testData',
+        error: 'MISSING_FIELDS',
+      });
+    }
+
+    // Create test result object
+    const testResult = {
+      id: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      testType,
+      testData,
+      score,
+      result,
+      timestamp: Date.now(),
+    };
+
+    // Initialize test results storage if needed
+    if (!db.testResults) {
+      db.testResults = new Map();
+    }
+
+    // Get or create user's test results array
+    if (!db.testResults.has(userId)) {
+      db.testResults.set(userId, []);
+    }
+
+    // Add test result
+    db.testResults.get(userId).push(testResult);
+
+    // Log success
+    console.log(`✓ Test result saved: ${userId} - ${testType}`);
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Test result saved successfully',
+      testResult,
+    });
+  } catch (error) {
+    console.error('Save test result error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save test result',
+      error: error.message,
+    });
+  }
+});
+
+================================================================================
+FIX #2: ADD /api/tests/history ENDPOINT
+================================================================================
+
+Location: server.js (add after the /api/tests/save endpoint)
+
+Code to add:
+
+/**
+ * GET /api/tests/history
+ * Get test history for a user
+ */
+app.get('/api/tests/history', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Get test results from database
+    if (!db.testResults || !db.testResults.has(userId)) {
+      return res.json({
+        success: true,
+        message: 'No test history',
+        history: [],
+        total: 0,
+      });
+    }
+
+    // Get user's test results
+    const allResults = db.testResults.get(userId) || [];
+
+    // Sort by timestamp (newest first)
+    const sorted = allResults.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Apply pagination
+    const history = sorted.slice(offset, offset + limit);
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Test history retrieved successfully',
+      history,
+      total: sorted.length,
+      limit,
+      offset,
+    });
+  } catch (error) {
+    console.error('Get test history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get test history',
+      error: error.message,
+      history: [],
+    });
+  }
+});
+
+================================================================================
+FIX #3: FIX CORS HEADERS
+================================================================================
+
+Location: worker/src/middleware/cors.ts (replace entire file)
+
+Code to replace:
+
+/**
+ * ============================================================
+ * 🔗 CORS Middleware
+ * ============================================================
+ * 
+ * Handles Cross-Origin Resource Sharing
+ */
+
+export function handleCors(request: Request): Response | undefined {
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+}
+
+export function addCorsHeaders(response: Response): Response {
+  const newResponse = new Response(response.body, response);
+  newResponse.headers.set('Access-Control-Allow-Origin', '*');
+  newResponse.headers.set(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, DELETE, OPTIONS'
+  );
+  newResponse.headers.set(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization'
+  );
+  newResponse.headers.set('Access-Control-Max-Age', '86400');
+  return newResponse;
+}
+
+================================================================================
+FIX #4: ADD /api/auth/register ENDPOINT
+================================================================================
+
+Location: server.js (add after login endpoint, around line 430)
+
+Code to add:
+
+/**
+ * POST /api/auth/register
+ * User registration
+ */
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const { name, email, phone, password, age } = req.body;
+
+    // Validate required fields
+    if (!name || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: name, phone',
+        error: 'MISSING_FIELDS',
+      });
+    }
+
+    // Validate name
+    if (name.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be at least 2 characters',
+        error: 'INVALID_NAME',
+      });
+    }
+
+    // Validate phone
+    const phoneClean = phone.replace(/\D/g, '');
+    if (!/^0\d{9,10}$/.test(phoneClean)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid phone number format (Vietnamese format required)',
+        error: 'INVALID_PHONE',
+      });
+    }
+
+    // Check if user already exists
+    const userId = `user_${phoneClean}`;
+    if (db.users.has(userId)) {
+      return res.status(409).json({
+        success: false,
+        message: 'User already exists',
+        error: 'USER_EXISTS',
+      });
+    }
+
+    // Validate age if provided
+    if (age) {
+      const ageNum = parseInt(age);
+      if (isNaN(ageNum) || ageNum < 5 || ageNum > 120) {
+        return res.status(400).json({
+          success: false,
+          message: 'Age must be between 5 and 120',
+          error: 'INVALID_AGE',
+        });
+      }
+    }
+
+    // Create new user
+    const userData = db.createOrUpdateUser(userId, {
+      name: name.trim(),
+      age: age?.trim(),
+      phone: phoneClean,
+      email: email?.trim(),
+      ip: req.ip || req.connection.remoteAddress,
+    });
+
+    // Generate JWT token
+    const token = generateToken(userId, {
+      name: userData.name,
+      phone: userData.phone,
+      age: userData.age,
+    });
+
+    // Create session
+    db.createSession(token, {
+      userId,
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    });
+
+    // Log success
+    console.log(`✓ User registered: ${userData.name} (${userId})`);
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Registration successful',
+      user: {
+        id: userId,
+        name: userData.name,
+        age: userData.age,
+        phone: userData.phone,
+        email: userData.email,
+        loginTime: userData.lastLogin,
+        token,
+      },
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: error.message,
+    });
+  }
+});
+
+================================================================================
+FIX #5: FIX RACE CONDITION IN USEUSER HOOK
+================================================================================
+
+Location: context/UserContext.tsx (replace addTestResult function)
+
+Code to replace:
+
+/**
+ * Add test result
+ */
+const addTestResult = useCallback(async (testData: Omit<TestResult, 'id' | 'timestamp'>) => {
+  try {
+    setIsLoading(true);
+    setError(null);
+
+    // Save to backend
+    const response = await saveTestResult({
+      testType: testData.testType,
+      testData: testData.testData,
+      score: testData.score,
+      result: testData.result,
+    });
+
+    if (response.success && response.testResult) {
+      const newResult: TestResult = {
+        id: response.testResult.id,
+        testType: response.testResult.testType,
+        testData: response.testResult.testData,
+        score: response.testResult.score,
+        result: response.testResult.result,
+        timestamp: response.testResult.timestamp,
+      };
+
+      // Use functional update to avoid stale closure
+      setTestHistory(prev => {
+        const updated = [newResult, ...prev];
+        
+        // Save to localStorage inside functional update
+        if (user?.id) {
+          try {
+            localStorage.setItem(`test_history_${user.id}`, JSON.stringify(updated));
+          } catch (error) {
+            console.warn('Failed to save test history to localStorage:', error);
+          }
+        }
+        
+        return updated;
+      });
+
+      return newResult;
+    } else {
+      setError(response.error || 'Failed to save test result');
+      return null;
+    }
+  } catch (error: any) {
+    console.error('Failed to add test result:', error);
+    setError(error.message || 'Failed to save test result');
+    return null;
+  } finally {
+    setIsLoading(false);
+  }
+}, [user?.id]); // Remove testHistory from dependencies
+
+================================================================================
+FIX #6: ADD RATE LIMITING ON AUTH ENDPOINTS
+================================================================================
+
+Location: server.js (add after rateLimiter function, around line 80)
+
+Code to add:
+
+// Auth-specific rate limiter (stricter than global)
+const authRateLimitMap = new Map();
+const AUTH_RATE_LIMIT_WINDOW = 60000; // 1 minute
+const AUTH_MAX_REQUESTS_PER_WINDOW = 5; // 5 attempts per minute
+
+/**
+ * Auth Rate Limiter Middleware
+ * - Prevents brute force attacks
+ * - Limits login/register attempts to 5 per minute per IP
+ */
+function authRateLimiter(req, res, next) {
+  const clientId = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  
+  if (!authRateLimitMap.has(clientId)) {
+    authRateLimitMap.set(clientId, { count: 1, resetTime: now + AUTH_RATE_LIMIT_WINDOW });
+    return next();
+  }
+  
+  const clientData = authRateLimitMap.get(clientId);
+  
+  if (now > clientData.resetTime) {
+    clientData.count = 1;
+    clientData.resetTime = now + AUTH_RATE_LIMIT_WINDOW;
+    return next();
+  }
+  
+  if (clientData.count >= AUTH_MAX_REQUESTS_PER_WINDOW) {
+    const retryAfter = Math.ceil((clientData.resetTime - now) / 1000);
+    return res.status(429).json({
+      success: false,
+      message: 'Too many login attempts. Please try again later.',
+      error: 'RATE_LIMIT_EXCEEDED',
+      retryAfter,
+    });
+  }
+  
+  clientData.count++;
+  next();
+}
+
+Then update the routes:
+
+// Apply auth rate limiter to login and register
+app.post('/api/auth/login', authRateLimiter, (req, res) => {
+  // ... existing login code ...
+});
+
+app.post('/api/auth/register', authRateLimiter, (req, res) => {
+  // ... existing register code ...
+});
+
+================================================================================
+FIX #7: ADD INPUT SANITIZATION
+================================================================================
+
+Location: server.js (add at top after imports)
+
+Code to add:
+
+// Simple sanitization function (for production, use a library like DOMPurify)
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  
+  return input
+    .trim()
+    .replace(/[<>\"']/g, '') // Remove dangerous characters
+    .substring(0, 255); // Limit length
+}
+
+Then update the login endpoint:
+
+app.post('/api/auth/login', authRateLimiter, (req, res) => {
+  try {
+    // Sanitize inputs
+    const name = sanitizeInput(req.body.name);
+    const age = sanitizeInput(req.body.age);
+    const phone = sanitizeInput(req.body.phone);
+
+    // ... rest of login code ...
+  }
+  // ...
+});
+
+================================================================================
+FIX #8: ADD HTTPS ENFORCEMENT
+================================================================================
+
+Location: server.js (add after app initialization, around line 50)
+
+Code to add:
+
+// HTTPS enforcement middleware
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.protocol !== 'https') {
+    return res.status(403).json({
+      success: false,
+      message: 'HTTPS required',
+      error: 'INSECURE_CONNECTION',
+    });
+  }
+  next();
+});
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Content-Security-Policy', "default-src 'self'");
+  next();
+});
+
+================================================================================
+FIX #9: VALIDATE JWT SECRET
+================================================================================
+
+Location: server.js (replace JWT_SECRET initialization, around line 30)
+
+Code to replace:
+
+// Validate and load JWT secret
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error('❌ CRITICAL: JWT_SECRET is not set!');
+  console.error('Please set JWT_SECRET environment variable');
+  console.error('Example: export JWT_SECRET=$(openssl rand -base64 32)');
+  process.exit(1);
+}
+
+if (JWT_SECRET === 'vision-coach-secret-key-change-in-production-2024') {
+  console.warn('⚠️ WARNING: Using default JWT_SECRET! This is insecure!');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ CRITICAL: Cannot use default secret in production!');
+    process.exit(1);
+  }
+}
+
+if (JWT_SECRET.length < 32) {
+  console.error('❌ CRITICAL: JWT_SECRET must be at least 32 characters!');
+  process.exit(1);
+}
+
+console.log('✅ JWT_SECRET validated');
+
+================================================================================
+FIX #10: ADD SECURITY EVENT LOGGING
+================================================================================
+
+Location: server.js (add after utility functions, around line 200)
+
+Code to add:
+
+/**
+ * Log security events
+ */
+function logSecurityEvent(eventType, details) {
+  const timestamp = new Date().toISOString();
+  const log = {
+    timestamp,
+    eventType,
+    ...details,
+  };
+  
+  console.log(`[SECURITY] ${JSON.stringify(log)}`);
+  
+  // TODO: Send to security monitoring service
+  // sendToSecurityMonitoring(log);
+}
+
+Then update login endpoint to log events:
+
+app.post('/api/auth/login', authRateLimiter, (req, res) => {
+  try {
+    // ... validation ...
+    
+    if (/* invalid credentials */) {
+      logSecurityEvent('LOGIN_FAILED', {
+        phone: phoneClean,
+        ip: req.ip,
+        reason: 'Invalid credentials',
+      });
+      
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
+    
+    logSecurityEvent('LOGIN_SUCCESS', {
+      userId,
+      ip: req.ip,
+    });
+    
+    // ... rest of login ...
+  }
+});
+
+================================================================================
+TESTING AFTER FIXES
+================================================================================
+
+After implementing all fixes, test the following:
+
+1. Test Registration:
+   curl -X POST http://localhost:3001/api/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Test User",
+       "phone": "0912345678",
+       "age": "25"
+     }'
+
+2. Test Login:
+   curl -X POST http://localhost:3001/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Test User",
+       "phone": "0912345678",
+       "age": "25"
+     }'
+
+3. Test Save Test Result:
+   curl -X POST http://localhost:3001/api/tests/save \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -d '{
+       "testType": "snellen",
+       "testData": {"result": "20/20"},
+       "score": 100
+     }'
+
+4. Test Get Test History:
+   curl -X GET "http://localhost:3001/api/tests/history?userId=user_0912345678&limit=10" \
+     -H "Authorization: Bearer YOUR_TOKEN"
+
+5. Test CORS:
+   - Open browser console
+   - Make authenticated API call
+   - Check that Authorization header is sent
+   - Verify no CORS errors
+
+================================================================================
+DEPLOYMENT CHECKLIST
+================================================================================
+
+Before deploying to production:
+
+[ ] All CRITICAL fixes implemented
+[ ] All HIGH priority fixes implemented
+[ ] Environment variables configured
+[ ] JWT_SECRET set to strong value
+[ ] HTTPS enabled
+[ ] Security headers configured
+[ ] Rate limiting enabled
+[ ] Input sanitization enabled
+[ ] Error logging configured
+[ ] Database configured (not in-memory)
+[ ] API tested thoroughly
+[ ] Frontend tested with backend
+[ ] Security audit completed
+[ ] Performance tested
+[ ] Load testing completed
+[ ] Monitoring configured
+[ ] Backup strategy in place
+[ ] Rollback plan documented
+
+================================================================================
+

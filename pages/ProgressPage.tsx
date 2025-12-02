@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { TrendingUp, TrendingDown, Minus, Activity, Eye, Droplet, Palette, Grid, TestTube } from 'lucide-react';
+import { Activity, Eye, Grid, Minus, RefreshCcw, Sparkles, TestTube, TrendingDown, TrendingUp } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { StoredTestResult, TestType } from '../types';
-import { AIService } from '../services/aiService';
+<<<<<<< HEAD
+import { useAI } from '../context/AIContext';
 
 const storage = new StorageService();
-const aiService = new AIService();
+=======
+import { useDashboardInsights } from '../hooks/useDashboardInsights';
+import { GlassCard, StatPill, EmptyState as UiEmptyState } from '../components/ui/GlassCard';
+import { SkeletonBlock } from '../components/ui/GlassCard';
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 
+// Chuyển thang Snellen (chuỗi) sang điểm số để vẽ biểu đồ
 const scoreToNumber = (score: string): number => {
   switch (score) {
     case '20/20':
@@ -30,23 +36,27 @@ const scoreToNumber = (score: string): number => {
   }
 };
 
+// Wrapper nhỏ giúp tái sử dụng EmptyState chuẩn
+const EmptyState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <UiEmptyState title={title} description={description} />
+);
+
+// Biểu đồ đường đơn giản để hiển thị xu hướng Snellen
 const SimpleLineChart: React.FC<{ points: { x: string; y: number }[] }> = ({ points }) => {
-  // Simple SVG line chart
   const width = 700;
-  const height = 200;
+  const height = 220;
   const padding = 30;
 
-  if (points.length === 0) return <div className="text-gray-500">No data</div>;
+  if (points.length === 0) {
+    return <div className="text-center text-text-sub text-sm py-6">No data</div>;
+  }
 
   const xs = points.map((_, i) => padding + (i * (width - padding * 2)) / Math.max(1, points.length - 1));
   const ys = points.map((p) => padding + (1 - p.y / 100) * (height - padding * 2));
-
   const path = xs.map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${ys[i]}`).join(' ');
 
   return (
     <svg width="100%" viewBox={`0 0 ${width} ${height}`}>
-      <rect x="0" y="0" width="100%" height="100%" fill="transparent" />
-      {/* grid lines */}
       {[0, 25, 50, 75, 100].map((g) => (
         <line
           key={g}
@@ -54,23 +64,16 @@ const SimpleLineChart: React.FC<{ points: { x: string; y: number }[] }> = ({ poi
           x2={width - padding}
           y1={padding + (1 - g / 100) * (height - padding * 2)}
           y2={padding + (1 - g / 100) * (height - padding * 2)}
-          stroke="#e6e6e6"
-          strokeWidth={1}
+          stroke="#E2E8F0"
+          strokeDasharray="4"
         />
       ))}
-
-      <path d={path} fill="none" stroke="#7c3aed" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-
-      {/* points */}
+      <path d={path} fill="none" stroke="#4C6EF5" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
       {xs.map((x, i) => (
-        <g key={i}>
-          <circle cx={x} cy={ys[i]} r={3.5} fill="#7c3aed" />
-        </g>
+        <circle key={i} cx={x} cy={ys[i]} r={5} fill="#22B8CF" stroke="#fff" strokeWidth={2} />
       ))}
-
-      {/* labels */}
       {points.map((p, i) => (
-        <text key={i} x={xs[i]} y={height - 4} fontSize={10} textAnchor="middle" fill="#374151">
+        <text key={i} x={xs[i]} y={height - 4} fontSize={11} textAnchor="middle" fill="#475569">
           {new Date(p.x).toLocaleDateString()}
         </text>
       ))}
@@ -80,31 +83,35 @@ const SimpleLineChart: React.FC<{ points: { x: string; y: number }[] }> = ({ poi
 
 export default function ProgressPage() {
   const { language } = useLanguage();
+<<<<<<< HEAD
+  // Use AI service inside component to respect React Hooks rules
+  const aiService = useAI();
   const history: StoredTestResult[] = storage.getTestHistory();
   const [insights, setInsights] = useState<any>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+=======
+  const [history, setHistory] = useState<StoredTestResult[]>([]);
+  const storage = useMemo(() => new StorageService(), []);
 
-  // Load AI insights on mount and when history changes
+  const loadHistory = useCallback(() => {
+    setHistory(storage.getTestHistory());
+  }, [storage]);
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
+
   useEffect(() => {
-    if (history.length > 0) {
-      setLoadingInsights(true);
-      aiService
-        .generateDashboardInsights(history, language)
-        .then((data) => setInsights(data))
-        .catch((err) => console.error('Failed to load insights:', err))
-        .finally(() => setLoadingInsights(false));
-    } else {
-      setInsights(null); // Clear insights if no history
-    }
-  }, [history.length, language]); // ✅ FIX: Added history.length dependency
+    loadHistory();
+    const handleFocus = () => loadHistory();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [loadHistory]);
 
-  // Snellen trend
+  const { insights, isLoading, error, refresh } = useDashboardInsights(history, language);
+
   const snellenData = history
     .filter((h) => h.testType === 'snellen')
     .map((h) => ({ x: h.date, y: scoreToNumber((h.resultData as any).score) }))
     .reverse();
 
-  // Counts per test type
   const counts = history.reduce<Record<TestType, number>>(
     (acc, cur) => {
       const k = cur.testType as TestType;
@@ -114,7 +121,6 @@ export default function ProgressPage() {
     { snellen: 0, colorblind: 0, astigmatism: 0, amsler: 0, duochrome: 0 }
   );
 
-  // Amsler heatmap counts
   const amslerQuadrantCounts: Record<string, number> = { 'top-left': 0, 'top-right': 0, 'bottom-left': 0, 'bottom-right': 0 };
   history
     .filter((h) => h.testType === 'amsler')
@@ -126,199 +132,294 @@ export default function ProgressPage() {
       });
     });
 
+  const totalTests = history.length;
+  const uniqueDays = useMemo(() => {
+    const dates = new Set(history.map((item) => new Date(item.date).toDateString()));
+    return dates.size;
+  }, [history]);
+
+  const trendLabel = () => {
+    switch (insights?.trend) {
+      case 'IMPROVING':
+        return language === 'vi' ? 'Đang cải thiện' : 'Improving';
+      case 'STABLE':
+        return language === 'vi' ? 'Ổn định' : 'Stable';
+      case 'DECLINING':
+        return language === 'vi' ? 'Có dấu hiệu giảm' : 'Declining';
+      default:
+        return language === 'vi' ? 'Cần thêm dữ liệu' : 'Need more data';
+    }
+  };
+
+  const testLabel = (type: TestType) => {
+    const map: Record<TestType, { vi: string; en: string }> = {
+      snellen: { vi: 'Snellen', en: 'Snellen' },
+      colorblind: { vi: 'Mù màu', en: 'Colorblind' },
+      astigmatism: { vi: 'Loạn thị', en: 'Astigmatism' },
+      amsler: { vi: 'Amsler', en: 'Amsler' },
+      duochrome: { vi: 'Duochrome', en: 'Duochrome' },
+    };
+    return language === 'vi' ? map[type].vi : map[type].en;
+  };
+
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6 text-center">
-          <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2 flex items-center justify-center gap-3">
-            <TrendingUp className="w-10 h-10 text-purple-600" />
-            {language === 'vi' ? 'Tiến trình & Xu hướng' : 'Progress & Trends'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">{language === 'vi' ? 'Theo dõi thị lực của bạn theo thời gian' : 'Track your vision over time'}</p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-4">
-            <Eye className="w-6 h-6 text-indigo-600" />
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">{language === 'vi' ? 'Xu hướng Snellen' : 'Snellen Trend'}</h2>
+    <div className="min-h-screen bg-app-gradient dark:bg-background-dark">
+      <div className="page-shell space-y-8">
+        <section className="page-hero">
+          <div className="flex flex-col gap-4">
+            <div className="chip w-fit">
+              <Sparkles className="w-4 h-4" />
+              {language === 'vi' ? 'Trung tâm thị lực' : 'Vision hub'}
+            </div>
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-text-main dark:text-text-dark">
+                {language === 'vi' ? 'Tiến trình & Xu hướng' : 'Progress & Trends'}
+              </h1>
+              <p className="text-text-sub dark:text-slate-300">
+                {language === 'vi'
+                  ? 'Theo dõi từng bài test và để Eva phân tích như bác sĩ nhãn khoa 10 năm kinh nghiệm.'
+                  : 'Track every test and let Eva analyse like a senior ophthalmologist.'}
+              </p>
+            </div>
           </div>
-          {snellenData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Eye className="w-16 h-16 text-gray-300 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">{language === 'vi' ? 'Chưa có dữ liệu Snellen. Hãy làm bài kiểm tra!' : 'No Snellen data yet. Take a test!'}</p>
-            </div>
-          ) : (
-            <SimpleLineChart points={snellenData} />
-          )}
-        </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={refresh}
+              className="inline-flex items-center gap-2 rounded-full bg-primary text-white px-4 py-2 text-sm font-semibold shadow-glow hover:bg-primary-light transition-colors"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              {language === 'vi' ? 'Làm mới phân tích' : 'Refresh insights'}
+            </button>
+            {error && <span className="text-xs text-accent-dark">{error}</span>}
+          </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-4">
-              <TestTube className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{language === 'vi' ? 'Số lần làm bài theo loại' : 'Tests by Type'}</h3>
+        <section className="grid gap-6 xl:grid-cols-3">
+          <GlassCard className="p-6 xl:col-span-2 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-primary-dark/70">{language === 'vi' ? 'Xu hướng' : 'Trend'}</p>
+                <h2 className="text-xl font-semibold text-text-main dark:text-text-dark">
+                  {language === 'vi' ? 'Đường xu hướng Snellen' : 'Snellen trendline'}
+                </h2>
+              </div>
             </div>
-            <div className="flex items-end gap-4 h-40">
-              {Object.entries(counts).map(([k, v]) => (
-                <div key={k} className="flex-1 text-center">
-                  <div className="h-full flex items-end justify-center">
-                    <div style={{ height: `${Math.max(6, v * 8)}px` }} className="bg-indigo-500 w-12 rounded-t-md"></div>
-                  </div>
-                  <div className="text-xs mt-2 capitalize">{language === 'vi' ? k : k}</div>
+            {snellenData.length === 0 ? (
+              <EmptyState
+                title={language === 'vi' ? 'Chưa có dữ liệu Snellen' : 'No Snellen data yet'}
+                description={
+                  language === 'vi'
+                    ? 'Thực hiện bài test Snellen để kích hoạt biểu đồ.'
+                    : 'Complete a Snellen test to unlock this insight.'
+                }
+              />
+            ) : (
+              <SimpleLineChart points={snellenData} />
+            )}
+          </GlassCard>
+
+          <GlassCard className="p-6 flex flex-col gap-5">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-primary-dark/70">{language === 'vi' ? 'Tóm tắt' : 'At a glance'}</p>
+              <h3 className="text-lg font-semibold text-text-main dark:text-text-dark">
+                {language === 'vi' ? 'Nhịp kiểm tra hôm nay' : 'Your testing rhythm'}
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <StatPill label={language === 'vi' ? 'Tổng bài test' : 'Total tests'} value={totalTests} />
+              <StatPill label={language === 'vi' ? 'Ngày khác nhau' : 'Unique days'} value={uniqueDays} />
+              <StatPill label={language === 'vi' ? 'Xu hướng' : 'Trend'} value={trendLabel()} />
+              <StatPill label={language === 'vi' ? 'Loại bài test' : 'Active types'} value={Object.values(counts).filter(Boolean).length} />
+            </div>
+          </GlassCard>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-3">
+          <GlassCard className="p-6 space-y-5 lg:col-span-2">
+            <div className="flex items-center gap-2">
+              <TestTube className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-xs uppercase tracking-widest text-primary-dark/70">
+                  {language === 'vi' ? 'Phân bố bài test' : 'Test distribution'}
+                </p>
+                <h3 className="text-lg font-semibold text-text-main dark:text-text-dark">
+                  {language === 'vi' ? 'Số lần làm bài theo loại' : 'Attempts per test type'}
+                </h3>
+              </div>
+            </div>
+            {totalTests === 0 ? (
+              <EmptyState
+                title={language === 'vi' ? 'Chưa có dữ liệu' : 'No data yet'}
+                description={
+                  language === 'vi'
+                    ? 'Hoàn thành bất kỳ bài test nào để xem biểu đồ này.'
+                    : 'Complete any test to populate this chart.'
+                }
+              />
+            ) : (
+              <div className="space-y-4">
+                {(Object.entries(counts) as [TestType, number][]).map(([key, value]) => {
+                  const values = Object.values(counts) as number[];
+                  const maxValue = Math.max(...values, 1);
+                  const width = value === 0 ? 4 : (value / maxValue) * 100;
+                  return (
+                    <div key={key} className="flex items-center gap-4">
+                      <span className="w-32 text-sm font-medium text-text-sub capitalize">{testLabel(key as TestType)}</span>
+                      <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: `${width}%` }} />
+                      </div>
+                      <span className="text-sm font-semibold text-text-main dark:text-text-dark w-8 text-right">{value}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </GlassCard>
+
+          <GlassCard className="p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Grid className="w-5 h-5 text-secondary" />
+              <div>
+                <p className="text-xs uppercase tracking-widest text-secondary-dark/70">Amsler</p>
+                <h3 className="text-lg font-semibold text-text-main dark:text-text-dark">
+                  {language === 'vi' ? 'Bản đồ nhiệt' : 'Heatmap'}
+                </h3>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'top-left', labelVi: 'Trên - Trái', labelEn: 'Top left' },
+                { key: 'top-right', labelVi: 'Trên - Phải', labelEn: 'Top right' },
+                { key: 'bottom-left', labelVi: 'Dưới - Trái', labelEn: 'Bottom left' },
+                { key: 'bottom-right', labelVi: 'Dưới - Phải', labelEn: 'Bottom right' },
+              ].map((quadrant) => (
+                <div key={quadrant.key} className="rounded-2xl border border-secondary/30 bg-secondary-light/30 dark:bg-secondary-dark/20 p-4 text-center shadow-soft">
+                  <p className="text-xs uppercase tracking-widest text-secondary-dark">
+                    {language === 'vi' ? quadrant.labelVi : quadrant.labelEn}
+                  </p>
+                  <p className="text-3xl font-bold text-secondary mt-1">{amslerQuadrantCounts[quadrant.key] || 0}</p>
+                  <p className="text-[11px] text-secondary-dark/70">
+                    {language === 'vi' ? 'lần phát hiện' : 'detections'}
+                  </p>
                 </div>
               ))}
             </div>
+          </GlassCard>
+        </section>
+
+        <GlassCard className="p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-accent-dark" />
+              <div>
+                <p className="text-xs uppercase tracking-widest text-accent-dark/80">
+                  {language === 'vi' ? 'Trợ lý Eva' : 'Eva assistant'}
+                </p>
+                <h3 className="text-xl font-semibold text-text-main dark:text-text-dark">
+                  {language === 'vi' ? 'Phân tích AI cá nhân' : 'Personalised AI analysis'}
+                </h3>
+              </div>
+            </div>
+            {isLoading && <span className="text-xs text-text-sub">{language === 'vi' ? 'Đang phân tích...' : 'Analyzing...'}</span>}
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-4">
-              <Grid className="w-5 h-5 text-red-600" />
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{language === 'vi' ? 'Bản đồ nhiệt Amsler' : 'Amsler Heatmap'}</h3>
+          {isLoading ? (
+            <div className="space-y-4">
+              <SkeletonBlock height="h-8" />
+              <SkeletonBlock height="h-24" />
+              <SkeletonBlock height="h-20" />
             </div>
-            <div className="grid grid-cols-2 gap-3 w-72 mx-auto">
-              {[
-                { key: 'top-left', label: language === 'vi' ? 'Trên-Trái' : 'Top-Left' },
-                { key: 'top-right', label: language === 'vi' ? 'Trên-Phải' : 'Top-Right' },
-                { key: 'bottom-left', label: language === 'vi' ? 'Dưới-Trái' : 'Bottom-Left' },
-                { key: 'bottom-right', label: language === 'vi' ? 'Dưới-Phải' : 'Bottom-Right' }
-              ].map((item) => {
-                const v = amslerQuadrantCounts[item.key] || 0;
-                const intensity = Math.min(0.85, v / 5 + 0.2);
-                const bg = `rgba(239, 68, 68, ${intensity})`;
-                const borderColor = v > 0 ? 'border-red-600' : 'border-gray-300 dark:border-gray-600';
-                return (
-                  <div key={item.key} className={`p-6 rounded-lg text-center border-2 ${borderColor} shadow-md transition-all duration-300`} style={{ background: bg }}>
-                    <div className="font-semibold text-white text-sm drop-shadow-md">{item.label}</div>
-                    <div className="text-white text-3xl font-bold drop-shadow-lg mt-1">{v}</div>
-                    {v > 0 && <div className="text-xs text-white/90 mt-1">{language === 'vi' ? 'lần phát hiện' : 'detections'}</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* AI Insights Section */}
-        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl shadow-lg p-6 mt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-6 h-6 text-purple-600" />
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-              {language === 'vi' ? 'Phân tích AI của Eva' : "Eva's AI Analysis"}
-            </h3>
-          </div>
-
-          {loadingInsights && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-              <span className="ml-3 text-gray-600">{language === 'vi' ? 'Đang phân tích...' : 'Analyzing...'}</span>
-            </div>
-          )}
-
-          {!loadingInsights && history.length === 0 && (
-            <div className="text-center py-8">
-              <TestTube className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 dark:text-gray-400">
-                {language === 'vi' 
-                  ? 'Chưa có dữ liệu. Hãy làm một số bài kiểm tra để xem phân tích!' 
-                  : 'No data yet. Complete some tests to see your analysis!'}
-              </p>
-            </div>
-          )}
-
-          {!loadingInsights && insights && (
+          ) : history.length === 0 ? (
+            <EmptyState
+              title={language === 'vi' ? 'Cần thêm dữ liệu' : 'Need more data'}
+              description={
+                language === 'vi'
+                  ? 'Hoàn thành vài bài kiểm tra để Eva xây dựng báo cáo.'
+                  : 'Complete a few tests to let Eva build your report.'
+              }
+            />
+          ) : insights ? (
             <div className="space-y-6">
-              {/* Score & Rating */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow">
-                  <div className="text-4xl font-bold text-purple-600">{insights.score}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {language === 'vi' ? 'Điểm tổng quát' : 'Overall Score'}
-                  </div>
+                <div className="rounded-2xl bg-primary-muted p-4 text-center">
+                  <p className="text-sm text-primary-dark/70">{language === 'vi' ? 'Điểm tổng quát' : 'Overall score'}</p>
+                  <p className="text-4xl font-bold text-primary-dark">{insights.score}</p>
                 </div>
-                
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow">
-                  <div className={`text-2xl font-bold ${
-                    insights.rating === 'Xuất sắc' || insights.rating === 'Excellent' ? 'text-green-600' :
-                    insights.rating === 'Tốt' || insights.rating === 'Good' ? 'text-blue-600' :
-                    insights.rating === 'Trung bình' || insights.rating === 'Fair' ? 'text-yellow-600' :
-                    'text-red-600'
-                  }`}>
-                    {insights.rating}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {language === 'vi' ? 'Xếp hạng' : 'Rating'}
-                  </div>
+                <div className="rounded-2xl bg-secondary-light p-4 text-center">
+                  <p className="text-sm text-secondary-dark/70">{language === 'vi' ? 'Xếp hạng' : 'Rating'}</p>
+                  <p className="text-2xl font-bold text-secondary-dark">{insights.rating}</p>
                 </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow">
-                  <div className="flex items-center justify-center gap-2">
-                    {insights.trend === 'IMPROVING' && <TrendingUp className="w-8 h-8 text-green-600" />}
-                    {insights.trend === 'STABLE' && <Minus className="w-8 h-8 text-blue-600" />}
-                    {insights.trend === 'DECLINING' && <TrendingDown className="w-8 h-8 text-red-600" />}
-                    <div className={`text-xl font-bold ${
-                      insights.trend === 'IMPROVING' ? 'text-green-600' :
-                      insights.trend === 'STABLE' ? 'text-blue-600' :
-                      'text-red-600'
-                    }`}>
-                      {insights.trend === 'IMPROVING' ? (language === 'vi' ? 'Cải thiện' : 'Improving') :
-                       insights.trend === 'STABLE' ? (language === 'vi' ? 'Ổn định' : 'Stable') :
-                       (language === 'vi' ? 'Giảm sút' : 'Declining')}
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {language === 'vi' ? 'Xu hướng' : 'Trend'}
+                <div className="rounded-2xl bg-accent-light p-4 text-center">
+                  <p className="text-sm text-accent-dark/70">{language === 'vi' ? 'Xu hướng' : 'Trend'}</p>
+                  <div className="flex items-center justify-center gap-2 text-accent-dark font-semibold">
+                    {insights.trend === 'IMPROVING' && <TrendingUp className="w-5 h-5" />}
+                    {insights.trend === 'STABLE' && <Minus className="w-5 h-5" />}
+                    {insights.trend === 'DECLINING' && <TrendingDown className="w-5 h-5" />}
+                    {trendLabel()}
                   </div>
                 </div>
               </div>
 
-              {/* Positives */}
-              {insights.positives && insights.positives.length > 0 && (
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                  <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
+              {insights.overallSummary && (
+                <div className="rounded-2xl border border-slate-100 dark:border-white/10 p-4 bg-white/70 dark:bg-white/5">
+                  <p className="text-sm text-text-sub dark:text-slate-300 leading-relaxed">{insights.overallSummary}</p>
+                </div>
+              )}
+
+              {insights.positives?.length > 0 && (
+                <div className="rounded-2xl bg-primary-muted/70 p-4">
+                  <h4 className="font-semibold text-primary-dark text-sm mb-3 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
                     {language === 'vi' ? 'Điểm mạnh' : 'Strengths'}
                   </h4>
-                  <ul className="space-y-1">
-                    {insights.positives.map((p: string, i: number) => (
-                      <li key={i} className="text-green-700 dark:text-green-400 text-sm flex items-start gap-2">
-                        <span className="text-green-600 mt-0.5">✓</span>
-                        <span>{p}</span>
+                  <ul className="space-y-2">
+                    {insights.positives.map((item: string, idx: number) => (
+                      <li key={idx} className="text-sm text-primary-dark/80 flex gap-2">
+                        <span>•</span>
+                        <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Areas to Monitor */}
-              {insights.areasToMonitor && insights.areasToMonitor.length > 0 && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
-                  <h4 className="font-semibold text-yellow-800 dark:text-yellow-300 mb-2 flex items-center gap-2">
-                    <Eye className="w-5 h-5" />
-                    {language === 'vi' ? 'Cần theo dõi' : 'Monitor Closely'}
+              {insights.areasToMonitor?.length > 0 && (
+                <div className="rounded-2xl bg-accent-light/60 p-4">
+                  <h4 className="font-semibold text-accent-dark text-sm mb-3 flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    {language === 'vi' ? 'Cần lưu ý' : 'Monitor closely'}
                   </h4>
-                  <ul className="space-y-1">
-                    {insights.areasToMonitor.map((a: string, i: number) => (
-                      <li key={i} className="text-yellow-700 dark:text-yellow-400 text-sm flex items-start gap-2">
-                        <span className="text-yellow-600 mt-0.5">⚠</span>
-                        <span>{a}</span>
+                  <ul className="space-y-2">
+                    {insights.areasToMonitor.map((item: string, idx: number) => (
+                      <li key={idx} className="text-sm text-accent-dark/90 flex gap-2">
+                        <span>•</span>
+                        <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Pro Tip */}
               {insights.proTip && (
-                <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-4 border-l-4 border-purple-600">
-                  <h4 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">
-                    💡 {language === 'vi' ? 'Mẹo từ Eva' : "Eva's Pro Tip"}
+                <div className="rounded-2xl border-l-4 border-primary bg-white/80 dark:bg-surface-dark/80 p-4">
+                  <h4 className="font-semibold text-primary-dark mb-2 text-sm">
+                    💡 {language === 'vi' ? 'Mẹo từ Eva' : 'Eva’s pro tip'}
                   </h4>
-                  <p className="text-purple-700 dark:text-purple-400 text-sm">{insights.proTip}</p>
+                  <p className="text-sm text-text-sub dark:text-slate-300">{insights.proTip}</p>
                 </div>
               )}
             </div>
+          ) : (
+            <EmptyState
+              title={language === 'vi' ? 'Eva đang bận' : 'Eva is busy'}
+              description={
+                language === 'vi'
+                  ? 'Không thể lấy dữ liệu AI. Thử nhấn làm mới.'
+                  : 'Unable to fetch AI insights. Try refreshing.'
+              }
+            />
           )}
-        </div>
+        </GlassCard>
       </div>
     </div>
   );

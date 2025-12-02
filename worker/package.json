@@ -1,0 +1,36 @@
+{
+  "name": "vision-coach-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for Vision Coach application",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "jest",
+    "db:schema": "node scripts/migrate.js schema",
+    "db:schema:preview": "node scripts/migrate.js schema:preview",
+    "db:migrate": "node scripts/migrate.js",
+    "db:create": "node scripts/migrate.js create",
+    "db:list": "node scripts/migrate.js list",
+    "db:query": "node scripts/migrate.js query",
+    "db:info": "node scripts/migrate.js info"
+  },
+  "dependencies": {
+    "@google/genai": "^1.28.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240605.0",
+    "@types/node": "^22.14.0",
+    "itty-router": "^4.1.2",
+    "typescript": "~5.8.2",
+    "wrangler": "^4.51.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

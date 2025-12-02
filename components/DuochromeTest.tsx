@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Fix: Import BrainCircuit directly from lucide-react
 import { RotateCcw, Download, Share2, BrainCircuit } from 'lucide-react';
 import { DuochromeTestService, DuochromeUserInput } from '../services/duochromeService';
-import { AIService } from '../services/aiService';
+<<<<<<< HEAD
+import { useAI } from '../context/AIContext';
+=======
+// AIService đã được thay thế bằng ChatbotService (backend) - import động khi cần
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 import { StorageService } from '../services/storageService';
 import { DuochromeResult, AIReport, StoredTestResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,9 +15,9 @@ import { useRoutine } from '../context/RoutineContext';
 import { usePdfExport } from '../hooks/usePdfExport';
 import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
+import { TestShell } from './TestShell';
 
 const duochromeService = new DuochromeTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 const Loader: React.FC = () => {
@@ -132,11 +137,14 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 };
 
 export const DuochromeTest: React.FC = () => {
+  const aiService = useAI();
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
+  const navigate = useNavigate();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');
   const [currentEye, setCurrentEye] = useState<'right' | 'left'>('right');
   const [rightEyeResult, setRightEyeResult] = useState<DuochromeUserInput | null>(null);
+  const [rawSelections, setRawSelections] = useState<{ eye: 'right' | 'left'; choice: 'red' | 'green' | 'equal' }[]>([]);
 
   const [storedResult, setStoredResult] = useState<StoredTestResult | null>(null);
 
@@ -149,22 +157,64 @@ export const DuochromeTest: React.FC = () => {
     if (!rightEyeResult) return;
 
     setTestState('loading');
-    const testResult = duochromeService.calculateResult(rightEyeResult, leftEyeSelection);
+    const base = duochromeService.calculateResult(rightEyeResult, leftEyeSelection);
+    const testResult: DuochromeResult = {
+      ...base,
+      rawSelections,
+      deviceInfo: navigator.userAgent,
+    } as DuochromeResult;
 
     try {
       const history = storageService.getTestHistory();
-      const aiReport = await aiService.generateReport('duochrome', testResult, history, language);
+      let aiReport: AIReport | null = null;
+      try {
+        // Sử dụng backend API thay vì gọi trực tiếp AIService
+        const { ChatbotService } = await import('../services/chatbotService');
+        const svc = new ChatbotService();
+        const backendReport = await svc.report('duochrome', testResult, history, language);
+        
+        // Chuyển đổi response từ backend sang format AIReport
+        const report = backendReport as any;
+        if (report.success) {
+          aiReport = {
+            id: report.id || Date.now().toString(),
+            testType: 'duochrome',
+            timestamp: report.timestamp || new Date().toISOString(),
+            totalResponseTime: 0,
+            confidence: report.confidence || 0.85,
+            summary: report.summary || '',
+            recommendations: Array.isArray(report.recommendations) ? report.recommendations : [],
+            severity: (report.severity || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH',
+            trend: report.trend || 'STABLE',
+            causes: report.causes || '',
+            prediction: report.prediction || '',
+          };
+        }
+      } catch (e) {
+        console.error('Backend report generation error:', e);
+        aiReport = null;
+      }
+      const report: AIReport = aiReport || {
+        id: Date.now().toString(),
+        testType: 'duochrome',
+        timestamp: new Date().toISOString(),
+        totalResponseTime: 0,
+        confidence: 0,
+        summary: t('error_report'),
+        recommendations: [],
+        severity: testResult.severity === 'HIGH' ? 'HIGH' : testResult.severity === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+      };
       const newStoredResult: StoredTestResult = {
-        id: aiReport.id,
+        id: report.id,
         testType: 'duochrome',
         date: testResult.date,
         resultData: testResult,
-        report: aiReport,
+        report: report,
       };
       setStoredResult(newStoredResult);
-      storageService.saveTestResult(testResult, aiReport);
+      storageService.saveTestResult(testResult, report);
       markActivityAsCompleted('duochrome');
-      updateStreak('test'); // 🔥 Update streak & check badges
+      updateStreak('test');
     } catch (err) {
       console.error(err);
     }
@@ -173,15 +223,17 @@ export const DuochromeTest: React.FC = () => {
   
   const handleSelection = (selection: DuochromeUserInput) => {
       if (currentEye === 'right') {
+          setRawSelections(prev => [...prev, { eye: 'right', choice: selection }]);
           setRightEyeResult(selection);
           setCurrentEye('left');
       } else {
+          setRawSelections(prev => [...prev, { eye: 'left', choice: selection }]);
           finishTest(selection);
       }
   };
 
 
-  const renderContent = () => {
+  const renderStage = () => {
     switch (testState) {
       case 'start':
         return <StartScreen onStart={startTest} />;
@@ -195,9 +247,24 @@ export const DuochromeTest: React.FC = () => {
     }
   };
 
+  const instructions = [
+    t('duochrome_instruction_1'),
+    t('duochrome_instruction_2'),
+    t('duochrome_instruction_3'),
+  ];
+
   return (
-    <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
-      {renderContent()}
-    </div>
+    <TestShell
+      title={t('duochrome_test')}
+      description={t('duochrome_start_desc')}
+      estimatedTime={3}
+      safetyNote={language === 'vi' ? 'Giữ môi trường sáng ổn định, nhìn trung tâm biểu đồ.' : 'Keep stable lighting; focus on chart center.'}
+      instructions={instructions}
+      onExit={() => navigate('/home')}
+    >
+      <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
+        {renderStage()}
+      </div>
+    </TestShell>
   );
 };

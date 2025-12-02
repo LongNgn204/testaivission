@@ -1,0 +1,275 @@
+/**
+ * ============================================================
+ * 🚀 Cloudflare Worker - Vision Coach Backend
+ * ============================================================
+ * 
+ * Entry point for all API endpoints
+ * Handles routing, middleware, and request processing
+ */
+
+import { Router, IRequest } from 'itty-router';
+import { generateReport } from './handlers/aiReport';
+import { generateDashboardInsights } from './handlers/dashboard';
+import { chat } from './handlers/chat';
+import { generateRoutine } from './handlers/routine';
+import { generateProactiveTip } from './handlers/proactiveTip';
+import { login, verifyToken, logout } from './handlers/auth';
+import { DatabaseService } from './services/database';
+
+import { handleCors, addCorsHeaders } from './middleware/cors';
+import { rateLimit } from './middleware/rateLimit';
+import { validateRequest } from './middleware/validation';
+
+// Create router
+const router = Router();
+
+// ============================================================
+// MIDDLEWARE
+// ============================================================
+
+// CORS handling
+router.all('*', handleCors);
+
+// Rate limiting
+router.all('*', rateLimit);
+
+// Request validation
+router.post('*', validateRequest);
+
+// ============================================================
+// ROUTES
+// ============================================================
+
+/**
+ * POST /api/auth/login
+ * User login verification
+ */
+router.post('/api/auth/login', login);
+
+/**
+ * POST /api/auth/verify
+ * Verify user token
+ */
+router.post('/api/auth/verify', verifyToken);
+
+/**
+ * POST /api/auth/logout
+ * User logout
+ */
+router.post('/api/auth/logout', logout);
+
+/**
+ * POST /api/report
+ * Generate AI report for a test result
+ */
+router.post('/api/report', generateReport);
+
+/**
+ * POST /api/dashboard
+ * Generate dashboard insights from test history
+ */
+router.post('/api/dashboard', generateDashboardInsights);
+
+/**
+ * POST /api/chat
+ * Chat with Dr. Eva
+ */
+router.post('/api/chat', chat);
+
+/**
+ * POST /api/routine
+ * Generate personalized weekly routine
+ */
+router.post('/api/routine', generateRoutine);
+
+/**
+ * POST /api/proactive-tip
+ * Generate proactive health tip
+ */
+router.post('/api/proactive-tip', generateProactiveTip);
+
+/**
+ * POST /api/tests/save
+ * Save test result (D1 Database)
+ */
+router.post('/api/tests/save', async (request: IRequest, env: any) => {
+  try {
+    const auth = (request as Request).headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Verify token
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const body = await (request as Request).json() as any;
+    const { testType, testData, score, result, duration } = body || {};
+    if (!testType || !testData) {
+      return new Response(JSON.stringify({ success: false, message: 'Missing required fields: testType, testData' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Save to D1
+    const db = new DatabaseService(env.DB);
+    const testResult = await db.saveTestResult({
+      user_id: decoded.userId,
+      test_type: testType,
+      test_data: JSON.stringify(testData),
+      score,
+      result,
+      duration,
+    });
+
+    // Track analytics
+    await db.trackEvent('test_completed', decoded.userId, { testType, score });
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Test result saved', 
+      testResult: {
+        id: testResult.id,
+        testType: testResult.test_type,
+        score: testResult.score,
+        result: testResult.result,
+        timestamp: testResult.created_at,
+      }
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Failed to save test result', error: error?.message || 'UNKNOWN' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+});
+
+/**
+ * GET /api/tests/history
+ * Get paginated test history (D1 Database)
+ */
+router.get('/api/tests/history', async (request: IRequest, env: any) => {
+  try {
+    const req = request as Request;
+    const auth = req.headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const url = new URL(req.url);
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '100'), 1000);
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'), 0);
+
+    const db = new DatabaseService(env.DB);
+    const { tests, total } = await db.getUserTestHistory(decoded.userId, limit, offset);
+
+    // Transform data for response
+    const history = tests.map(test => ({
+      id: test.id,
+      testType: test.test_type,
+      testData: JSON.parse(test.test_data),
+      score: test.score,
+      result: test.result,
+      timestamp: test.created_at,
+      duration: test.duration,
+    }));
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Test history retrieved', 
+      history, 
+      total, 
+      limit, 
+      offset 
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Failed to get test history', history: [], error: error?.message || 'UNKNOWN' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+});
+
+/**
+ * GET /health
+ * Health check endpoint
+ */
+router.get('/health', () => {
+  return new Response(
+    JSON.stringify({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+});
+
+/**
+ * GET /metrics
+ * Basic metrics endpoint
+ */
+router.get('/metrics', (_request: IRequest, _env: any) => {
+  return new Response(
+    JSON.stringify({
+      uptime: 'N/A',
+      requests: 'See Cloudflare Analytics',
+      timestamp: new Date().toISOString(),
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+});
+
+/**
+ * 404 Handler
+ */
+router.all('*', () => {
+  return new Response(
+    JSON.stringify({
+      error: 'Not Found',
+      message: 'The requested endpoint does not exist',
+      timestamp: new Date().toISOString(),
+    }),
+    {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+});
+
+// ============================================================
+// ERROR HANDLER
+// ============================================================
+
+export default {
+  async fetch(request: Request, env: any, ctx: any) {
+    try {
+      const response = await router.handle(request, env, ctx);
+      return addCorsHeaders(response);
+    } catch (error: any) {
+      console.error('Worker error:', error);
+      return addCorsHeaders(
+        new Response(
+          JSON.stringify({
+            error: 'Internal Server Error',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      );
+    }
+  },
+};
+

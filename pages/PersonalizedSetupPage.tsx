@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { AIService } from '../services/aiService';
+import { useAI } from '../context/AIContext';
 import { useRoutine } from '../context/RoutineContext';
 import { AnswerState } from '../types';
 import { BrainCircuit, Check, Calendar } from 'lucide-react';
-
-const aiService = new AIService();
+import { setupAnswersSchema } from '../utils/validation';
+import { useToastContext } from '../context/ToastContext';
 
 const Loader: React.FC = () => {
     const { t } = useLanguage();
@@ -26,6 +26,9 @@ const Loader: React.FC = () => {
 export const PersonalizedSetupPage: React.FC = () => {
     const { t, language } = useLanguage();
     const { saveRoutine } = useRoutine();
+    const { error: toastError, success: toastSuccess } = useToastContext();
+    // Use AI service inside component to respect React Hooks rules
+    const aiService = useAI();
     const [step, setStep] = useState(0);
     const [answers, setAnswers] = useState<AnswerState>({ worksWithComputer: '', wearsGlasses: '', goal: '' });
     const [isLoading, setIsLoading] = useState(false);
@@ -49,11 +52,22 @@ export const PersonalizedSetupPage: React.FC = () => {
     const handleNext = async () => {
         if (step < questions.length - 1) {
             setStep(step + 1);
-        } else {
+            return;
+        }
+
+        const parsed = setupAnswersSchema.safeParse(answers);
+        if (!parsed.success) {
+            toastError(language === 'vi' ? 'Vui lòng chọn đủ câu trả lời' : 'Please complete all answers');
+            return;
+        }
+
             setIsLoading(true);
-            const routine = await aiService.generatePersonalizedRoutine(answers, language);
-            saveRoutine(routine, answers);
-            // The app will re-render automatically due to context change
+        try {
+            const routine = await aiService.generatePersonalizedRoutine(parsed.data, language);
+            saveRoutine(routine, parsed.data);
+            toastSuccess(language === 'vi' ? 'Đã tạo lịch trình cá nhân' : 'Personalized routine created');
+        } finally {
+            setIsLoading(false);
         }
     };
 

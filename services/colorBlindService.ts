@@ -74,16 +74,19 @@ export class ColorBlindTestService {
     const total = this.currentTestPlates.length;
     let correct = 0;
     const missedPlates: { plate: number; correctAnswer: string; userAnswer: string }[] = [];
+    const rawAnswers: { plate: number; userAnswer: string; correct: boolean }[] = [];
 
     this.currentTestPlates.forEach(plate => {
-      const userAnswer = this.userAnswers.get(plate.id) || '';
+      const userAnswer = (this.userAnswers.get(plate.id) || '').toLowerCase();
       // FIX BUG #3 & #4: Compare both in lowercase for case-insensitive matching
       const correctAnswer = plate.correctAnswer.toLowerCase();
-      if (userAnswer === correctAnswer) {
+      const isCorrect = userAnswer === correctAnswer;
+      if (isCorrect) {
         correct++;
       } else {
         missedPlates.push({ plate: plate.id, correctAnswer: plate.correctAnswer, userAnswer });
       }
+      rawAnswers.push({ plate: plate.id, userAnswer, correct: isCorrect });
     });
 
     const accuracy = (correct / total) * 100;
@@ -114,6 +117,7 @@ export class ColorBlindTestService {
       severity,
       date: new Date().toISOString(),
       duration: Math.round((Date.now() - this.startTime) / 1000),
+      rawAnswers,
     };
   }
 }

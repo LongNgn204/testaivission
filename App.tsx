@@ -1,35 +1,73 @@
 /**
+ * ========================================
  * Sức Khỏe AI - AI-Powered Vision Testing Platform
- * 
- * Main application component with routing and context providers
- * 
- * Features:
+ * ========================================
+ *
+ * MỤC ĐÍCH CHÍNH:
+ * - Ứng dụng kiểm tra thị lực toàn diện với AI hỗ trợ
+ * - Cung cấp 5 bài kiểm tra thị lực tiêu chuẩn
+ * - Tích hợp chatbot AI 2 chiều (voice + text)
+ * - Theo dõi tiến độ và đưa ra khuyến nghị
+ *
+ * ✨ TÍNH NĂNG CHÍNH:
  * - 5 Vision Tests (Snellen, Color Blind, Astigmatism, Amsler, Duochrome)
  * - AI Chatbot (2-way voice conversation)
  * - Progress Tracking (charts + AI insights)
  * - Hospital Locator (GPS-based)
  * - Gamification (badges, streaks, exercises)
- * - Smart Reminders (notifications)
- * 
- * Tech Stack: React 19, TypeScript, Google Gemini AI, Web Speech API
+ * - React 19 + TypeScript
+ * - Google Gemini AI API
+ * - Web Speech API (voice)
+ * - LocalStorage (offline data)
+ * - Tailwind CSS + Dark Mode
+ *
+ * 🔐 LUỒNG XÁC THỰC:
+ * 1. Người dùng truy cập → WelcomePage
+ * 2. Đăng nhập (LoginPage) → lưu user_data vào localStorage
+ * 3. Setup cá nhân (PersonalizedSetupPage) → lưu routine + answers
+ * 4. Truy cập các bài test (ProtectedRoute)
+ * 5. Xem lịch sử + báo cáo (History, ProgressPage)
  */
 
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { RoutineProvider } from './context/RoutineContext';
 import { ThemeProvider } from './context/ThemeContext';
+<<<<<<< HEAD
+import { AIProvider } from './context/AIContext'; // Import AIProvider
+import { ToastProvider } from './context/ToastContext'; // Import ToastProvider
+import { ErrorBoundary } from './components/ErrorBoundary'; // Import ErrorBoundary
 import { Header } from './components/Header';
+import { SkipToContent } from './components/SkipToContent';
 import { initializeReminderSystem } from './services/reminderService';
 import { initPerformanceOptimizations } from './utils/performanceUtils';
+import { setupGlobalErrorHandling } from './utils/errorHandler'; // Import error setup
+import { DebugPanel } from './components/DebugPanel'; // Import DebugPanel
+import { AnalyticsDashboard } from './components/AnalyticsDashboard'; // Import AnalyticsDashboard
+import { initializeGoogleAnalytics } from './utils/googleAnalytics'; // Import GA setup
+import { AiKeyWarning } from './components/AiKeyWarning';
+=======
+import { VoiceControlProvider } from './context/VoiceControlContext';
+import { UserProvider } from './context/UserContext';
+import { Header } from './components/Header';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { initializeReminderSystem } from './services/reminderService';
+import { initPerformanceOptimizations } from './utils/performanceUtils';
+import { verifyUserToken, getAuthToken, clearAuthToken, processOfflineQueue } from './services/authService';
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 
-// ⚡ LAZY LOADING: Load components only when needed (HUGE speed boost!)
+// ⚡ LAZY LOADING (Tải các component khi cần):
+// - Giảm bundle size ban đầu
+// - Tăng tốc độ load trang
+// - Cải thiện performance trên mobile
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const PersonalizedSetupPage = lazy(() => import('./pages/PersonalizedSetupPage').then(m => ({ default: m.PersonalizedSetupPage })));
 const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
+const LoginPageWithBackend = lazy(() => import('./pages/LoginPageWithBackend'));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
 const SnellenTest = lazy(() => import('./components/SnellenTest').then(m => ({ default: m.SnellenTest })));
 const ColorBlindTest = lazy(() => import('./components/ColorBlindTest').then(m => ({ default: m.ColorBlindTest })));
 const AstigmatismTest = lazy(() => import('./components/AstigmatismTest').then(m => ({ default: m.AstigmatismTest })));
@@ -38,10 +76,16 @@ const DuochromeTest = lazy(() => import('./components/DuochromeTest').then(m => 
 const HospitalLocator = lazy(() => import('./components/HospitalLocator'));
 const RemindersPage = lazy(() => import('./pages/RemindersPage'));
 const ProgressPage = lazy(() => import('./pages/ProgressPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
 const VisionCoach = lazy(() => import('./components/VisionCoach').then(m => ({ default: m.VisionCoach })));
 const TestInstructionsPlayer = lazy(() => import('./components/TestInstructionsPlayer').then(m => ({ default: m.TestInstructionsPlayer })));
 
-// ⚡ LOADING FALLBACK: Fast, minimal loading UI
+/**
+ * ⚡ LOADING FALLBACK: UI tải nhanh, tối giản
+ * - Hiển thị spinner + text "Đang tải..."
+ * - Áp dụng theme (light/dark)
+ * - Không block UI chính
+ */
 const LoadingFallback: React.FC = () => (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center">
@@ -51,33 +95,46 @@ const LoadingFallback: React.FC = () => (
     </div>
 );
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const userData = localStorage.getItem('user_data');
-    
-    if (!userData) {
-        return <Navigate to="/login" replace />;
-    }
-    
-    return <>{children}</>;
-};
-
+/**
+ * 🏠 MAIN APP LAYOUT: Layout chính sau khi đăng nhập
+ *
+ * CẤU TRÚC:
+ * - Header: Navigation + user info
+ * - TestInstructionsPlayer: Hướng dẫn bài test (nếu có)
+ * - Main Routes: Các trang chính (Home, History, Tests, etc.)
+ * - Footer: Copyright + disclaimer
+ * - VisionCoach: AI chatbot (always available)
+ *
+ * LIFECYCLE:
+ * 1. Mount → khởi tạo performance optimizations + reminder system
+ * 2. Render → hiển thị header + routes + footer
+ * 3. Unmount → cleanup (nếu cần)
+ */
 const MainAppLayout: React.FC = () => {
     const { t } = useLanguage();
 
     React.useEffect(() => {
-        // ⚡ PERFORMANCE: Initialize optimizations
+        // ⚡ PERFORMANCE: Khởi tạo tối ưu hóa
         initPerformanceOptimizations();
+        // 🔔 REMINDERS: Khởi tạo hệ thống nhắc nhở
         initializeReminderSystem();
+        // 🔁 Try to process any offline-queued test results on startup and when back online
+        processOfflineQueue().catch(() => {});
+        const handleOnline = () => { processOfflineQueue().catch(() => {}); };
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
     }, []);
 
     return (
         <div className="min-h-screen font-sans relative flex flex-col">
+            <AiKeyWarning />
+            <SkipToContent />
             <Header />
+
             <Suspense fallback={<div className="h-16" />}>
                 <TestInstructionsPlayer />
             </Suspense>
-            <main className="flex-grow">
+            <main id="main-content" role="main" className="flex-grow pt-24">
                 <Suspense fallback={<LoadingFallback />}>
                     <Routes>
                         <Route index element={<Home />} />
@@ -91,17 +148,19 @@ const MainAppLayout: React.FC = () => {
                         <Route path="hospitals" element={<HospitalLocator />} />
                         <Route path="reminders" element={<RemindersPage />} />
                         <Route path="progress" element={<ProgressPage />} />
+                        <Route path="chat" element={<ChatPage />} /> {/* Add Chat Route */}
                         <Route path="*" element={<Navigate to="/home" replace />} />
                     </Routes>
                 </Suspense>
             </main>
-            
+
             <footer className="bg-white border-t dark:bg-gray-900 dark:border-gray-800">
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center text-gray-500 dark:text-gray-400">
                     <p>{t('footer_copyright')}</p>
                     <p className="text-xs mt-2">{t('footer_disclaimer')}</p>
                 </div>
             </footer>
+
             <Suspense fallback={<div />}>
                 <VisionCoach />
             </Suspense>
@@ -109,60 +168,123 @@ const MainAppLayout: React.FC = () => {
     );
 }
 
+/**
+ * 🔐 APP CONTENT: Xử lý xác thực + routing chính
+ *
+ * LUỒNG XÁC THỰC:
+ * 1. checking: Đang kiểm tra trạng thái đăng nhập
+ * 2. guest: Chưa đăng nhập → hiển thị WelcomePage + LoginPage
+ * 3. authenticated: Đã đăng nhập → hiển thị MainAppLayout
+ *
+ * EVENTS THEO DÕI:
+ * - userLoggedIn: Người dùng đăng nhập thành công
+ * - userLoggedOut: Người dùng đăng xuất
+ * - storage: localStorage thay đổi (multi-tab sync)
+ *
+ * ROUTES:
+ * - /: WelcomePage (public)
+ * - /login: LoginPage (public)
+ * - /setup: PersonalizedSetupPage (protected)
+ * - /home/*: MainAppLayout (protected)
+ */
 const AppContent: React.FC = () => {
-    const [isLoggedIn, setIsLoggedIn] = React.useState(() => {
-        // Initialize from localStorage
-        return !!localStorage.getItem('user_data');
-    });
+    const [authState, setAuthState] = React.useState<'checking' | 'guest' | 'authenticated'>('checking');
 
-    // Check if user is logged in (re-check on route changes)
-    React.useEffect(() => {
-        const checkLoginStatus = () => {
+    const syncAuthState = React.useCallback(async () => {
+        try {
             const userData = localStorage.getItem('user_data');
-            setIsLoggedIn(!!userData);
-        };
-
-        // Check initially
-        checkLoginStatus();
-
-        // Listen for custom login event
-        const handleLoginChange = () => {
-            checkLoginStatus();
-        };
-
-        window.addEventListener('userLoggedIn', handleLoginChange);
-        window.addEventListener('userLoggedOut', handleLoginChange);
-        
-        return () => {
-            window.removeEventListener('userLoggedIn', handleLoginChange);
-            window.removeEventListener('userLoggedOut', handleLoginChange);
-        };
-    }, []);
-
-    // Listen for storage changes (logout from another tab/component)
-    React.useEffect(() => {
-        const handleStorageChange = () => {
-            const userData = localStorage.getItem('user_data');
-            if (!userData) {
-                setIsLoggedIn(false);
+            const token = getAuthToken();
+            
+            // If we have both user data and token, verify token with backend
+            if (userData && token) {
+                const verifyResult = await verifyUserToken(token);
+                
+                if (verifyResult.success) {
+                    // Token is valid, user is authenticated
+                    setAuthState('authenticated');
+                    console.log('✅ Token verified successfully');
+                } else {
+                    // Token is invalid, clear auth data
+                    console.warn('⚠️ Token verification failed, logging out');
+                    clearAuthToken();
+                    localStorage.removeItem('user_data');
+                    setAuthState('guest');
+                }
             } else {
-                setIsLoggedIn(true);
+                // No user data or token, user is guest
+                setAuthState('guest');
             }
-        };
-        
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
+        } catch (error) {
+            console.error('Failed to verify auth state', error);
+            // On error, clear auth data to be safe
+            clearAuthToken();
+            localStorage.removeItem('user_data');
+            setAuthState('guest');
+        }
     }, []);
+
+    React.useEffect(() => {
+        syncAuthState();
+
+        const handleAuthEvent = () => syncAuthState();
+
+        window.addEventListener('userLoggedIn', handleAuthEvent);
+        window.addEventListener('userLoggedOut', handleAuthEvent);
+        window.addEventListener('storage', handleAuthEvent);
+
+        return () => {
+            window.removeEventListener('userLoggedIn', handleAuthEvent);
+            window.removeEventListener('userLoggedOut', handleAuthEvent);
+            window.removeEventListener('storage', handleAuthEvent);
+        };
+    }, [syncAuthState]);
+
+    if (authState === 'checking') {
+        return <LoadingFallback />;
+    }
+
+    const isLoggedIn = authState === 'authenticated';
 
     return (
-        <HashRouter>
+        <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Suspense fallback={<LoadingFallback />}>
                 <Routes>
+<<<<<<< HEAD
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/setup" element={<PersonalizedSetupPage />} />
-                    <Route path="/home/*" element={<MainAppLayout />} />
+                    <Route path="/setup" element={<ProtectedRoute><PersonalizedSetupPage /></ProtectedRoute>} />
+                    <Route path="/home/*" element={<ProtectedRoute><MainAppLayout /></ProtectedRoute>} />
                     {/* Always show WelcomePage at root */}
                     <Route path="/" element={<WelcomePage />} />
+=======
+                    <Route
+                        path="/login"
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
+                    />
+                    <Route
+                        path="/login-legacy"
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
+                    />
+                    <Route
+                        path="/setup"
+                        element={
+                            <ProtectedRoute isAuthenticated={isLoggedIn}>
+                                <PersonalizedSetupPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/home/*"
+                        element={
+                            <ProtectedRoute isAuthenticated={isLoggedIn}>
+                                <MainAppLayout />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/"
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <WelcomePage />}
+                    />
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Suspense>
@@ -170,14 +292,57 @@ const AppContent: React.FC = () => {
     );
 };
 
+/**
+ * 📦 APP PROVIDERS: Bọc toàn bộ ứng dụng với các Context Provider
+ *
+ * THỨ TỰ QUAN TRỌNG:
+ * 1. ThemeProvider: Cung cấp theme (light/dark) cho toàn bộ app
+ * 2. LanguageProvider: Cung cấp ngôn ngữ (vi/en)
+ * 3. RoutineProvider: Quản lý lịch trình và trạng thái setup
+ */
 export default function App() {
+<<<<<<< HEAD
+  // Setup global error handling and analytics on app initialization
+  React.useEffect(() => {
+    setupGlobalErrorHandling();
+    
+    // Initialize Google Analytics if measurement ID is available
+    const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
+    if (measurementId) {
+      initializeGoogleAnalytics(measurementId);
+    }
+  }, []);
+
   return (
+    <ErrorBoundary>
     <ThemeProvider>
         <LanguageProvider>
             <RoutineProvider>
-                <AppContent />
+                <AIProvider>
+              <ToastProvider>
+                    <AppContent />
+                {/* <DebugPanel /> */}
+                {/* <AnalyticsDashboard /> */}
+              </ToastProvider>
+                </AIProvider>
             </RoutineProvider>
         </LanguageProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
+=======
+    return (
+        <ThemeProvider>
+            <LanguageProvider>
+                <RoutineProvider>
+                    <UserProvider>
+                        <VoiceControlProvider>
+                            <AppContent />
+                        </VoiceControlProvider>
+                    </UserProvider>
+                </RoutineProvider>
+            </LanguageProvider>
+        </ThemeProvider>
+    );
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 }

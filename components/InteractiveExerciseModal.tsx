@@ -4,18 +4,23 @@ import { RoutineActivity } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useRoutine } from '../context/RoutineContext';
 import { decode, decodeAudioData, playAudioBuffer } from '../utils/audioUtils';
-import { AIService } from '../services/aiService';
+<<<<<<< HEAD
+import { useAI } from '../context/AIContext';
+=======
+
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 
 const TOTAL_CYCLES = 5;
 const STEP_DURATION = 15; // seconds
 
-const aiService = new AIService();
+
 
 type AudioKey = 'intro' | 'focus_near' | 'focus_far' | 'finished';
 
 export const InteractiveExerciseModal: React.FC<{ activity: RoutineActivity; onClose: () => void }> = ({ activity, onClose }) => {
     const { t, language } = useLanguage();
     const { markActivityAsCompleted } = useRoutine();
+    const aiService = useAI();
     
     const phrases = useMemo(() => ({
         intro: t('interactive_exercise_intro'),
@@ -38,11 +43,17 @@ export const InteractiveExerciseModal: React.FC<{ activity: RoutineActivity; onC
             
             const keys = Object.keys(phrases) as AudioKey[];
             const promises = keys.map(async (key) => {
-                const text = phrases[key];
-                const base64Audio = await aiService.generateSpeech(text, language);
-                if (base64Audio) {
-                    const audioBuffer = await decodeAudioData(decode(base64Audio), audioContext, 24000, 1);
-                    return { key, buffer: audioBuffer };
+                try {
+                    const text = phrases[key];
+                    const { AIService } = await import('../services/aiService');
+                    const svc = new AIService();
+                    const base64Audio = await svc.generateSpeech(text, language);
+                    if (base64Audio) {
+                        const audioBuffer = await decodeAudioData(decode(base64Audio), audioContext, 24000, 1);
+                        return { key, buffer: audioBuffer };
+                    }
+                } catch (e) {
+                    // If AI key missing or TTS fails, skip audio (UI vẫn chạy được)
                 }
                 return { key, buffer: null };
             });

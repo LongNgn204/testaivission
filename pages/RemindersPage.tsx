@@ -32,10 +32,15 @@ import {
   type Badge,
   type Exercise,
 } from '../services/reminderService';
+import { reminderSchema, type ReminderInput } from '../utils/validation';
+
+import { useToastContext } from '../context/ToastContext';
 
 export default function RemindersPage() {
+  const { error: toastError, success: toastSuccess } = useToastContext();
   const { language, t } = useLanguage();
   const [reminders, setReminders] = useState(getReminders());
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof ReminderInput, string>>>({});
   const [streak, setStreak] = useState(getStreak());
   const [badges, setBadges] = useState(getBadges());
   const [points, setPoints] = useState(getPoints());
@@ -108,15 +113,36 @@ export default function RemindersPage() {
   };
 
   const handleAddReminder = () => {
-    if (!newReminder.title || !newReminder.message) return;
+    // Validate with Zod
+    const parsed = reminderSchema.safeParse({
+      type: newReminder.type ?? 'test',
+      title: newReminder.title ?? '',
+      message: newReminder.message ?? '',
+      frequency: newReminder.frequency ?? 'weekly',
+      time: newReminder.time ?? '09:00',
+      enabled: newReminder.enabled ?? true,
+    });
+
+    if (!parsed.success) {
+      const fieldErrors: Partial<Record<keyof ReminderInput, string>> = {};
+      for (const issue of parsed.error.issues) {
+        const path = (issue.path?.[0] as keyof ReminderInput) || 'title';
+        fieldErrors[path] = issue.message;
+      }
+      setFormErrors(fieldErrors);
+      toastError(language === 'vi' ? 'Vui lòng kiểm tra các trường bị lỗi' : 'Please check the highlighted fields');
+      return;
+    }
+
+    setFormErrors({});
 
     const reminder: Reminder = {
       id: `reminder-${Date.now()}`,
-      type: newReminder.type as 'test' | 'exercise' | 'custom',
-      title: newReminder.title,
-      message: newReminder.message,
-      frequency: newReminder.frequency as any,
-      time: newReminder.time || '09:00',
+      type: parsed.data.type,
+      title: parsed.data.title,
+      message: parsed.data.message,
+      frequency: parsed.data.frequency as any,
+      time: parsed.data.time,
       enabled: true,
     };
 
@@ -131,6 +157,8 @@ export default function RemindersPage() {
       time: '09:00',
       enabled: true,
     });
+
+    toastSuccess(language === 'vi' ? 'Đã tạo nhắc nhở' : 'Reminder created');
   };
 
   const handleRequestNotification = async () => {

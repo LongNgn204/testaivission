@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Fix: Import BrainCircuit directly from lucide-react
 import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft, RotateCcw, Download, Share2, BrainCircuit } from 'lucide-react';
 import { SnellenTestService, levels } from '../services/snellenService';
-import { AIService } from '../services/aiService';
+<<<<<<< HEAD
+import { useAI } from '../context/AIContext';
+=======
+// AIService will be dynamically imported when needed
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 import { StorageService } from '../services/storageService';
 import { SnellenResult, AIReport, StoredTestResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,9 +15,9 @@ import { useRoutine } from '../context/RoutineContext';
 import { usePdfExport } from '../hooks/usePdfExport';
 import { ReportDisplayContent } from './ReportDisplayContent';
 import { updateStreak } from '../services/reminderService';
+import { TestShell } from './TestShell';
 
 const snellenService = new SnellenTestService();
-const aiService = new AIService();
 const storageService = new StorageService();
 
 interface SnellenQuestion {
@@ -128,8 +133,10 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 };
 
 export const SnellenTest: React.FC = () => {
+  const aiService = useAI();
   const { t, language } = useLanguage();
   const { markActivityAsCompleted } = useRoutine();
+  const navigate = useNavigate();
   const [testState, setTestState] = useState<'start' | 'testing' | 'loading' | 'report'>('start');
   const [currentQuestion, setCurrentQuestion] = useState<SnellenQuestion | null>(null);
   const [storedResult, setStoredResult] = useState<StoredTestResult | null>(null);
@@ -148,20 +155,60 @@ export const SnellenTest: React.FC = () => {
 
   const finishTest = async () => {
     setTestState('loading');
-    const testResult = snellenService.calculateResult();
+    const baseResult = snellenService.calculateResult();
+    const testResult = { ...baseResult, deviceInfo: navigator.userAgent };
     try {
       const history = storageService.getTestHistory();
-      const aiReport = await aiService.generateReport('snellen', testResult, history, language);
+      let aiReport: AIReport | null = null;
+      try {
+        // Sử dụng backend API thay vì gọi trực tiếp AIService
+        const { ChatbotService } = await import('../services/chatbotService');
+        const svc = new ChatbotService();
+        const backendReport = await svc.report('snellen', testResult, history, language);
+        
+        // Chuyển đổi response từ backend sang format AIReport
+        const report = backendReport as any;
+        if (report.success) {
+          aiReport = {
+            id: report.id || Date.now().toString(),
+            testType: 'snellen',
+            timestamp: report.timestamp || new Date().toISOString(),
+            totalResponseTime: 0,
+            confidence: report.confidence || 0.85,
+            summary: report.summary || '',
+            recommendations: Array.isArray(report.recommendations) ? report.recommendations : [],
+            severity: (report.severity || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH',
+            trend: report.trend || 'STABLE',
+            causes: report.causes || '',
+            prediction: report.prediction || '',
+          };
+        }
+      } catch (e) {
+        // Backend error → fallback below
+        console.error('Backend report generation error:', e);
+        aiReport = null;
+      }
+
+      const report: AIReport = aiReport || {
+        id: Date.now().toString(),
+        testType: 'snellen',
+        timestamp: new Date().toISOString(),
+        totalResponseTime: 0,
+        confidence: 0,
+        summary: aiReport ? '' : t('error_report'),
+        recommendations: [],
+        severity: 'MEDIUM',
+      };
       
       const newStoredResult: StoredTestResult = {
-        id: aiReport.id,
+        id: report.id,
         testType: 'snellen',
         date: testResult.date,
         resultData: testResult,
-        report: aiReport,
+        report,
       };
       
-      storageService.saveTestResult(testResult, aiReport);
+      storageService.saveTestResult(testResult, report);
       setStoredResult(newStoredResult);
       markActivityAsCompleted('snellen');
       updateStreak('test'); // 🔥 Update streak & check badges
@@ -169,7 +216,6 @@ export const SnellenTest: React.FC = () => {
     } catch (err) {
       setError(t('error_report'));
       console.error('Snellen Test Error:', err);
-      // Still set a basic result even if AI fails
       const fallbackResult: StoredTestResult = {
         id: Date.now().toString(),
         testType: 'snellen',
@@ -201,7 +247,7 @@ export const SnellenTest: React.FC = () => {
     }
   };
 
-  const renderContent = () => {
+  const renderStage = () => {
     switch (testState) {
       case 'start':
         return <StartScreen onStart={startTest} />;
@@ -219,9 +265,24 @@ export const SnellenTest: React.FC = () => {
     }
   };
 
+  const instructions = [
+    t('snellen_instruction_1'),
+    t('snellen_instruction_2'),
+    t('snellen_instruction_3'),
+  ];
+
   return (
+    <TestShell
+      title={t('snellen_test')}
+      description={t('snellen_desc')}
+      estimatedTime={3}
+      safetyNote={language === 'vi' ? 'Không dùng khi đang lái xe hoặc khi mắt quá mệt.' : 'Do not use while driving or when eyes are overly strained.'}
+      instructions={instructions}
+      onExit={() => navigate('/home')}
+    >
     <div className="flex items-center justify-center min-h-full p-4 sm:p-6">
-      {renderContent()}
+        {renderStage()}
     </div>
+    </TestShell>
   );
 };

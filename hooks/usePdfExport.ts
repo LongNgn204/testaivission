@@ -1,6 +1,11 @@
 import { useRef, useState } from 'react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+<<<<<<< HEAD
+// Lazy-load heavy libs when needed to reduce initial bundle size
+=======
+// NOTE: Dynamic import to reduce initial bundle size. Loaded only when exporting/sharing PDF.
+// import jsPDF from 'jspdf';
+// import html2canvas from 'html2canvas';
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
 
 export const usePdfExport = () => {
     const reportRef = useRef<HTMLDivElement>(null);
@@ -10,6 +15,21 @@ export const usePdfExport = () => {
     const generatePdfBlob = async (): Promise<Blob | null> => {
         if (!reportRef.current) return null;
         
+<<<<<<< HEAD
+        // Lazy-load heavy libs
+        const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+            import('jspdf').then(m => m.default ? { default: m.default } : { default: (m as any).jsPDF }),
+            import('html2canvas')
+        ]);
+        
+=======
+        // Dynamic imports to keep initial bundle small
+        const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+            import('html2canvas'),
+            import('jspdf'),
+        ]);
+
+>>>>>>> cab493fd386716360f3fd4f7e7a23ccc7972d8e7
         const isDarkMode = document.documentElement.classList.contains('dark');
         const canvas = await html2canvas(reportRef.current, {
             scale: 2,

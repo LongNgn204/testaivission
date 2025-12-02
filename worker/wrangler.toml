@@ -1,0 +1,37 @@
+name = "vision-coach-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Account ID - Replace with your actual Cloudflare account ID
+account_id = "2b532552ba77e0909d0a3b9bdf040984"
+workers_dev = true
+
+# Environment variables
+[env.production]
+vars = { ENVIRONMENT = "production" }
+routes = [
+  { pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }
+]
+
+[env.development]
+vars = { ENVIRONMENT = "development", JWT_SECRET = "dev-worker-secret-change-me-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ" }
+
+# D1 Database - Primary storage
+[[d1_databases]]
+binding = "DB"
+database_name = "testmatai"
+database_id = "4f94c079-cbcf-4bed-85ea-de9e9b302e4e"
+
+# KV Namespace for caching
+[[kv_namespaces]]
+binding = "CACHE"
+id = "942c339bec2e43969167aa507c723f97"
+preview_id = "80b0ee1abfbd4b28b401ab6094fedfa6"
+
+# Secrets (set via: wrangler secret put GEMINI_API_KEY)
+# GEMINI_API_KEY will be available as env.GEMINI_API_KEY
+
+# Observability
+[observability]
+enabled = true
+
