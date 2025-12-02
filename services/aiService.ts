@@ -26,16 +26,30 @@ const AI_CONFIG = {
 
 const E2E_MODE = (import.meta as any).env?.VITE_E2E_MODE === 'true';
 
+// Determine if we're in production (Cloudflare Pages)
+const IS_PRODUCTION = typeof window !== 'undefined' && 
+  (window.location.hostname.includes('pages.dev') || 
+   window.location.hostname.includes('cloudflare') ||
+   (import.meta as any).env?.VITE_USE_PROXY === 'true');
+
 export class AIService {
   private ai: any | null = null; // GoogleGenAI instance (dynamic)
   private voicesLoaded = false;
   private readonly geminiApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined;
   private enabled = true;
+  private useProxy = IS_PRODUCTION;
 
   constructor() {
-    if (!this.geminiApiKey) {
-      console.warn('Gemini API key missing. AI features are disabled.');
-      this.enabled = false;
+    // In production, we use Cloudflare Pages Functions proxy
+    // In development, we use direct API calls
+    if (this.useProxy) {
+      console.log('🔐 Using Cloudflare Pages Functions proxy for AI');
+      this.enabled = true; // Always enabled when using proxy
+    } else {
+      if (!this.geminiApiKey) {
+        console.warn('Gemini API key missing. AI features are disabled.');
+        this.enabled = false;
+      }
     }
 
     if ('speechSynthesis' in window) {
@@ -49,6 +63,7 @@ export class AIService {
 
   private async ensureAI() {
     if (!this.enabled) return;
+    if (this.useProxy) return; // No need to import SDK when using proxy
     if (this.ai) return;
     try {
       const mod: any = await import('@google/genai');
@@ -58,6 +73,58 @@ export class AIService {
       const err = this.toError(error);
       logger.error('Failed to dynamically import @google/genai', err);
       this.enabled = false;
+    }
+  }
+
+  private async callGeminiAPI(model: string, contents: string, config: any = {}) {
+    if (this.useProxy) {
+      // Use Cloudflare Pages Functions proxy
+      const response = await fetch('/api/generateContent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, contents, config }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `API error: ${response.status}`);
+      }
+
+      return await response.json();
+    } else {
+      // Direct API call (development)
+      if (!this.ai) throw new Error('AI not initialized');
+      return await this.ai.models.generateContent({
+        model,
+        contents,
+        config,
+      });
+    }
+  }
+
+  private async callGeminiStreamAPI(model: string, contents: string, config: any = {}) {
+    if (this.useProxy) {
+      // Use Cloudflare Pages Functions proxy with streaming
+      const response = await fetch('/api/generateContentStream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, contents, config }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `API error: ${response.status}`);
+      }
+
+      return response.body?.getReader();
+    } else {
+      // Direct streaming (development)
+      if (!this.ai) throw new Error('AI not initialized');
+      return await this.ai.models.generateContentStream({
+        model,
+        contents,
+        config,
+      });
     }
   }
 
@@ -177,16 +244,14 @@ export class AIService {
   async generateProactiveTip(lastTest: StoredTestResult | null, userProfile: AnswerState | null, language: 'vi' | 'en'): Promise<string | null> {
     if (!this.enabled) return null;
     await this.ensureAI();
-    if (!this.ai) return null;
 
     const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
     const prompt = `You are Eva, a friendly AI vision coach. Offer ONE short, encouraging, helpful tip (max 25 words) in ${langInstruction} based on context. Respond ONLY with the tip.\n\nCONTEXT:\n- User Profile: ${userProfile ? JSON.stringify(userProfile) : 'Not available.'}\n- Last Test: ${lastTest ? JSON.stringify({ type: lastTest.testType, severity: lastTest.report.severity }) : 'Not available.'}`;
 
     try {
-      const response = await this.ai.models.generateContent({
-        model: AI_CONFIG.gemini.model,
-        contents: prompt,
-        config: { temperature: 0.6, maxOutputTokens: 100 },
+      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, prompt, {
+        temperature: 0.6,
+        maxOutputTokens: 100,
       });
       return response.text?.trim() || null;
     } catch (error) {
@@ -199,7 +264,6 @@ export class AIService {
   async generatePersonalizedRoutine(answers: { worksWithComputer: string; wearsGlasses: string; goal: string }, language: 'vi' | 'en'): Promise<WeeklyRoutine> {
     if (!this.enabled) return this.getDefaultRoutine(language);
     await this.ensureAI();
-    if (!this.ai) return this.getDefaultRoutine(language);
 
     const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
     const prompt = `AI, create a personalized 7-day eye care plan based on profile. Mon-Fri: 1 test & 1 exercise. Sat-Sun: rest ([]). Names in ${langInstruction}. Keys: 'snellen','colorblind','astigmatism','amsler','duochrome' tests; 'exercise_20_20_20','exercise_palming','exercise_focus_change' exercises. Respond ONLY valid JSON.`;
@@ -208,10 +272,11 @@ export class AIService {
 
     return this.withRetry(async () => {
       logger.info('Generating personalized routine...', { answers });
-      const response = await this.ai.models.generateContent({
-        model: AI_CONFIG.gemini.model,
-        contents: `${prompt}\nUSER PROFILE:\n${JSON.stringify(answers)}`,
-        config: { temperature: 0.5, maxOutputTokens: AI_CONFIG.gemini.maxTokens, responseMimeType: 'application/json', responseSchema },
+      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, `${prompt}\nUSER PROFILE:\n${JSON.stringify(answers)}`, {
+        temperature: 0.5,
+        maxOutputTokens: AI_CONFIG.gemini.maxTokens,
+        responseMimeType: 'application/json',
+        responseSchema,
       });
       const routine = JSON.parse(response.text.trim());
       logger.info('Generated routine');
@@ -241,9 +306,6 @@ export class AIService {
       return { score: 70, rating: 'GOOD', trend: history.length >= 3 ? 'STABLE' : 'INSUFFICIENT_DATA', overallSummary: language === 'vi' ? 'Chưa bật AI. Điểm mặc định tham khảo.' : 'AI disabled. Showing placeholder insights.', positives: [], areasToMonitor: [], proTip: language === 'vi' ? 'Bật AI để nhận phân tích chi tiết.' : 'Enable AI for detailed insights.' } as DashboardInsights;
     }
     await this.ensureAI();
-    if (!this.ai) {
-      return { score: 70, rating: 'GOOD', trend: 'INSUFFICIENT_DATA', overallSummary: 'AI unavailable.', positives: [], areasToMonitor: [], proTip: 'Enable AI.' } as DashboardInsights;
-    }
 
     const langInstruction = language === 'vi' ? 'VIETNAMESE' : 'ENGLISH';
     const prompt = `AI Health Analyst, generate a "Vision Wellness Dashboard" JSON in ${langInstruction}. Follow constraints, respond ONLY valid JSON.`;
@@ -263,10 +325,11 @@ export class AIService {
 
     return this.withRetry(async () => {
       logger.info('Generating dashboard insights...', { historyCount: history.length });
-      const response = await this.ai.models.generateContent({
-        model: AI_CONFIG.gemini.model,
-        contents: `${prompt}\nTEST HISTORY (latest first, max 15):\n${JSON.stringify(history.slice(0, 15).map(r => ({ test: r.testType, date: r.date, severity: r.report.severity })), null, 2)}`,
-        config: { temperature: 0.2, maxOutputTokens: AI_CONFIG.gemini.maxTokens, responseMimeType: 'application/json', responseSchema },
+      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, `${prompt}\nTEST HISTORY (latest first, max 15):\n${JSON.stringify(history.slice(0, 15).map(r => ({ test: r.testType, date: r.date, severity: r.report.severity })), null, 2)}`, {
+        temperature: 0.2,
+        maxOutputTokens: AI_CONFIG.gemini.maxTokens,
+        responseMimeType: 'application/json',
+        responseSchema,
       });
       const result = JSON.parse(response.text.trim());
       logger.info('Dashboard insights generated', { score: result.score, trend: result.trend });
@@ -285,10 +348,6 @@ export class AIService {
       return;
     }
     await this.ensureAI();
-    if (!this.ai) {
-      onUpdate(language === 'vi' ? 'AI không khả dụng.' : 'AI unavailable.');
-      return;
-    }
 
     const now = Date.now();
     if (this.chatInFlight) {
@@ -304,15 +363,49 @@ export class AIService {
     const prompt = `As Eva (a friendly AI eye doctor), give a brief, helpful answer in ${language === 'vi' ? 'VIETNAMESE' : 'ENGLISH'} to the user's question. Question: "${userMessage}"`;
 
     try {
-      const stream = await this.ai.models.generateContentStream({
-        model: AI_CONFIG.gemini.model,
-        contents: prompt,
-        config: { temperature: 0.1, maxOutputTokens: 150 },
-      });
+      if (this.useProxy) {
+        // Use proxy streaming
+        const reader = await this.callGeminiStreamAPI(AI_CONFIG.gemini.model, prompt, {
+          temperature: 0.1,
+          maxOutputTokens: 150,
+        });
 
-      for await (const chunk of stream) {
-        const chunkText = (chunk as any).text;
-        if (chunkText) onUpdate(chunkText);
+        if (reader) {
+          const decoder = new TextDecoder();
+          let done = false;
+          while (!done) {
+            const { value, done: streamDone } = await reader.read();
+            done = streamDone;
+            if (value) {
+              const chunk = decoder.decode(value);
+              // Parse streaming response
+              const lines = chunk.split('\n');
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) onUpdate(text);
+                  } catch (e) {
+                    // Ignore parse errors
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Direct streaming
+        const stream = await this.ai.models.generateContentStream({
+          model: AI_CONFIG.gemini.model,
+          contents: prompt,
+          config: { temperature: 0.1, maxOutputTokens: 150 },
+        });
+
+        for await (const chunk of stream) {
+          const chunkText = (chunk as any).text;
+          if (chunkText) onUpdate(chunkText);
+        }
       }
     } catch (error) {
       const err = this.toError(error);
@@ -364,17 +457,17 @@ export class AIService {
   async generateReport(testType: TestType, testData: any, history: StoredTestResult[], language: 'vi' | 'en'): Promise<AIReport> {
     if (!this.enabled) throw new Error('AI disabled');
     await this.ensureAI();
-    if (!this.ai) throw new Error('AI unavailable');
 
     const startTime = Date.now();
     const prompt = this.createPrompt(testType, testData, history, language);
     const responseSchema = this.createResponseSchema(language);
 
     return this.withRetry(async () => {
-      const response = await this.ai.models.generateContent({
-        model: AI_CONFIG.gemini.model,
-        contents: prompt,
-        config: { temperature: AI_CONFIG.gemini.temperature, maxOutputTokens: AI_CONFIG.gemini.maxTokens, responseMimeType: 'application/json', responseSchema },
+      const response = await this.callGeminiAPI(AI_CONFIG.gemini.model, prompt, {
+        temperature: AI_CONFIG.gemini.temperature,
+        maxOutputTokens: AI_CONFIG.gemini.maxTokens,
+        responseMimeType: 'application/json',
+        responseSchema,
       });
 
       const text = response?.text;
