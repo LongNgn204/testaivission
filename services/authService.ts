@@ -6,8 +6,10 @@
  * Handles all authentication-related API calls
  */
 
-// Use localhost for development, change for production
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Use Cloudflare Worker for backend
+// Development: http://localhost:8787
+// Production: https://your-worker.workers.dev
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
 // Generic fetch with retry, timeout, and 5xx backoff
 async function fetchWithRetry(

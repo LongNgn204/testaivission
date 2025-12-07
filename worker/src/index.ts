@@ -89,6 +89,176 @@ router.post('/api/routine', generateRoutine);
 router.post('/api/proactive-tip', generateProactiveTip);
 
 /**
+ * POST /api/tts/generate
+ * Generate TTS audio using backend (hides API key)
+ */
+router.post('/api/tts/generate', async (request: IRequest, env: any) => {
+  try {
+    const req = request as Request;
+    const auth = req.headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Verify token
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { 
+        status: 403, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const body = await req.json() as any;
+    const { text, language } = body || {};
+
+    // Validate input
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'Text is required and must be a non-empty string',
+        error: 'INVALID_TEXT'
+      }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    if (!language || !['vi', 'en'].includes(language)) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'Language is required and must be "vi" or "en"',
+        error: 'INVALID_LANGUAGE'
+      }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Limit text length
+    const maxLength = 5000;
+    if (text.length > maxLength) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: `Text too long. Maximum ${maxLength} characters allowed.`,
+        error: 'TEXT_TOO_LONG'
+      }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Use Google Cloud Text-to-Speech API
+    const GOOGLE_TTS_API_KEY = env.GOOGLE_TTS_API_KEY || env.GEMINI_API_KEY;
+    
+    if (!GOOGLE_TTS_API_KEY) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'TTS service not configured',
+        error: 'TTS_NOT_CONFIGURED'
+      }), { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Map language codes
+    const languageMap: Record<string, string> = {
+      vi: 'vi-VN',
+      en: 'en-US',
+    };
+
+    const voiceMap: Record<string, string> = {
+      vi: 'vi-VN-Standard-A',
+      en: 'en-US-Standard-C',
+    };
+
+    const ttsLanguage = languageMap[language];
+    const voiceName = voiceMap[language];
+
+    // Call Google Cloud Text-to-Speech API
+    const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`;
+    
+    const ttsRequest = {
+      input: { text: text.trim() },
+      voice: {
+        languageCode: ttsLanguage,
+        name: voiceName,
+        ssmlGender: 'FEMALE' as const,
+      },
+      audioConfig: {
+        audioEncoding: 'MP3' as const,
+        speakingRate: 1.0,
+        pitch: 0,
+        volumeGainDb: 0,
+      },
+    };
+
+    const ttsResponse = await fetch(ttsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(ttsRequest),
+    });
+
+    if (!ttsResponse.ok) {
+      const errorData = await ttsResponse.json().catch(() => ({}));
+      console.error('Google TTS API error:', errorData);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'Failed to generate TTS audio',
+        error: 'TTS_GENERATION_FAILED'
+      }), { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const ttsData = await ttsResponse.json() as any;
+    const audioContent = ttsData.audioContent;
+
+    if (!audioContent) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'No audio content received from TTS service',
+        error: 'NO_AUDIO_CONTENT'
+      }), { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      audioContent,
+      format: 'mp3',
+      language,
+      timestamp: new Date().toISOString(),
+    }), { 
+      status: 200, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
+  } catch (error: any) {
+    console.error('TTS generation error:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: 'Failed to generate TTS',
+      error: error?.message || 'UNKNOWN'
+    }), { 
+      status: 500, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
+  }
+});
+
+/**
  * POST /api/tests/save
  * Save test result (D1 Database)
  */

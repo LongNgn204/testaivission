@@ -389,8 +389,8 @@ export default function AuthPage() {
                   <p className="text-red-700 text-sm font-medium">{apiError}</p>
                   <p className="text-red-600 text-xs mt-1">
                     {language === 'vi' 
-                      ? 'Đảm bảo backend server đang chạy trên http://localhost:3001'
-                      : 'Make sure the backend server is running on http://localhost:3001'}
+                      ? 'Đảm bảo Cloudflare Worker đang chạy trên http://localhost:8787'
+                      : 'Make sure the Cloudflare Worker is running on http://localhost:8787'}
                   </p>
                 </div>
               </div>

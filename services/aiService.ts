@@ -199,105 +199,86 @@ export class AIService {
    private ai: any;
 
    constructor() {
-      // Không bắt buộc API key khi chỉ dùng Web Speech (generateSpeech)
-      // Chỉ khởi tạo Gemini client khi có key; nếu không, các hàm AI sẽ tự fallback/throw để caller xử lý
+      // 🔐 SECURITY: All AI calls now go through backend to hide API keys
+      // Frontend no longer needs direct API key access
+      // For backward compatibility, we still allow local AI if needed, but prefer backend
       if (API_KEY) {
          this.ai = new GoogleGenAI({ apiKey: API_KEY });
       } else {
          this.ai = null;
       }
-
-      // 🎙️ Ensure voices are loaded (cho Web Speech API)
-      if ('speechSynthesis' in window) {
-         window.speechSynthesis.onvoiceschanged = () => {
-            console.log('🎙️ TTS Voices loaded:', window.speechSynthesis.getVoices().length);
-         };
-         // Trigger voice loading
-         window.speechSynthesis.getVoices();
-      }
    }
 
-   // 🗣️ Utterance cache để play lại
-   private utteranceCache = new Map<string, { utterance: SpeechSynthesisUtterance, timestamp: number, hits: number }>();
 
-   // 🎙️ Helper: Đợi voices load xong
-   private async waitForVoices(): Promise<SpeechSynthesisVoice[]> {
-      return new Promise((resolve) => {
-         const voices = window.speechSynthesis.getVoices();
-         if (voices.length > 0) {
-            resolve(voices);
-            return;
-         }
-
-         window.speechSynthesis.onvoiceschanged = () => {
-            resolve(window.speechSynthesis.getVoices());
-         };
-      });
-   }
-
+   /**
+    * 🎙️ Generate TTS using backend (Gemini/Google Cloud TTS)
+    * This method calls the backend API to generate TTS, keeping API keys secure
+    */
    async generateSpeech(text: string, language: 'vi' | 'en'): Promise<string | null> {
       try {
          const startTime = Date.now();
 
-         if (!('speechSynthesis' in window)) {
-            console.error('Web Speech API not supported');
+         // 💾 SMART CACHE: Check audio cache (base64 audio data)
+         const cacheKey = `${language}:${text}`;
+         const cachedAudio = this.audioCache?.get(cacheKey);
+
+         if (cachedAudio && Date.now() - cachedAudio.timestamp < AI_CONFIG.tts.cacheDuration) {
+            cachedAudio.hits++;
+            console.log(`⚡ TTS Cache HIT (${cachedAudio.hits}x) - 0ms:`, text.substring(0, 40));
+            
+            // Play cached audio
+            await this.playAudioFromBase64(cachedAudio.audioContent);
+            return cacheKey;
+         }
+
+         // 🔐 Call backend TTS API (API key is hidden on backend)
+         const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+         const token = this.getAuthToken();
+
+         if (!token) {
+            console.warn('⚠️ No auth token for TTS request');
             return null;
          }
 
-         // 💾 SMART CACHE: Check utterance cache
-         const cacheKey = `${language}:${text}`;
-         const cached = this.utteranceCache.get(cacheKey);
-
-         if (cached && Date.now() - cached.timestamp < AI_CONFIG.tts.cacheDuration) {
-            cached.hits++;
-            console.log(`⚡ TTS Cache HIT (${cached.hits}x) - 0ms:`, text.substring(0, 40));
-
-            // Play lại từ cache
-            window.speechSynthesis.cancel(); // Stop any current speech
-            window.speechSynthesis.speak(cached.utterance);
-            return cacheKey; // Return cache key as identifier
-         }
-
-         // 🎯 WEB SPEECH API: Đợi và tìm giọng tốt nhất
-         const voices = await this.waitForVoices();
-         let selectedVoice: SpeechSynthesisVoice | null = null;
-
-         if (language === 'vi') {
-            // Ưu tiên: Google Tiếng Việt > Microsoft Tiếng Việt > bất kỳ giọng vi-VN nào
-            selectedVoice = voices.find(v => v.lang === 'vi-VN' && v.name.includes('Google')) ||
-               voices.find(v => v.lang === 'vi-VN' && v.name.includes('Microsoft')) ||
-               voices.find(v => v.lang.startsWith('vi')) ||
-               null;
-         } else {
-            // Tiếng Anh: Ưu tiên giọng nữ Google/Microsoft
-            selectedVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google') && v.name.includes('Female')) ||
-               voices.find(v => v.lang === 'en-US' && v.name.includes('Microsoft') && v.name.includes('Zira')) ||
-               voices.find(v => v.lang === 'en-US') ||
-               null;
-         }
-
-         const utterance = new SpeechSynthesisUtterance(text);
-         utterance.lang = AI_CONFIG.tts.voice[language];
-         if (selectedVoice) {
-            utterance.voice = selectedVoice;
-         }
-         utterance.rate = AI_CONFIG.tts.rate;
-         utterance.pitch = AI_CONFIG.tts.pitch;
-         utterance.volume = AI_CONFIG.tts.volume;
-
-         // 💾 Cache utterance để play lại
-         this.utteranceCache.set(cacheKey, {
-            utterance,
-            timestamp: Date.now(),
-            hits: 0
+         const response = await fetch(`${API_BASE_URL}/api/tts/generate`, {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ text, language }),
          });
 
-         // 🧹 LRU EVICTION
-         if (this.utteranceCache.size > AI_CONFIG.tts.maxCacheSize) {
+         if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('TTS API error:', errorData);
+            return null;
+         }
+
+         const data = await response.json();
+         const audioContent = data.audioContent; // Base64 encoded MP3
+
+         if (!audioContent) {
+            console.error('No audio content received from TTS API');
+            return null;
+         }
+
+         // 💾 Cache audio content
+         if (!this.audioCache) {
+            this.audioCache = new Map();
+         }
+         this.audioCache.set(cacheKey, {
+            audioContent,
+            timestamp: Date.now(),
+            hits: 0,
+         });
+
+         // 🧹 LRU EVICTION for audio cache
+         if (this.audioCache.size > AI_CONFIG.tts.maxCacheSize) {
             let leastUsedKey = '';
             let leastHits = Infinity;
 
-            this.utteranceCache.forEach((value, key) => {
+            this.audioCache.forEach((value, key) => {
                if (value.hits < leastHits) {
                   leastHits = value.hits;
                   leastUsedKey = key;
@@ -305,22 +286,61 @@ export class AIService {
             });
 
             if (leastUsedKey) {
-               this.utteranceCache.delete(leastUsedKey);
-               console.log('🗑️ TTS Cache: Evicted least-used entry');
+               this.audioCache.delete(leastUsedKey);
+               console.log('🗑️ TTS Audio Cache: Evicted least-used entry');
             }
          }
 
+         // Play audio
+         await this.playAudioFromBase64(audioContent);
+
          const elapsed = Date.now() - startTime;
-         console.log(`⚡ TTS Generated in ${elapsed}ms:`, text.substring(0, 40));
+         console.log(`⚡ TTS Generated via backend in ${elapsed}ms:`, text.substring(0, 40));
 
-         // Play speech
-         window.speechSynthesis.cancel(); // Stop any current speech
-         window.speechSynthesis.speak(utterance);
-
-         return cacheKey; // Return cache key as identifier
+         return cacheKey;
       } catch (error) {
          console.error(`Failed to generate speech for text "${text}":`, error);
          return null;
+      }
+   }
+
+   // Audio cache for base64 audio data
+   private audioCache?: Map<string, { audioContent: string; timestamp: number; hits: number }>;
+
+   // Helper to get auth token
+   private getAuthToken(): string | null {
+      try {
+         return localStorage.getItem('auth_token');
+      } catch {
+         return null;
+      }
+   }
+
+   // Helper to play base64 audio
+   private async playAudioFromBase64(base64Audio: string): Promise<void> {
+      try {
+         // Decode base64 to binary
+         const binaryString = atob(base64Audio);
+         const bytes = new Uint8Array(binaryString.length);
+         for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+         }
+
+         // Create audio blob and play
+         const blob = new Blob([bytes], { type: 'audio/mp3' });
+         const audioUrl = URL.createObjectURL(blob);
+         const audio = new Audio(audioUrl);
+         
+         await new Promise<void>((resolve, reject) => {
+            audio.onended = () => {
+               URL.revokeObjectURL(audioUrl);
+               resolve();
+            };
+            audio.onerror = reject;
+            audio.play().catch(reject);
+         });
+      } catch (error) {
+         console.error('Failed to play audio:', error);
       }
    }
 
