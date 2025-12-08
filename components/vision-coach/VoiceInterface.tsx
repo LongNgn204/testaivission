@@ -11,33 +11,33 @@ import { AIService } from '../../services/aiService';
 
 // --- Function Declarations for Gemini ---
 const startTestFunctionDeclaration: FunctionDeclaration = {
-  name: 'startTest',
-  parameters: {
-    type: Type.OBJECT,
-    description: 'Starts a specific vision test for the user.',
-    properties: {
-      testName: {
-        type: Type.STRING,
-        description: 'The name of the test to start. Must be one of: snellen, colorblind, astigmatism, amsler, duochrome.',
-      },
+    name: 'startTest',
+    parameters: {
+        type: Type.OBJECT,
+        description: 'Starts a specific vision test for the user.',
+        properties: {
+            testName: {
+                type: Type.STRING,
+                description: 'The name of the test to start. Must be one of: snellen, colorblind, astigmatism, amsler, duochrome.',
+            },
+        },
+        required: ['testName'],
     },
-    required: ['testName'],
-  },
 };
 
 const navigateToFunctionDeclaration: FunctionDeclaration = {
-  name: 'navigateTo',
-  parameters: {
-    type: Type.OBJECT,
-    description: 'Navigates the user to a specific page in the application.',
-    properties: {
-      page: {
-        type: Type.STRING,
-        description: 'The name of the page to navigate to. Must be one of: home, history, about, progress, reminders, hospitals.',
-      },
+    name: 'navigateTo',
+    parameters: {
+        type: Type.OBJECT,
+        description: 'Navigates the user to a specific page in the application.',
+        properties: {
+            page: {
+                type: Type.STRING,
+                description: 'The name of the page to navigate to. Must be one of: home, history, about, progress, reminders, hospitals.',
+            },
+        },
+        required: ['page'],
     },
-    required: ['page'],
-  },
 };
 
 const getSystemInstruction = (language: 'vi' | 'en') => {
@@ -155,10 +155,10 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     const { userProfile } = useRoutine();
     const navigate = useNavigate();
     const [status, setStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'thinking'>('idle');
-    
+
     const [userTranscript, setUserTranscript] = useState('');
     const [botTranscript, setBotTranscript] = useState('');
-    
+
     const aiRef = useRef<GoogleGenAI | null>(null);
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -202,7 +202,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
             return language === 'vi' ? `Xin lỗi, tôi không thể chuyển đến trang ${page}.` : `Sorry, I can't navigate to a page called ${page}.`;
         }
     };
-    
+
     const stopAudioPlayback = () => {
         audioQueueRef.current.forEach(source => {
             source.stop();
@@ -213,13 +213,13 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
 
     const triggerProactiveTip = useCallback(async () => {
         if (status !== 'listening') return;
-    
+
         setStatus('thinking');
         const history = storageService.getTestHistory();
         const lastTest = history.length > 0 ? history[0] : null;
-    
+
         const tipText = await aiService.generateProactiveTip(lastTest, userProfile, language);
-    
+
         if (tipText) {
             setBotTranscript(tipText);
             const audioData = await aiService.generateSpeech(tipText, language);
@@ -238,13 +238,13 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
                     setStatus('listening');
                 };
             } else {
-                 setStatus('listening');
+                setStatus('listening');
             }
         } else {
             setStatus('listening');
         }
     }, [language, userProfile, status]);
-    
+
     useEffect(() => {
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         if (isOpen && status === 'listening') {
@@ -254,7 +254,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
             if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         };
     }, [isOpen, status, triggerProactiveTip]);
-    
+
     const cleanup = useCallback(() => {
         stopAudioPlayback();
         if (mediaStreamRef.current) {
@@ -296,8 +296,8 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
 
         if (!apiKey || sessionPromiseRef.current) {
             console.error('VoiceInterface: Missing API key or session already exists');
-            const msg = language === 'vi' 
-                ? 'Chưa cấu hình API Key. Vui lòng thêm VITE_GEMINI_API_KEY vào .env.local' 
+            const msg = language === 'vi'
+                ? 'Chưa cấu hình API Key. Vui lòng thêm VITE_GEMINI_API_KEY vào .env.local'
                 : 'API Key not configured. Please add VITE_GEMINI_API_KEY to .env.local';
             alert(msg);
             onClose();
@@ -306,7 +306,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
         setStatus('connecting');
 
         aiRef.current = new GoogleGenAI({ apiKey });
-        
+
         // Check if AudioContext is available
         if (!window.AudioContext && !(window as any).webkitAudioContext) {
             console.error('AudioContext not supported');
@@ -342,13 +342,13 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
                 console.warn('Could not resume output audio context:', e);
             }
         }
-        
+
         // Require secure context (HTTPS) or localhost for mic access
         const isLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
         if (!window.isSecureContext && !isLocalhost) {
             console.error('Microphone requires HTTPS or localhost. Current origin is not secure.');
-            alert(language === 'vi' 
-                ? 'Trình duyệt yêu cầu HTTPS hoặc truy cập qua localhost để dùng micro. Hãy mở trang bằng http://localhost:3000 hoặc bật HTTPS cho dev server.' 
+            alert(language === 'vi'
+                ? 'Trình duyệt yêu cầu HTTPS hoặc truy cập qua localhost để dùng micro. Hãy mở trang bằng http://localhost:3000 hoặc bật HTTPS cho dev server.'
                 : 'Browser requires HTTPS or localhost to use the microphone. Open the app at http://localhost:3000 or enable HTTPS for the dev server.');
             setStatus('idle');
             onClose();
@@ -383,11 +383,11 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
             onClose();
             return;
         }
-        
+
         try {
             sessionPromiseRef.current = await withTimeout(
                 aiRef.current.live.connect({
-                    model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+                    model: 'gemini-2.5-flash-native-audio-dialog',
                     config: {
                         responseModalities: [Modality.AUDIO],
                         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: language === 'vi' ? 'Kore' : 'Zephyr' } } },
@@ -496,7 +496,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     }, [isOpen, startSession, cleanup]);
 
     const getStatusText = () => {
-        switch(status) {
+        switch (status) {
             case 'connecting': return t('coach_status_connecting');
             case 'listening': return t('coach_status_speak');
             case 'speaking': return t('coach_status_listening');
@@ -510,26 +510,26 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
             <button onClick={onClose} className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10">
                 <X size={32} />
             </button>
-            
+
             <div className="flex flex-col items-center justify-center text-center text-white flex-grow w-full max-w-2xl">
-                 {/* Visualizer Effect */}
-                 <div className={`relative w-64 h-64 rounded-full flex items-center justify-center transition-all duration-500 ${status === 'speaking' ? 'scale-110' : 'scale-100'}`}>
+                {/* Visualizer Effect */}
+                <div className={`relative w-64 h-64 rounded-full flex items-center justify-center transition-all duration-500 ${status === 'speaking' ? 'scale-110' : 'scale-100'}`}>
                     {/* Outer Glow */}
                     <div className={`absolute inset-0 rounded-full blur-3xl transition-opacity duration-500 ${status === 'speaking' ? 'bg-green-500/30 opacity-100' : 'bg-blue-500/20 opacity-50'}`}></div>
-                    
+
                     {/* Ripple Rings */}
                     <div className={`absolute w-full h-full rounded-full border-2 border-white/10 ${status === 'listening' || status === 'speaking' ? 'animate-ping' : ''}`} style={{ animationDuration: '3s' }}></div>
                     <div className={`absolute w-3/4 h-3/4 rounded-full border-2 border-white/20 ${status === 'listening' || status === 'speaking' ? 'animate-ping' : ''}`} style={{ animationDuration: '2s', animationDelay: '0.5s' }}></div>
-                    
+
                     {/* Core Circle */}
                     <div className={`relative w-48 h-48 rounded-full flex items-center justify-center backdrop-blur-md border border-white/10 shadow-2xl transition-colors duration-300 ${status === 'speaking' ? 'bg-green-500/20' : 'bg-blue-600/20'}`}>
-                         <Bot size={80} className={`transition-colors duration-300 ${status === 'speaking' ? 'text-green-300' : 'text-blue-300'}`}/>
+                        <Bot size={80} className={`transition-colors duration-300 ${status === 'speaking' ? 'text-green-300' : 'text-blue-300'}`} />
                     </div>
                 </div>
 
                 <div className="mt-12 space-y-6 w-full">
                     <p className="text-3xl font-light tracking-wide h-10 text-blue-200">{getStatusText()}</p>
-                    
+
                     <div className="min-h-[120px] space-y-4 px-4">
                         {userTranscript && (
                             <p className="text-xl text-gray-300 font-light animate-fade-in">
@@ -544,9 +544,9 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
                     </div>
                 </div>
             </div>
-           
+
             <p className="text-sm text-white/40 mb-8 font-light tracking-widest uppercase">{t('coach_title')}</p>
-            
+
             <style>{`
                 .text-shadow-sm { text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
                 .animate-fade-in { animation: fadeIn 0.5s ease-out both; }

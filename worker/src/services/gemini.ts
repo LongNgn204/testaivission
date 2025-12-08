@@ -16,6 +16,7 @@ export interface GeminiConfig {
 }
 
 export interface GenerateContentOptions {
+  model?: string;  // Override model (default: gemini-2.5-pro for reports)
   temperature?: number;
   maxTokens?: number;
   responseSchema?: any;
@@ -33,7 +34,7 @@ export class GeminiService {
     this.apiKey = apiKey;
     this.config = {
       apiKey,
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-pro',  // Default to Pro for high-quality reports
       temperature: 0.3,
       maxTokens: 4000,
       topP: 0.8,
@@ -51,7 +52,7 @@ export class GeminiService {
     const startTime = Date.now();
 
     try {
-      const model = this.config.model;
+      const model = options?.model || this.config.model;
       const url = `${this.baseUrl}/${model}:generateContent?key=${this.apiKey}`;
 
       const requestBody = {

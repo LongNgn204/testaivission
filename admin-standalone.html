@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Coach Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+        }
+
+        /* Animations */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .loader {
+            animation: spin 1s linear infinite;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .slide-in {
+            animation: slideIn 0.4s ease-out;
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-dark {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+        }
+
+        .sidebar-item {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.15), transparent);
+            transition: width 0.3s;
+        }
+
+        .sidebar-item:hover::before {
+            width: 100%;
+        }
+
+        .sidebar-item.active {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.15), transparent);
+            border-left: 3px solid #6366f1;
+            color: #4f46e5;
+        }
+
+        .sidebar-item.active span {
+            font-weight: 600;
+        }
+
+        /* Cards */
+        .stat-card {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.3);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .btn-primary:hover::before {
+            opacity: 1;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Table */
+        .table-row {
+            transition: all 0.2s ease;
+        }
+
+        .table-row:hover {
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.05), transparent);
+        }
+
+        /* Charts */
+        .chart-bar {
+            transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .chart-bar:hover {
+            box-shadow: 0 -10px 30px -5px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Progress bars */
+        .progress-bar {
+            background: linear-gradient(90deg, var(--color) 0%, var(--color-light) 100%);
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #6366f1, #8b5cf6);
+            border-radius: 3px;
+        }
+
+        /* User avatar */
+        .avatar {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        /* Input focus */
+        input:focus,
+        select:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Badge animations */
+        .badge-high {
+            animation: pulse 2s infinite;
+        }
+
+        /* Header gradient */
+        .header-gradient {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+        }
+
+        /* AI Assistant Styles */
+        .ai-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .ai-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 40px rgba(99, 102, 241, 0.6);
+        }
+
+        .ai-btn.recording {
+            animation: pulse 1s infinite, glow 1s infinite;
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+        }
+
+        .ai-popup {
+            position: fixed;
+            bottom: 100px;
+            right: 24px;
+            width: 400px;
+            max-height: 600px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 25px 80px -20px rgba(0, 0, 0, 0.3);
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .ai-popup.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .ai-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .ai-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            max-height: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-msg {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .ai-msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-msg.ai {
+            align-self: flex-start;
+            background: #f1f5f9;
+            color: #334155;
+            border-bottom-left-radius: 4px;
+        }
+
+        .ai-msg.ai.typing::after {
+            content: '...';
+            animation: typing 1s infinite;
+        }
+
+        @keyframes typing {
+
+            0%,
+            100% {
+                content: '.';
+            }
+
+            33% {
+                content: '..';
+            }
+
+            66% {
+                content: '...';
+            }
+        }
+
+        .ai-quick {
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .ai-quick button {
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ai-quick button:hover {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
+        }
+
+        .ai-input {
+            padding: 12px 16px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .ai-input input {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .ai-input input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .ai-input button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .ai-input .mic-btn {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .ai-input .mic-btn:hover,
+        .ai-input .mic-btn.active {
+            background: #ef4444;
+            color: white;
+        }
+
+        .ai-input .send-btn {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .ai-input .send-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen">
+    <!-- Login Screen -->
+    <div id="loginScreen"
+        class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 flex items-center justify-center p-4">
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-indigo-600/20 blur-3xl"></div>
+            <div class="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-purple-600/20 blur-3xl"></div>
+        </div>
+        <div class="relative w-full max-w-md">
+            <div class="bg-white/10 backdrop-blur-2xl rounded-3xl p-8 border border-white/20 shadow-2xl">
+                <div class="text-center mb-8">
+                    <div
+                        class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+                    <p class="text-white/60">Hệ thống quản lý hồ sơ sức khỏe thị lực</p>
+                </div>
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-white/80 mb-2">API URL</label>
+                        <input type="text" id="apiUrl" value="https://vision-coach-worker.stu72511407.workers.dev"
+                            class="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-white/80 mb-2">JWT Token (để trống để dùng demo
+                            data)</label>
+                        <input type="password" id="tokenInput" placeholder="Nhập JWT token hoặc để trống..."
+                            class="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div id="loginError"
+                        class="hidden p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-sm"></div>
+                    <button onclick="login()"
+                        class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold hover:from-indigo-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        Đăng Nhập
+                    </button>
+                    <button onclick="loginDemo()"
+                        class="w-full py-3 px-4 rounded-xl border border-white/30 text-white/80 font-medium hover:bg-white/10 transition-all">
+                        Xem Demo (Dữ liệu mẫu)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen" class="hidden min-h-screen flex">
+        <!-- Sidebar -->
+        <aside class="w-64 sidebar border-r border-slate-200/50 flex flex-col fixed h-full shadow-xl z-50">
+            <div class="h-16 flex items-center px-4 border-b border-slate-200">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-3">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-800">Admin</h1>
+                    <p class="text-xs text-slate-400">Vision Coach</p>
+                </div>
+            </div>
+            <nav class="flex-1 p-4 space-y-1">
+                <button onclick="showPage('dashboard')"
+                    class="sidebar-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50"
+                    data-page="dashboard">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    <span class="font-medium">Dashboard</span>
+                </button>
+                <button onclick="showPage('records')"
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50"
+                    data-page="records">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="font-medium">Hồ Sơ Khám</span>
+                </button>
+                <button onclick="showPage('users')"
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50"
+                    data-page="users">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                    </svg>
+                    <span class="font-medium">Người Dùng</span>
+                </button>
+                <button onclick="showPage('analytics')"
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50"
+                    data-page="analytics">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span class="font-medium">Thống Kê</span>
+                </button>
+                <button onclick="showPage('settings')"
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50"
+                    data-page="settings">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="font-medium">Cài Đặt</span>
+                </button>
+            </nav>
+            <div class="p-4 border-t border-slate-200">
+                <button onclick="logout()"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span class="font-medium">Đăng xuất</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64">
+            <!-- Header -->
+            <header
+                class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-40">
+                <h2 id="pageTitle" class="text-lg font-bold text-slate-800">Dashboard</h2>
+                <div class="flex items-center gap-3">
+                    <button onclick="loadRecords()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+                        title="Làm mới">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                    <button onclick="exportToExcel()"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium hover:from-green-500 hover:to-emerald-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Xuất Excel
+                    </button>
+                    <span id="demoTag"
+                        class="hidden px-2 py-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-lg">DEMO
+                        MODE</span>
+                </div>
+            </header>
+
+            <!-- Pages Container -->
+            <main class="p-6">
+                <!-- Dashboard Page -->
+                <div id="page-dashboard" class="page-content">
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                            <div
+                                class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-blue-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <p id="statTotal" class="text-3xl font-bold text-slate-800">0</p>
+                            <p class="text-sm text-slate-500 mt-1">Tổng hồ sơ</p>
+                        </div>
+                        <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                            <div
+                                class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-indigo-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                                </svg>
+                            </div>
+                            <p id="statUsers" class="text-3xl font-bold text-slate-800">0</p>
+                            <p class="text-sm text-slate-500 mt-1">Người dùng</p>
+                        </div>
+                        <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                            <div
+                                class="w-12 h-12 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-red-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <p id="statHigh" class="text-3xl font-bold text-red-600">0</p>
+                            <p class="text-sm text-slate-500 mt-1">Cần khám</p>
+                        </div>
+                        <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                            <div
+                                class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <p id="statNormal" class="text-3xl font-bold text-emerald-600">0</p>
+                            <p class="text-sm text-slate-500 mt-1">Bình thường</p>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <!-- Test Types Chart -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Phân bố loại test</h3>
+                            <div id="testTypeChart" class="space-y-3"></div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Hoạt động gần đây</h3>
+                            <div id="recentActivity" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Records Page -->
+                <div id="page-records" class="page-content hidden">
+                    <!-- Filters -->
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mb-6">
+                        <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                            <div class="relative flex-1 max-w-md w-full">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input type="text" id="searchInput" placeholder="Tìm kiếm..." onkeyup="filterRecords()"
+                                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <select id="typeFilter" onchange="filterRecords()"
+                                class="px-3 py-2.5 rounded-xl border border-slate-200">
+                                <option value="all">Tất cả loại</option>
+                                <option value="snellen">Thị lực</option>
+                                <option value="colorblind">Mù màu</option>
+                                <option value="astigmatism">Loạn thị</option>
+                                <option value="amsler">Amsler</option>
+                                <option value="duochrome">Duochrome</option>
+                            </select>
+                            <select id="severityFilter" onchange="filterRecords()"
+                                class="px-3 py-2.5 rounded-xl border border-slate-200">
+                                <option value="all">Tất cả mức độ</option>
+                                <option value="HIGH">Cần khám</option>
+                                <option value="MEDIUM">Chú ý</option>
+                                <option value="LOW">Nhẹ</option>
+                                <option value="NORMAL">Bình thường</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                                            Người dùng</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                                            Loại test</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                                            Mức độ</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                                            Phân tích AI</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                                            Ngày</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recordsTable" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                        <div class="px-4 py-3 bg-slate-50 border-t border-slate-200">
+                            <p id="recordCount" class="text-sm text-slate-600">Đang tải...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Page -->
+                <div id="page-users" class="page-content hidden">
+                    <div id="usersGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+
+                <!-- Analytics Page -->
+                <div id="page-analytics" class="page-content hidden">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center">
+                            <p id="analyticTotal" class="text-3xl font-bold text-indigo-600">0</p>
+                            <p class="text-sm text-slate-500">Tổng test</p>
+                        </div>
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center">
+                            <p id="analyticUsers" class="text-3xl font-bold text-blue-600">0</p>
+                            <p class="text-sm text-slate-500">Người dùng</p>
+                        </div>
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center">
+                            <p id="analyticHigh" class="text-3xl font-bold text-red-600">0</p>
+                            <p class="text-sm text-slate-500">Cần khám</p>
+                        </div>
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center">
+                            <p id="analyticNormal" class="text-3xl font-bold text-green-600">0</p>
+                            <p class="text-sm text-slate-500">Bình thường</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">Biểu đồ phân bố</h3>
+                        <div id="analyticsChart" class="h-64 flex items-end justify-around gap-4"></div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="page-settings" class="page-content hidden">
+                    <div class="max-w-2xl">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Cấu hình API</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-2">API Base URL</label>
+                                    <input type="text" id="settingsApiUrl"
+                                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-2">Token (masked)</label>
+                                    <input type="password" id="settingsToken" disabled
+                                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Thông tin</h3>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p class="text-slate-500">Phiên bản</p>
+                                    <p class="font-medium">Admin v1.0.0</p>
+                                </div>
+                                <div>
+                                    <p class="text-slate-500">Môi trường</p>
+                                    <p class="font-medium">Local</p>
+                                </div>
+                                <div>
+                                    <p class="text-slate-500">Trạng thái</p>
+                                    <p class="font-medium text-green-600">Active</p>
+                                </div>
+                                <div>
+                                    <p class="text-slate-500">Last sync</p>
+                                    <p id="lastSync" class="font-medium">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let API_URL = '';
+        let TOKEN = '';
+        let isDemo = false;
+        let allRecords = [];
+        let filteredData = [];
+
+        // Labels
+        const testTypeLabels = { snellen: 'Thị lực', colorblind: 'Mù màu', astigmatism: 'Loạn thị', amsler: 'Amsler', duochrome: 'Duochrome' };
+        const severityLabels = { HIGH: 'Cần khám', MEDIUM: 'Chú ý', LOW: 'Nhẹ', NORMAL: 'Bình thường' };
+        const severityColors = {
+            HIGH: 'bg-red-100 text-red-700 border-red-200',
+            MEDIUM: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+            LOW: 'bg-blue-100 text-blue-700 border-blue-200',
+            NORMAL: 'bg-green-100 text-green-700 border-green-200'
+        };
+        const chartColors = { snellen: '#3B82F6', colorblind: '#10B981', astigmatism: '#8B5CF6', amsler: '#F59E0B', duochrome: '#EC4899' };
+
+        // Demo data - Comprehensive test records
+        const DEMO_DATA = [
+            // User 001 - Nguyễn Văn A - Thị lực tốt
+            { id: '1', userId: 'user_001', userName: 'Nguyễn Văn An', testType: 'snellen', testData: { score: '20/20' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '2', userId: 'user_001', userName: 'Nguyễn Văn An', testType: 'colorblind', testData: { accuracy: 98 }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '3', userId: 'user_001', userName: 'Nguyễn Văn An', testType: 'astigmatism', testData: { overallSeverity: 'NONE' }, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 002 - Trần Thị Bình - CẦN KHÁM (HIGH)
+            { id: '4', userId: 'user_002', userName: 'Trần Thị Bình', testType: 'snellen', testData: { score: '20/50' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '5', userId: 'user_002', userName: 'Trần Thị Bình', testType: 'amsler', testData: { issueDetected: true }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '6', userId: 'user_002', userName: 'Trần Thị Bình', testType: 'astigmatism', testData: { overallSeverity: 'SEVERE' }, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 003 - Lê Văn Cường - Chú ý (MEDIUM)
+            { id: '7', userId: 'user_003', userName: 'Lê Văn Cường', testType: 'snellen', testData: { score: '20/30' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '8', userId: 'user_003', userName: 'Lê Văn Cường', testType: 'colorblind', testData: { accuracy: 75 }, timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '9', userId: 'user_003', userName: 'Lê Văn Cường', testType: 'duochrome', testData: { overallResult: 'myopic' }, timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 004 - Phạm Thị Dung - Bình thường
+            { id: '10', userId: 'user_004', userName: 'Phạm Thị Dung', testType: 'snellen', testData: { score: '20/25' }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '11', userId: 'user_004', userName: 'Phạm Thị Dung', testType: 'amsler', testData: { issueDetected: false }, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '12', userId: 'user_004', userName: 'Phạm Thị Dung', testType: 'duochrome', testData: { overallResult: 'normal' }, timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 005 - Hoàng Văn Em - CẦN KHÁM (mù màu nghiêm trọng)
+            { id: '13', userId: 'user_005', userName: 'Hoàng Văn Em', testType: 'colorblind', testData: { accuracy: 45 }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '14', userId: 'user_005', userName: 'Hoàng Văn Em', testType: 'snellen', testData: { score: '20/40' }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 006 - Võ Thị Phương - Loạn thị nhẹ
+            { id: '15', userId: 'user_006', userName: 'Võ Thị Phương', testType: 'astigmatism', testData: { overallSeverity: 'MILD' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '16', userId: 'user_006', userName: 'Võ Thị Phương', testType: 'snellen', testData: { score: '20/25' }, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 007 - Đặng Văn Giang - Bình thường
+            { id: '17', userId: 'user_007', userName: 'Đặng Văn Giang', testType: 'snellen', testData: { score: '20/20' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '18', userId: 'user_007', userName: 'Đặng Văn Giang', testType: 'colorblind', testData: { accuracy: 100 }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '19', userId: 'user_007', userName: 'Đặng Văn Giang', testType: 'amsler', testData: { issueDetected: false }, timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 008 - Bùi Thị Hương - Viễn thị
+            { id: '20', userId: 'user_008', userName: 'Bùi Thị Hương', testType: 'duochrome', testData: { overallResult: 'hyperopic' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '21', userId: 'user_008', userName: 'Bùi Thị Hương', testType: 'snellen', testData: { score: '20/30' }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 009 - Ngô Văn Khánh - CẦN KHÁM (thị lực yếu)
+            { id: '22', userId: 'user_009', userName: 'Ngô Văn Khánh', testType: 'snellen', testData: { score: '20/60' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '23', userId: 'user_009', userName: 'Ngô Văn Khánh', testType: 'astigmatism', testData: { overallSeverity: 'MODERATE' }, timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+
+            // User 010 - Dương Thị Lan - Bình thường
+            { id: '24', userId: 'user_010', userName: 'Dương Thị Lan', testType: 'snellen', testData: { score: '20/20' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+            { id: '25', userId: 'user_010', userName: 'Dương Thị Lan', testType: 'colorblind', testData: { accuracy: 92 }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        ];
+
+        // Check saved session
+        window.onload = () => {
+            const saved = localStorage.getItem('admin_session');
+            if (saved) {
+                const data = JSON.parse(saved);
+                API_URL = data.apiUrl || '';
+                TOKEN = data.token || '';
+                isDemo = data.isDemo || false;
+                showDashboard();
+                loadRecords();
+            }
+        };
+
+        // Login
+        function login() {
+            API_URL = document.getElementById('apiUrl').value.trim();
+            TOKEN = document.getElementById('tokenInput').value.trim();
+            isDemo = false;
+
+            localStorage.setItem('admin_session', JSON.stringify({ apiUrl: API_URL, token: TOKEN, isDemo: false }));
+            showDashboard();
+            loadRecords();
+        }
+
+        function loginDemo() {
+            isDemo = true;
+            localStorage.setItem('admin_session', JSON.stringify({ isDemo: true }));
+            showDashboard();
+            loadDemoData();
+        }
+
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboardScreen').classList.remove('hidden');
+            if (isDemo) {
+                document.getElementById('demoTag').classList.remove('hidden');
+            }
+            document.getElementById('settingsApiUrl').value = API_URL;
+            document.getElementById('settingsToken').value = TOKEN ? TOKEN.slice(0, 10) + '...' : 'Demo mode';
+        }
+
+        function logout() {
+            localStorage.removeItem('admin_session');
+            location.reload();
+        }
+
+        // Page navigation
+        function showPage(page) {
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`page-${page}`).classList.remove('hidden');
+
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.page === page) item.classList.add('active');
+            });
+
+            const titles = { dashboard: 'Dashboard', records: 'Hồ Sơ Khám', users: 'Người Dùng', analytics: 'Thống Kê', settings: 'Cài Đặt' };
+            document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
+        }
+
+        // Load records
+        async function loadRecords() {
+            if (isDemo) {
+                loadDemoData();
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/tests/history?limit=1000`, {
+                    headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error('API Error');
+
+                const data = await response.json();
+                allRecords = (data.history || []).map(r => ({ ...r, ...analyzeResult(r) }));
+
+                document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('vi-VN');
+                updateAll();
+            } catch (err) {
+                console.error(err);
+                // Fallback to localStorage or demo
+                const local = localStorage.getItem('vision_test_history');
+                if (local) {
+                    allRecords = JSON.parse(local).map(r => ({
+                        id: r.id, userId: 'local', userName: 'Local User', testType: r.testType,
+                        testData: r.resultData, timestamp: r.date, ...analyzeResult({ testType: r.testType, testData: r.resultData })
+                    }));
+                } else {
+                    loadDemoData();
+                    return;
+                }
+                updateAll();
+            }
+        }
+
+        function loadDemoData() {
+            allRecords = DEMO_DATA.map(r => ({ ...r, ...analyzeResult(r) }));
+            document.getElementById('lastSync').textContent = 'Demo mode';
+            updateAll();
+        }
+
+        // Analyze result
+        function analyzeResult(record) {
+            const data = record.testData || {};
+            switch (record.testType) {
+                case 'snellen': {
+                    const score = data?.score || '';
+                    if (score.includes('20/40') || score.includes('20/50') || score.includes('20/60')) return { severity: 'HIGH', aiAnalysis: `Thị lực yếu: ${score}` };
+                    if (score !== '20/20' && score !== '20/25' && score) return { severity: 'MEDIUM', aiAnalysis: `Thị lực cần chú ý: ${score}` };
+                    return { severity: 'NORMAL', aiAnalysis: `Thị lực tốt: ${score || 'N/A'}` };
+                }
+                case 'colorblind': {
+                    const accuracy = data?.accuracy || 100;
+                    if (accuracy < 60) return { severity: 'HIGH', aiAnalysis: `Khiếm khuyết màu nghiêm trọng: ${accuracy}%` };
+                    if (accuracy < 80) return { severity: 'MEDIUM', aiAnalysis: `Khiếm khuyết màu nhẹ: ${accuracy}%` };
+                    return { severity: 'NORMAL', aiAnalysis: `Nhận dạng màu tốt: ${accuracy}%` };
+                }
+                case 'astigmatism': {
+                    const sev = data?.overallSeverity;
+                    if (sev === 'SEVERE') return { severity: 'HIGH', aiAnalysis: 'Loạn thị mức độ nặng' };
+                    if (sev === 'MODERATE') return { severity: 'MEDIUM', aiAnalysis: 'Loạn thị trung bình' };
+                    if (sev === 'MILD') return { severity: 'LOW', aiAnalysis: 'Loạn thị nhẹ' };
+                    return { severity: 'NORMAL', aiAnalysis: 'Không phát hiện loạn thị' };
+                }
+                case 'amsler':
+                    if (data?.issueDetected) return { severity: 'HIGH', aiAnalysis: 'Phát hiện vấn đề võng mạc/điểm vàng' };
+                    return { severity: 'NORMAL', aiAnalysis: 'Lưới Amsler bình thường' };
+                case 'duochrome':
+                    if (data?.overallResult === 'myopic') return { severity: 'LOW', aiAnalysis: 'Xu hướng cận thị' };
+                    if (data?.overallResult === 'hyperopic') return { severity: 'LOW', aiAnalysis: 'Xu hướng viễn thị' };
+                    return { severity: 'NORMAL', aiAnalysis: 'Độ kính phù hợp' };
+                default:
+                    return { severity: 'NORMAL', aiAnalysis: 'N/A' };
+            }
+        }
+
+        // Update all views
+        function updateAll() {
+            updateStats();
+            filterRecords();
+            updateTestTypeChart();
+            updateRecentActivity();
+            updateUsersPage();
+            updateAnalytics();
+        }
+
+        // Update stats
+        function updateStats() {
+            const users = new Set(allRecords.map(r => r.userId));
+            const high = allRecords.filter(r => r.severity === 'HIGH').length;
+            document.getElementById('statTotal').textContent = allRecords.length;
+            document.getElementById('statUsers').textContent = users.size;
+            document.getElementById('statHigh').textContent = high;
+            document.getElementById('statNormal').textContent = allRecords.length - high;
+        }
+
+        // Update test type chart
+        function updateTestTypeChart() {
+            const counts = {};
+            allRecords.forEach(r => counts[r.testType] = (counts[r.testType] || 0) + 1);
+            const total = allRecords.length || 1;
+
+            document.getElementById('testTypeChart').innerHTML = Object.entries(counts).map(([type, count]) => {
+                const pct = Math.round((count / total) * 100);
+                return `
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-slate-600">${testTypeLabels[type] || type}</span>
+                            <span class="font-medium text-slate-800">${count} (${pct}%)</span>
+                        </div>
+                        <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full" style="width:${pct}%;background:${chartColors[type]}"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<p class="text-center text-slate-400 py-8">Chưa có dữ liệu</p>';
+        }
+
+        // Update recent activity
+        function updateRecentActivity() {
+            const recent = allRecords.slice(0, 8);
+            document.getElementById('recentActivity').innerHTML = recent.map(r => `
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-slate-700 truncate">${r.userName} - ${testTypeLabels[r.testType]}</p>
+                        <p class="text-xs text-slate-400">${new Date(r.timestamp).toLocaleDateString('vi-VN')}</p>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold ${severityColors[r.severity]}">${severityLabels[r.severity]}</span>
+                </div>
+            `).join('') || '<p class="text-center text-slate-400 py-8">Chưa có hoạt động</p>';
+        }
+
+        // Update users page
+        function updateUsersPage() {
+            const userMap = {};
+            allRecords.forEach(r => {
+                if (!userMap[r.userId]) userMap[r.userId] = { userId: r.userId, userName: r.userName, testCount: 0, highCount: 0, lastTest: r.timestamp };
+                userMap[r.userId].testCount++;
+                if (r.severity === 'HIGH') userMap[r.userId].highCount++;
+                if (new Date(r.timestamp) > new Date(userMap[r.userId].lastTest)) userMap[r.userId].lastTest = r.timestamp;
+            });
+
+            document.getElementById('usersGrid').innerHTML = Object.values(userMap).map(u => `
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-lg transition-all">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                            ${(u.userName || u.userId).charAt(0).toUpperCase()}
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-slate-800">${u.userName || 'Người dùng'}</p>
+                            <p class="text-xs text-slate-400">${u.userId}</p>
+                        </div>
+                        <button onclick="openEditUserModal('${u.userId}', '${u.userName || ''}')" 
+                            class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-500 hover:text-white text-slate-500 flex items-center justify-center transition-all" title="Sửa thông tin">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm border-t border-slate-100 pt-4">
+                        <div><p class="text-slate-400">Số test</p><p class="font-bold text-slate-800">${u.testCount}</p></div>
+                        <div><p class="text-slate-400">Cần khám</p><p class="font-bold ${u.highCount > 0 ? 'text-red-600' : 'text-green-600'}">${u.highCount}</p></div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3">Test cuối: ${new Date(u.lastTest).toLocaleDateString('vi-VN')}</p>
+                </div>
+            `).join('') || '<p class="col-span-full text-center text-slate-400 py-12">Chưa có người dùng</p>';
+        }
+
+        // Edit User Modal
+        let editingUserId = null;
+
+        function openEditUserModal(userId, userName) {
+            editingUserId = userId;
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editUserName').value = userName;
+            document.getElementById('editUserModal').classList.remove('hidden');
+        }
+
+        function closeEditUserModal() {
+            editingUserId = null;
+            document.getElementById('editUserModal').classList.add('hidden');
+        }
+
+        function saveUserEdit() {
+            const newUserId = document.getElementById('editUserId').value.trim();
+            const newUserName = document.getElementById('editUserName').value.trim();
+
+            if (!newUserId || !newUserName) {
+                alert('Vui lòng nhập đầy đủ thông tin');
+                return;
+            }
+
+            // Update all records for this user
+            allRecords = allRecords.map(r => {
+                if (r.userId === editingUserId) {
+                    return { ...r, userId: newUserId, userName: newUserName };
+                }
+                return r;
+            });
+
+            // Save to localStorage if demo mode
+            if (isDemo) {
+                localStorage.setItem('demo_records_edited', JSON.stringify(allRecords));
+            }
+
+            closeEditUserModal();
+            updateAll();
+            alert('Đã cập nhật thông tin người dùng!');
+        }
+
+        function deleteUser() {
+            if (!confirm(`Bạn có chắc muốn xóa tất cả hồ sơ của người dùng ${editingUserId}?`)) return;
+
+            allRecords = allRecords.filter(r => r.userId !== editingUserId);
+
+            if (isDemo) {
+                localStorage.setItem('demo_records_edited', JSON.stringify(allRecords));
+            }
+
+            closeEditUserModal();
+            updateAll();
+            alert('Đã xóa người dùng!');
+        }
+
+        // Update analytics
+        function updateAnalytics() {
+            const users = new Set(allRecords.map(r => r.userId));
+            const high = allRecords.filter(r => r.severity === 'HIGH').length;
+            document.getElementById('analyticTotal').textContent = allRecords.length;
+            document.getElementById('analyticUsers').textContent = users.size;
+            document.getElementById('analyticHigh').textContent = high;
+            document.getElementById('analyticNormal').textContent = allRecords.length - high;
+
+            // Bar chart
+            const counts = {};
+            allRecords.forEach(r => counts[r.testType] = (counts[r.testType] || 0) + 1);
+            const max = Math.max(...Object.values(counts), 1);
+
+            document.getElementById('analyticsChart').innerHTML = Object.entries(counts).map(([type, count]) => {
+                const height = Math.round((count / max) * 200);
+                return `
+                    <div class="flex flex-col items-center">
+                        <span class="text-sm font-bold text-slate-700 mb-2">${count}</span>
+                        <div class="w-16 rounded-t-lg chart-bar" style="height:${height}px;background:${chartColors[type]}"></div>
+                        <span class="text-xs text-slate-500 mt-2">${testTypeLabels[type]}</span>
+                    </div>
+                `;
+            }).join('') || '<p class="text-center text-slate-400">Chưa có dữ liệu</p>';
+        }
+
+        // Filter records
+        function filterRecords() {
+            const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+            const type = document.getElementById('typeFilter')?.value || 'all';
+            const severity = document.getElementById('severityFilter')?.value || 'all';
+
+            filteredData = allRecords.filter(r => {
+                if (search && !r.userName?.toLowerCase().includes(search) && !r.userId.toLowerCase().includes(search)) return false;
+                if (type !== 'all' && r.testType !== type) return false;
+                if (severity !== 'all' && r.severity !== severity) return false;
+                return true;
+            });
+
+            renderTable();
+        }
+
+        // Render table
+        function renderTable() {
+            const tbody = document.getElementById('recordsTable');
+            if (!tbody) return;
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-12 text-center text-slate-500">Không có dữ liệu</td></tr>';
+            } else {
+                tbody.innerHTML = filteredData.map(r => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3">
+                            <div>
+                                <p class="font-medium text-slate-800">${r.userName || 'N/A'}</p>
+                                <p class="text-xs text-slate-400">${r.userId}</p>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
+                                ${testTypeLabels[r.testType] || r.testType}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${severityColors[r.severity]}">
+                                ${severityLabels[r.severity]}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">${r.aiAnalysis}</td>
+                        <td class="px-4 py-3 text-sm text-slate-500">${new Date(r.timestamp).toLocaleDateString('vi-VN')}</td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('recordCount').textContent = `Hiển thị ${filteredData.length} / ${allRecords.length} hồ sơ`;
+        }
+
+        // Export to Excel
+        function exportToExcel() {
+            const data = filteredData.length > 0 ? filteredData : allRecords;
+            const headers = ['ID', 'User ID', 'User Name', 'Test Type', 'Severity', 'AI Analysis', 'Date'];
+            const rows = data.map(r => [
+                r.id, r.userId, r.userName || 'N/A', testTypeLabels[r.testType] || r.testType,
+                severityLabels[r.severity], r.aiAnalysis, new Date(r.timestamp).toLocaleString('vi-VN')
+            ]);
+
+            const csv = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => {
+                    const str = String(cell);
+                    return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str.replace(/"/g, '""')}"` : str;
+                }).join(','))
+            ].join('\n');
+
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `vision_health_records_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+
+        // ============================================
+        // AI ASSISTANT
+        // ============================================
+        let aiOpen = false;
+        let aiMessages = [];
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // Gemini API config
+        const GEMINI_API_KEY = ''; // User needs to add their API key
+        const GEMINI_MODEL = 'gemini-2.0-flash';
+
+        // System prompt for medical AI assistant
+        const SYSTEM_PROMPT = `Bạn là Dr. Vision AI - trợ lý thông minh hỗ trợ các bác sĩ nhãn khoa trong việc quản lý và phân tích hồ sơ sức khỏe thị lực.
+
+Chức năng của bạn:
+1. Phân tích kết quả kiểm tra thị lực (Snellen, mù màu, loạn thị, Amsler, Duochrome)
+2. Đánh giá mức độ nghiêm trọng và đưa ra cảnh báo
+3. Đề xuất chẩn đoán sơ bộ dựa trên kết quả
+4. Gợi ý các bước tiếp theo (xét nghiệm bổ sung, tái khám, chuyển tuyến)
+5. Tổng hợp báo cáo và thống kê
+
+Quy tắc:
+- Luôn trả lời bằng tiếng Việt
+- Sử dụng ngôn ngữ chuyên nghiệp y khoa
+- Nhấn mạnh các trường hợp cần khám ngay (HIGH severity)
+- Đưa ra đề xuất cụ thể và có căn cứ
+- Nếu không chắc chắn, khuyên tham khảo bác sĩ chuyên khoa
+
+Dữ liệu bệnh nhân hiện có:`;
+
+        // Toggle AI popup
+        function toggleAI() {
+            aiOpen = !aiOpen;
+            document.getElementById('aiPopup').classList.toggle('open', aiOpen);
+            if (aiOpen && aiMessages.length === 0) {
+                addAIMessage('ai', 'Xin chào Bác sĩ,\n\nTôi là Dr. Vision AI - Trợ lý nhãn khoa với 30 năm kinh nghiệm lâm sàng.\n\nTôi có thể hỗ trợ:\n- Phân tích hồ sơ bệnh nhân\n- Đề xuất chẩn đoán phân biệt\n- Tổng hợp báo cáo thống kê\n- Khuyến nghị điều trị và theo dõi\n\nXin cho biết yêu cầu của bác sĩ.');
+            }
+        }
+
+        // Add message to chat
+        function addAIMessage(type, text) {
+            aiMessages.push({ type, text, time: new Date() });
+            renderAIMessages();
+            saveAIHistory();
+        }
+
+        // Render messages
+        function renderAIMessages() {
+            const container = document.getElementById('aiMessages');
+            container.innerHTML = aiMessages.map(m => `
+                <div class="ai-msg ${m.type}">
+                    ${m.text.replace(/\n/g, '<br>')}
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Send message to AI
+        async function sendAIMessage() {
+            const input = document.getElementById('aiInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            addAIMessage('user', text);
+
+            // Show typing indicator
+            const typingId = Date.now();
+            aiMessages.push({ type: 'ai', text: 'Đang suy nghĩ', typing: true, id: typingId });
+            renderAIMessages();
+
+            try {
+                const response = await callGeminiAPI(text);
+                // Remove typing indicator
+                aiMessages = aiMessages.filter(m => m.id !== typingId);
+                addAIMessage('ai', response);
+            } catch (err) {
+                aiMessages = aiMessages.filter(m => m.id !== typingId);
+                addAIMessage('ai', 'Có lỗi xảy ra khi xử lý yêu cầu.\n\nVui lòng thử lại hoặc kiểm tra kết nối mạng.');
+            }
+        }
+
+        // Call Backend AI API
+        async function callGeminiAPI(userMessage) {
+            // Try backend API first (uses GEMINI_API_KEY from backend)
+            try {
+                const response = await fetch(`${API_URL}/api/admin/assistant`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${TOKEN}`
+                    },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        records: allRecords,
+                        chatHistory: aiMessages.filter(m => !m.typing).slice(-10),
+                        context: {
+                            currentPage: document.getElementById('pageTitle')?.textContent || 'Dashboard'
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data.message || 'Không có phản hồi từ AI.';
+            } catch (err) {
+                console.error('Backend AI error:', err);
+                // Fallback to mock response if backend fails
+                return getMockResponse(userMessage);
+            }
+        }
+
+        // Mock response when backend unavailable
+        function getMockResponse(query) {
+            const q = query.toLowerCase();
+
+            if (q.includes('phân tích') || q.includes('case') || q.includes('hồ sơ')) {
+                const highCases = allRecords.filter(r => r.severity === 'HIGH');
+                if (highCases.length > 0) {
+                    const c = highCases[0];
+                    return `PHÂN TÍCH CA LÂM SÀNG ƯU TIÊN
+
+1. THÔNG TIN BỆNH NHÂN
+   - Họ tên: ${c.userName || 'N/A'}
+   - Mã số: ${c.userId}
+   - Ngày khám: ${new Date(c.timestamp).toLocaleDateString('vi-VN')}
+
+2. KẾT QUẢ KIỂM TRA
+   - Loại: ${testTypeLabels[c.testType]}
+   - Mức độ: ${severityLabels[c.severity]}
+   - Nhận định: ${c.aiAnalysis}
+
+3. MỨC ĐỘ ƯU TIÊN: CAO
+
+4. KHUYẾN NGHỊ
+   a) Khám chuyên sâu để xác định nguyên nhân
+   b) Thực hiện các xét nghiệm bổ sung phù hợp
+   c) Hẹn tái khám trong vòng 1-2 tuần
+
+5. GHI CHÚ
+   Ca lâm sàng cần can thiệp trong 24-48 giờ.`;
+                }
+                return `THỐNG KÊ HỆ THỐNG
+
+Tổng số hồ sơ: ${allRecords.length}
+Số bệnh nhân: ${new Set(allRecords.map(r => r.userId)).size}
+
+Nhận định: Không có ca cấp bách cần xử lý ngay.`;
+            }
+
+            if (q.includes('báo cáo') || q.includes('tổng hợp') || q.includes('thống kê')) {
+                const byType = {};
+                allRecords.forEach(r => byType[r.testType] = (byType[r.testType] || 0) + 1);
+                return `BÁO CÁO TỔNG HỢP
+
+1. THỐNG KÊ CHUNG
+   - Tổng số hồ sơ: ${allRecords.length}
+   - Số bệnh nhân: ${new Set(allRecords.map(r => r.userId)).size}
+
+2. PHÂN BỐ THEO LOẠI KIỂM TRA
+${Object.entries(byType).map(([t, c]) => `   - ${testTypeLabels[t]}: ${c} ca`).join('\n')}
+
+3. PHÂN LOẠI MỨC ĐỘ
+   - Ưu tiên cao: ${allRecords.filter(r => r.severity === 'HIGH').length} ca
+   - Theo dõi: ${allRecords.filter(r => r.severity === 'MEDIUM').length} ca
+   - Bình thường: ${allRecords.filter(r => r.severity === 'NORMAL').length} ca
+
+4. KẾT LUẬN
+   Xem xét ưu tiên các ca có mức độ CAO để can thiệp kịp thời.`;
+            }
+
+            if (q.includes('urgent') || q.includes('cấp') || q.includes('khẩn')) {
+                const urgent = allRecords.filter(r => r.severity === 'HIGH');
+                if (urgent.length === 0) return 'NHẬN ĐỊNH: Không có ca cấp bách cần xử lý.';
+                return `DANH SÁCH CA CẦN KHÁM GẤP
+
+Tổng số: ${urgent.length} ca
+
+${urgent.map((c, i) =>
+                    `${i + 1}. ${c.userName || 'N/A'} (${c.userId})
+   - Loại: ${testTypeLabels[c.testType]}
+   - Kết quả: ${c.aiAnalysis}
+   - Mức độ: CAO`
+                ).join('\n\n')}
+
+KHUYẾN NGHỊ: Ưu tiên xử lý các ca trên trong 24-48 giờ.`;
+            }
+
+            return `Dr. Vision AI - Trợ lý nhãn khoa
+
+Tôi có thể hỗ trợ các yêu cầu sau:
+- Phân tích ca lâm sàng ưu tiên
+- Tổng hợp báo cáo thống kê
+- Liệt kê các ca cần khám gấp
+- Thống kê theo loại kiểm tra
+
+Vui lòng đặt câu hỏi cụ thể để được hỗ trợ.
+
+Lưu ý: Để sử dụng AI đầy đủ, hệ thống cần kết nối đến backend.`;
+        }
+
+        // Quick actions
+        function aiQuickAction(action) {
+            const queries = {
+                'analyze': 'Phân tích case ưu tiên cần xử lý',
+                'report': 'Tổng hợp báo cáo thống kê hôm nay',
+                'search': 'Tìm tất cả bệnh nhân cần khám',
+                'urgent': 'Liệt kê các cases urgent cần xử lý ngay'
+            };
+            document.getElementById('aiInput').value = queries[action] || '';
+            sendAIMessage();
+        }
+
+        // Voice recording
+        async function toggleVoice() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    // For now, just show a message - real implementation would send to Gemini Audio API
+                    addAIMessage('user', '🎤 [Tin nhắn thoại]');
+                    addAIMessage('ai', '🎙️ Tính năng voice đang được phát triển.\n\nHiện tại, vui lòng gõ câu hỏi của bạn.');
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('micBtn').classList.add('active');
+                document.getElementById('aiBtn').classList.add('recording');
+            } catch (err) {
+                alert('Không thể truy cập microphone. Vui lòng cho phép quyền truy cập.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                isRecording = false;
+                document.getElementById('micBtn').classList.remove('active');
+                document.getElementById('aiBtn').classList.remove('recording');
+            }
+        }
+
+        // Save/Load chat history
+        function saveAIHistory() {
+            localStorage.setItem('ai_chat_history', JSON.stringify(aiMessages.filter(m => !m.typing)));
+        }
+
+        function loadAIHistory() {
+            const saved = localStorage.getItem('ai_chat_history');
+            if (saved) {
+                aiMessages = JSON.parse(saved);
+                renderAIMessages();
+            }
+        }
+
+        // Clear chat
+        function clearAIChat() {
+            if (confirm('Xóa toàn bộ lịch sử chat?')) {
+                aiMessages = [];
+                localStorage.removeItem('ai_chat_history');
+                renderAIMessages();
+                addAIMessage('ai', '🔄 Đã xóa lịch sử. Tôi sẵn sàng hỗ trợ bạn!');
+            }
+        }
+
+        // Handle Enter key
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAIHistory();
+            const input = document.getElementById('aiInput');
+            if (input) {
+                input.addEventListener('keypress', e => {
+                    if (e.key === 'Enter') sendAIMessage();
+                });
+            }
+        });
+    </script>
+
+    <!-- AI Assistant UI -->
+    <div id="aiBtn" class="ai-btn hidden" onclick="toggleAI()">
+        <svg class="w-8 h-8 text-white" style="width:32px;height:32px;margin:auto;display:block;margin-top:16px;"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+    </div>
+
+    <div id="aiPopup" class="ai-popup">
+        <div class="ai-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div
+                    style="width:36px;height:36px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                    🤖
+                </div>
+                <div>
+                    <div style="font-weight:700;">Dr. Vision AI</div>
+                    <div style="font-size:11px;opacity:0.8;">Trợ lý thông minh</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button onclick="clearAIChat()"
+                    style="background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:6px;cursor:pointer;"
+                    title="Xoa lich su">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+                <button onclick="toggleAI()"
+                    style="background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:6px;cursor:pointer;">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="aiMessages" class="ai-messages"></div>
+
+        <div class="ai-quick">
+            <button onclick="aiQuickAction('analyze')">Phan tich ca</button>
+            <button onclick="aiQuickAction('report')">Bao cao</button>
+            <button onclick="aiQuickAction('search')">Tim kiem</button>
+            <button onclick="aiQuickAction('urgent')">Ca cap</button>
+        </div>
+
+        <div class="ai-input">
+            <button id="micBtn" class="mic-btn" onclick="toggleVoice()">
+                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+            </button>
+            <input type="text" id="aiInput" placeholder="Hỏi Dr. Vision AI...">
+            <button class="send-btn" onclick="sendAIMessage()">
+                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Show AI button when logged in
+        const origShowDashboard = showDashboard;
+        showDashboard = function () {
+            origShowDashboard();
+            document.getElementById('aiBtn').classList.remove('hidden');
+        };
+    </script>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal"
+        class="hidden fixed inset-0 z-[1001] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative animate-fadeIn">
+            <button onclick="closeEditUserModal()"
+                class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-red-100 hover:text-red-500 flex items-center justify-center">
+                ✕
+            </button>
+            <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </div>
+                Sửa thông tin người dùng
+            </h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">ID người dùng</label>
+                    <input type="text" id="editUserId"
+                        class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="user_001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Họ và tên</label>
+                    <input type="text" id="editUserName"
+                        class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Nguyễn Văn A">
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="deleteUser()"
+                    class="flex-1 px-4 py-3 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Xóa
+                </button>
+                <button onclick="saveUserEdit()"
+                    class="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
