@@ -11,7 +11,7 @@
  * - Offline queue for failed syncs
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu72511407.workers.dev';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
 
 // 🔐 Auth Helper
 const getAuthToken = (): string | null => {

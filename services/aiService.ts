@@ -21,7 +21,7 @@ import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights,
 
 // ⚡ API Configuration
 const API_CONFIG = {
-   baseUrl: import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu72511407.workers.dev',
+   baseUrl: import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev',
    timeout: 30000, // 30 seconds
    retryAttempts: 2,
    retryDelay: 1000,

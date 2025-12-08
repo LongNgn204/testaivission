@@ -155,7 +155,7 @@ export const TourGuideProvider: React.FC<TourGuideProviderProps> = ({ children }
         }
     }, [steps.length]);
 
-    const endTour = useCallback((markAsCompleted = false) => {
+    const endTour = useCallback((markAsCompleted = true) => {
         setIsTourActive(false);
         setCurrentStep(0);
 
