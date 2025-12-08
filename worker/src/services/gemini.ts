@@ -68,8 +68,8 @@ export class GeminiService {
       let headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
       if (this.gatewayUrl) {
-        // Cloudflare AI Gateway format
-        url = `${this.gatewayUrl}/v1/models/${model}:generateContent`;
+        // Cloudflare AI Gateway format - uses v1beta for Gemini
+        url = `${this.gatewayUrl}/v1beta/models/${model}:generateContent`;
         headers['x-goog-api-key'] = this.apiKey;
       } else {
         // Direct Gemini API format
