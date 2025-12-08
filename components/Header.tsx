@@ -1,14 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, History, Info, Menu, Sun, Moon, MapPin, Bell, TrendingUp, X } from 'lucide-react';
+import { Home, History, Info, Menu, Sun, Moon, MapPin, Bell, TrendingUp, X, HelpCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useTourGuide } from '../context/TourGuideContext';
 import { UserInfo } from './UserInfo';
 import logo from '../assets/logo.png';
 
 export const Header: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const { startTour, hasCompletedTour } = useTourGuide();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const navItems = [
@@ -36,7 +38,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex md:items-center md:gap-2">
+          <nav data-tour="navigation" className="hidden md:flex md:items-center md:gap-2">
             {navItems.map(item => (
               <NavLink
                 key={item.to}

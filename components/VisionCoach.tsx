@@ -25,12 +25,8 @@ export const VisionCoach: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [mode, setMode] = useState<'voice' | 'chat'>('voice');
 
-    // Kiểm tra API key từ Vite env
-    const hasApiKey = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_GEMINI_API_KEY)
-        || (typeof process !== 'undefined' && (process as any)?.env?.VITE_GEMINI_API_KEY)
-        || (typeof process !== 'undefined' && (process as any)?.env?.API_KEY);
-
-    if (!hasApiKey) return null;
+    // Note: API key is now handled by backend, VisionCoach should always be visible
+    // when user is authenticated
 
     const handleClose = () => {
         setIsOpen(false);
@@ -39,7 +35,7 @@ export const VisionCoach: React.FC = () => {
     return (
         <>
             {/* Floating Action Buttons - Voice & Chat */}
-            <div className={`fixed bottom-24 right-8 z-40 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'} transition-all duration-300`}>
+            <div data-tour="eva-coach" className={`fixed bottom-24 right-8 z-40 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'} transition-all duration-300`}>
                 <button
                     onClick={() => { setMode('voice'); setIsOpen(true); }}
                     className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-full p-4 shadow-lg hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-110 active:scale-95"
@@ -52,7 +48,7 @@ export const VisionCoach: React.FC = () => {
                     {language === 'vi' ? 'Nói chuyện với Eva' : 'Talk to Eva'}
                 </span>
             </div>
-            
+
             <div className={`fixed bottom-8 right-8 z-40 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'} transition-all duration-300`}>
                 <button
                     onClick={() => { setMode('chat'); setIsOpen(true); }}

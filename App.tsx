@@ -36,6 +36,8 @@ import { RoutineProvider } from './context/RoutineContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { VoiceControlProvider } from './context/VoiceControlContext';
 import { UserProvider } from './context/UserContext';
+import { TourGuideProvider } from './context/TourGuideContext';
+import { TourGuide } from './components/TourGuide';
 import { Header } from './components/Header';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { initializeReminderSystem } from './services/reminderService';
@@ -103,8 +105,8 @@ const MainAppLayout: React.FC = () => {
         // 🔔 REMINDERS: Khởi tạo hệ thống nhắc nhở
         initializeReminderSystem();
         // 🔁 Try to process any offline-queued test results on startup and when back online
-        processOfflineQueue().catch(() => {});
-        const handleOnline = () => { processOfflineQueue().catch(() => {}); };
+        processOfflineQueue().catch(() => { });
+        const handleOnline = () => { processOfflineQueue().catch(() => { }); };
         window.addEventListener('online', handleOnline);
         return () => window.removeEventListener('online', handleOnline);
     }, []);
@@ -145,6 +147,9 @@ const MainAppLayout: React.FC = () => {
             <Suspense fallback={<div />}>
                 <VisionCoach />
             </Suspense>
+
+            {/* Tour Guide Overlay */}
+            <TourGuide />
         </div>
     );
 }
@@ -175,11 +180,11 @@ const AppContent: React.FC = () => {
         try {
             const userData = localStorage.getItem('user_data');
             const token = getAuthToken();
-            
+
             // If we have both user data and token, verify token with backend
             if (userData && token) {
                 const verifyResult = await verifyUserToken(token);
-                
+
                 if (verifyResult.success) {
                     // Token is valid, user is authenticated
                     setAuthState('authenticated');
@@ -280,7 +285,9 @@ export default function App() {
                 <RoutineProvider>
                     <UserProvider>
                         <VoiceControlProvider>
-                            <AppContent />
+                            <TourGuideProvider>
+                                <AppContent />
+                            </TourGuideProvider>
                         </VoiceControlProvider>
                     </UserProvider>
                 </RoutineProvider>
