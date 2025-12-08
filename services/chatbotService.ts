@@ -10,7 +10,7 @@
 import { getAuthToken } from './authService';
 import { GoogleGenAI } from '@google/genai';
 
-const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:8787';
+const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
 const GEMINI_API_KEY = (import.meta as any)?.env?.VITE_GEMINI_API_KEY || '';
 
 function authHeaders() {
@@ -71,8 +71,8 @@ export class ChatbotService {
   // Try backend first, fallback to direct AI
   private async tryBackendFirst<T>(path: string, body: any): Promise<T> {
     try {
-      // Try backend if available
-      if (API_BASE_URL && API_BASE_URL !== 'http://localhost:8787') {
+      // Always try backend
+      if (API_BASE_URL) {
         return await apiPost<T>(path, body);
       }
     } catch (error) {

@@ -7,9 +7,9 @@
  */
 
 // Use Cloudflare Worker for backend
-// Development: http://localhost:8787
-// Production: https://your-worker.workers.dev
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+// Production: https://vision-coach-worker.stu725114073.workers.dev
+// Development: Set VITE_API_URL=http://localhost:8787 in .env
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
 
 // Generic fetch with retry, timeout, and 5xx backoff
 async function fetchWithRetry(
@@ -403,7 +403,7 @@ function enqueueOfflineTest(testData: TestResultData) {
     const arr = raw ? JSON.parse(raw) : [];
     arr.push({ testData, ts: Date.now() });
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(arr));
-  } catch {}
+  } catch { }
 }
 
 export async function processOfflineQueue(): Promise<number> {
