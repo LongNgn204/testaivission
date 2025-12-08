@@ -1,35 +1,37 @@
-
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-    
-    <!-- ⚡ PWA & SEO Meta Tags -->
-    <title>Sức Khỏe AI - Kiểm Tra Thị Lực Thông Minh</title>
-    <meta name="description" content="Nền tảng kiểm tra thị lực AI với điều khiển giọng nói, phân tích chuyên sâu và lời khuyên cá nhân hóa. Miễn phí 100%!" />
-    <meta name="keywords" content="kiểm tra mắt, thị lực, AI, sức khỏe mắt, snellen, mù màu, astigmatism, amsler" />
-    <meta name="author" content="Sức Khỏe AI Team" />
-    <meta name="theme-color" content="#059669" />
-    
-    <!-- ⚡ PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
-    
-    <!-- ⚡ Icons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
-    
-    <!-- ⚡ iOS PWA Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Sức Khỏe AI" />
-    
-    <!-- ⚡ Performance: Preconnect to external domains -->
-    <link rel="preconnect" href="https://aistudiocdn.com" />
-    <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
-    
-    <!-- Tailwind CSS now processed via PostCSS + Vite -->
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+
+  <!-- ⚡ PWA & SEO Meta Tags -->
+  <title>Sức Khỏe AI - Kiểm Tra Thị Lực Thông Minh</title>
+  <meta name="description"
+    content="Nền tảng kiểm tra thị lực AI với điều khiển giọng nói, phân tích chuyên sâu và lời khuyên cá nhân hóa. Miễn phí 100%!" />
+  <meta name="keywords" content="kiểm tra mắt, thị lực, AI, sức khỏe mắt, snellen, mù màu, astigmatism, amsler" />
+  <meta name="author" content="Sức Khỏe AI Team" />
+  <meta name="theme-color" content="#059669" />
+
+  <!-- ⚡ PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- ⚡ Icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+
+  <!-- iOS PWA Support -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Suc Khoe AI" />
+
+  <!-- ⚡ Performance: Preconnect to external domains -->
+  <link rel="preconnect" href="https://aistudiocdn.com" />
+  <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+
+  <!-- Tailwind CSS now processed via PostCSS + Vite -->
   <script type="importmap">
 {
   "imports": {
@@ -46,26 +48,29 @@
 }
 </script>
 </head>
-  <body>
-    <!-- Global styles & animations now in index.css (PostCSS processed) -->
-    <style>
-      /* Keep fadeIn animation if used inline, but moved to Tailwind utilities */
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+
+<body>
+  <!-- Global styles & animations now in index.css (PostCSS processed) -->
+  <style>
+    /* Keep fadeIn animation if used inline, but moved to Tailwind utilities */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
       }
-      
-      .animate-fade-in {
-        animation: fadeIn 0.3s ease-out;
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
-    </style>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+  </style>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

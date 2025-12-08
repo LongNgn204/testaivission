@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, User, Phone, Calendar, LogIn, Zap, ChevronRight, Loader } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { loginUser, saveAuthToken, LoginRequest } from '../services/authService';
+import { getSyncService } from '../services/syncService';
 
 interface UserData {
   name: string;
@@ -150,6 +151,15 @@ export default function LoginPageWithBackend() {
         // Dispatch event
         window.dispatchEvent(new Event('userLoggedIn'));
 
+        // Trigger sync after login
+        try {
+          const syncService = getSyncService();
+          await syncService.fullSync();
+          console.log('Sync completed after login');
+        } catch (syncError) {
+          console.warn('Sync failed after login:', syncError);
+        }
+
         // Navigate
         navigate('/home');
       } else {
@@ -200,6 +210,15 @@ export default function LoginPageWithBackend() {
         // Dispatch event
         window.dispatchEvent(new Event('userLoggedIn'));
 
+        // Trigger sync after register/login
+        try {
+          const syncService = getSyncService();
+          await syncService.fullSync();
+          console.log('Sync completed after register/login');
+        } catch (syncError) {
+          console.warn('Sync failed after register/login:', syncError);
+        }
+
         // Navigate
         navigate('/home');
       } else {
@@ -237,6 +256,16 @@ export default function LoginPageWithBackend() {
         saveAccountToHistory(userData);
         localStorage.setItem('user_data', JSON.stringify(userData));
         window.dispatchEvent(new Event('userLoggedIn'));
+
+        // Trigger sync after saved account login
+        try {
+          const syncService = getSyncService();
+          await syncService.fullSync();
+          console.log('Sync completed after saved account login');
+        } catch (syncError) {
+          console.warn('Sync failed after saved account login:', syncError);
+        }
+
         navigate('/home');
       } else {
         setApiError(response.error || 'Login failed');
@@ -322,7 +351,7 @@ export default function LoginPageWithBackend() {
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
                 <p className="text-red-700 text-sm font-medium">⚠️ {apiError}</p>
                 <p className="text-red-600 text-xs mt-1">
-                  {language === 'vi' 
+                  {language === 'vi'
                     ? 'Đảm bảo Cloudflare Worker đang chạy trên http://localhost:8787'
                     : 'Make sure the Cloudflare Worker is running on http://localhost:8787'}
                 </p>
@@ -418,7 +447,7 @@ export default function LoginPageWithBackend() {
                 </span>
               </button>
               <p className="text-xs text-gray-500 text-center mt-2">
-                {language === 'vi' 
+                {language === 'vi'
                   ? '💡 Hệ thống tự động tạo tài khoản mới nếu số điện thoại chưa được đăng ký'
                   : '💡 System will automatically create a new account if phone number is not registered'}
               </p>

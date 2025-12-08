@@ -51,9 +51,26 @@ export class StorageService {
       };
       history.unshift(newResult); // Add to the beginning
       localStorage.setItem(this.getHistoryKey(), JSON.stringify(history.slice(0, 50))); // Limit history to 50 entries per user
+
+      // Trigger sync to backend after saving test result
+      this.triggerSync();
     } catch (error) {
       console.error("Failed to save test result to localStorage:", error);
     }
+  }
+
+  // Async sync trigger (non-blocking)
+  private triggerSync(): void {
+    import('./syncService').then(({ getSyncService }) => {
+      const syncService = getSyncService();
+      syncService.syncTestHistory().then(result => {
+        console.log('Test history sync:', result.message);
+      }).catch(err => {
+        console.warn('Test history sync failed:', err);
+      });
+    }).catch(err => {
+      console.warn('Failed to load sync service:', err);
+    });
   }
 
   getTestHistory(): StoredTestResult[] {

@@ -165,12 +165,15 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     const GOOGLE_TTS_API_KEY = env.GOOGLE_TTS_API_KEY || env.GEMINI_API_KEY;
 
     if (!GOOGLE_TTS_API_KEY) {
+      // No API key - return fallback for client-side TTS
       return new Response(JSON.stringify({
-        success: false,
-        message: 'TTS service not configured',
-        error: 'TTS_NOT_CONFIGURED'
+        success: true,
+        useFallback: true,
+        message: 'Use browser TTS fallback',
+        text: text.trim(),
+        language: language
       }), {
-        status: 500,
+        status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -218,12 +221,15 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     if (!ttsResponse.ok) {
       const errorData = await ttsResponse.json().catch(() => ({}));
       console.error('Google TTS API error:', errorData);
+      // Return success with fallback flag - client will use browser TTS
       return new Response(JSON.stringify({
-        success: false,
-        message: 'Failed to generate TTS audio',
-        error: 'TTS_GENERATION_FAILED'
+        success: true,
+        useFallback: true,
+        message: 'Use browser TTS fallback',
+        text: text.trim(),
+        language: language
       }), {
-        status: 500,
+        status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
