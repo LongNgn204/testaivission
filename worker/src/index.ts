@@ -97,11 +97,11 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     const req = request as Request;
     const auth = req.headers.get('authorization') || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-    
+
     if (!token) {
-      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { 
-        status: 401, 
-        headers: { 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -109,9 +109,9 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     const { verifyJWT } = await import('./handlers/auth');
     const decoded: any = await verifyJWT(token, env.JWT_SECRET);
     if (!decoded) {
-      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { 
-        status: 403, 
-        headers: { 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -120,51 +120,51 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
 
     // Validate input
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      return new Response(JSON.stringify({ 
-        success: false, 
+      return new Response(JSON.stringify({
+        success: false,
         message: 'Text is required and must be a non-empty string',
         error: 'INVALID_TEXT'
-      }), { 
-        status: 400, 
-        headers: { 'Content-Type': 'application/json' } 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
     if (!language || !['vi', 'en'].includes(language)) {
-      return new Response(JSON.stringify({ 
-        success: false, 
+      return new Response(JSON.stringify({
+        success: false,
         message: 'Language is required and must be "vi" or "en"',
         error: 'INVALID_LANGUAGE'
-      }), { 
-        status: 400, 
-        headers: { 'Content-Type': 'application/json' } 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
     // Limit text length
     const maxLength = 5000;
     if (text.length > maxLength) {
-      return new Response(JSON.stringify({ 
-        success: false, 
+      return new Response(JSON.stringify({
+        success: false,
         message: `Text too long. Maximum ${maxLength} characters allowed.`,
         error: 'TEXT_TOO_LONG'
-      }), { 
-        status: 400, 
-        headers: { 'Content-Type': 'application/json' } 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
     // Use Google Cloud Text-to-Speech API
     const GOOGLE_TTS_API_KEY = env.GOOGLE_TTS_API_KEY || env.GEMINI_API_KEY;
-    
+
     if (!GOOGLE_TTS_API_KEY) {
-      return new Response(JSON.stringify({ 
-        success: false, 
+      return new Response(JSON.stringify({
+        success: false,
         message: 'TTS service not configured',
         error: 'TTS_NOT_CONFIGURED'
-      }), { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -184,7 +184,7 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
 
     // Call Google Cloud Text-to-Speech API
     const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`;
-    
+
     const ttsRequest = {
       input: { text: text.trim() },
       voice: {
@@ -211,13 +211,13 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     if (!ttsResponse.ok) {
       const errorData = await ttsResponse.json().catch(() => ({}));
       console.error('Google TTS API error:', errorData);
-      return new Response(JSON.stringify({ 
-        success: false, 
+      return new Response(JSON.stringify({
+        success: false,
         message: 'Failed to generate TTS audio',
         error: 'TTS_GENERATION_FAILED'
-      }), { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -225,13 +225,13 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     const audioContent = ttsData.audioContent;
 
     if (!audioContent) {
-      return new Response(JSON.stringify({ 
-        success: false, 
+      return new Response(JSON.stringify({
+        success: false,
         message: 'No audio content received from TTS service',
         error: 'NO_AUDIO_CONTENT'
-      }), { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -241,19 +241,19 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
       format: 'mp3',
       language,
       timestamp: new Date().toISOString(),
-    }), { 
-      status: 200, 
-      headers: { 'Content-Type': 'application/json' } 
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
     console.error('TTS generation error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
+    return new Response(JSON.stringify({
+      success: false,
       message: 'Failed to generate TTS',
       error: error?.message || 'UNKNOWN'
-    }), { 
-      status: 500, 
-      headers: { 'Content-Type': 'application/json' } 
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 });
@@ -297,9 +297,9 @@ router.post('/api/tests/save', async (request: IRequest, env: any) => {
     // Track analytics
     await db.trackEvent('test_completed', decoded.userId, { testType, score });
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: 'Test result saved', 
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Test result saved',
       testResult: {
         id: testResult.id,
         testType: testResult.test_type,
@@ -349,16 +349,270 @@ router.get('/api/tests/history', async (request: IRequest, env: any) => {
       duration: test.duration,
     }));
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: 'Test history retrieved', 
-      history, 
-      total, 
-      limit, 
-      offset 
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Test history retrieved',
+      history,
+      total,
+      limit,
+      offset
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ success: false, message: 'Failed to get test history', history: [], error: error?.message || 'UNKNOWN' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+});
+
+// ============================================================
+// SYNC ENDPOINTS
+// ============================================================
+
+/**
+ * POST /api/sync/history
+ * Sync test history from frontend to backend
+ */
+router.post('/api/sync/history', async (request: IRequest, env: any) => {
+  try {
+    const req = request as Request;
+    const auth = req.headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), {
+        status: 403, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await req.json() as any;
+    const { history, lastSyncTimestamp } = body || {};
+
+    if (!Array.isArray(history)) {
+      return new Response(JSON.stringify({ success: false, message: 'history must be an array' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const db = new DatabaseService(env.DB);
+    let syncedCount = 0;
+    const errors: string[] = [];
+
+    for (const item of history) {
+      try {
+        // Check if test already exists (by timestamp to avoid duplicates)
+        const existing = await db.getTestResultByTimestamp(decoded.userId, item.timestamp);
+
+        if (!existing) {
+          await db.saveTestResult({
+            user_id: decoded.userId,
+            test_type: item.testType,
+            test_data: JSON.stringify(item.testData || item.results || {}),
+            score: item.score,
+            result: item.result,
+            duration: item.duration,
+            created_at: item.timestamp,
+          });
+          syncedCount++;
+        }
+      } catch (err: any) {
+        errors.push(`Failed to sync item: ${err?.message}`);
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Synced ${syncedCount} items`,
+      syncedCount,
+      errors: errors.length > 0 ? errors : undefined,
+      lastSyncTimestamp: new Date().toISOString(),
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Sync failed', error: error?.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+
+/**
+ * POST /api/sync/settings
+ * Sync user settings
+ */
+router.post('/api/sync/settings', async (request: IRequest, env: any) => {
+  try {
+    const req = request as Request;
+    const auth = req.headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), {
+        status: 403, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await req.json() as any;
+    const { settings } = body || {};
+
+    if (!settings || typeof settings !== 'object') {
+      return new Response(JSON.stringify({ success: false, message: 'settings object required' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const db = new DatabaseService(env.DB);
+
+    await db.saveUserSettings({
+      user_id: decoded.userId,
+      language: settings.language || 'vi',
+      theme: settings.theme || 'light',
+      notifications_enabled: settings.notifications ?? true,
+      voice_enabled: settings.voiceEnabled ?? true,
+    });
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Settings synced successfully',
+      lastSyncTimestamp: new Date().toISOString(),
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Sync failed', error: error?.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+
+/**
+ * POST /api/sync/routine
+ * Sync weekly routine
+ */
+router.post('/api/sync/routine', async (request: IRequest, env: any) => {
+  try {
+    const req = request as Request;
+    const auth = req.headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), {
+        status: 403, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await req.json() as any;
+    const { routine } = body || {};
+
+    if (!routine || typeof routine !== 'object') {
+      return new Response(JSON.stringify({ success: false, message: 'routine object required' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const db = new DatabaseService(env.DB);
+
+    await db.saveRoutine({
+      user_id: decoded.userId,
+      routine_data: JSON.stringify(routine),
+      is_active: true,
+      start_date: routine.startDate || new Date().toISOString(),
+    });
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Routine synced successfully',
+      lastSyncTimestamp: new Date().toISOString(),
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Sync failed', error: error?.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+
+/**
+ * GET /api/sync/pull
+ * Pull all user data from backend
+ */
+router.get('/api/sync/pull', async (request: IRequest, env: any) => {
+  try {
+    const req = request as Request;
+    const auth = req.headers.get('authorization') || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { verifyJWT } = await import('./handlers/auth');
+    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    if (!decoded) {
+      return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), {
+        status: 403, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const db = new DatabaseService(env.DB);
+
+    // Get all user data
+    const [historyResult, settings, routine] = await Promise.all([
+      db.getUserTestHistory(decoded.userId, 1000, 0),
+      db.getUserSettings(decoded.userId),
+      db.getActiveRoutine(decoded.userId),
+    ]);
+
+    // Transform history
+    const history = historyResult.tests.map(test => ({
+      id: test.id,
+      testType: test.test_type,
+      testData: JSON.parse(test.test_data || '{}'),
+      score: test.score,
+      result: test.result,
+      timestamp: test.created_at,
+      duration: test.duration,
+    }));
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        history,
+        settings: settings ? {
+          language: settings.language,
+          theme: settings.theme,
+          notifications: settings.notifications_enabled,
+        } : null,
+        routine: routine ? JSON.parse(routine.routine_data || '{}') : null,
+      },
+      lastSyncTimestamp: new Date().toISOString(),
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, message: 'Pull failed', error: error?.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' }
+    });
   }
 });
 

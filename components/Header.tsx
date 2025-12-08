@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, History, Info, Menu, Sun, Moon, MapPin, Bell, TrendingUp, X, HelpCircle } from 'lucide-react';
+import { Home, History, Info, Menu, Sun, Moon, MapPin, Bell, TrendingUp, X, HelpCircle, Heart } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTourGuide } from '../context/TourGuideContext';
@@ -15,6 +15,7 @@ export const Header: React.FC = () => {
 
   const navItems = [
     { to: "/home", icon: Home, label: t('nav_home') },
+    { to: "/home/health-profile", icon: Heart, label: language === 'vi' ? 'Hồ sơ' : 'Health' },
     { to: "/home/history", icon: History, label: t('nav_history') },
     { to: "/home/progress", icon: TrendingUp, label: t('nav_progress') },
     { to: "/home/hospitals", icon: MapPin, label: t('nav_hospitals') },

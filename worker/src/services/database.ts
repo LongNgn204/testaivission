@@ -6,19 +6,19 @@
  * Handles all database operations with Cloudflare D1
  */
 
-import type { 
-  User, 
-  Session, 
-  TestResult, 
-  AIReport, 
+import type {
+  User,
+  Session,
+  TestResult,
+  AIReport,
   Routine,
   Reminder,
   ChatHistory,
-  UserSettings 
+  UserSettings
 } from '../types';
 
 export class DatabaseService {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database) { }
 
   // ============================================================
   // User Operations
@@ -27,7 +27,7 @@ export class DatabaseService {
   async createUser(user: Omit<User, 'id' | 'created_at' | 'updated_at'>): Promise<User> {
     const id = `user_${user.phone.replace(/\D/g, '')}`;
     const now = Date.now();
-    
+
     const userData: User = {
       id,
       ...user,
@@ -62,7 +62,7 @@ export class DatabaseService {
       .prepare('SELECT * FROM users WHERE id = ?')
       .bind(userId)
       .first<User>();
-    
+
     return result || null;
   }
 
@@ -71,7 +71,7 @@ export class DatabaseService {
       .prepare('SELECT * FROM users WHERE phone = ?')
       .bind(phone)
       .first<User>();
-    
+
     return result || null;
   }
 
@@ -112,7 +112,7 @@ export class DatabaseService {
   async createSession(session: Omit<Session, 'id' | 'created_at'>): Promise<Session> {
     const id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
-    
+
     const sessionData: Session = {
       id,
       ...session,
@@ -142,7 +142,7 @@ export class DatabaseService {
       .prepare('SELECT * FROM sessions WHERE token = ? AND expires_at > ?')
       .bind(token, Date.now())
       .first<Session>();
-    
+
     return result || null;
   }
 
@@ -174,7 +174,7 @@ export class DatabaseService {
   async saveTestResult(test: Omit<TestResult, 'id' | 'created_at'>): Promise<TestResult> {
     const id = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
-    
+
     const testData: TestResult = {
       id,
       ...test,
@@ -207,13 +207,22 @@ export class DatabaseService {
       .prepare('SELECT * FROM test_results WHERE id = ?')
       .bind(testId)
       .first<TestResult>();
-    
+
+    return result || null;
+  }
+
+  async getTestResultByTimestamp(userId: string, timestamp: string): Promise<TestResult | null> {
+    const result = await this.db
+      .prepare('SELECT * FROM test_results WHERE user_id = ? AND created_at = ?')
+      .bind(userId, timestamp)
+      .first<TestResult>();
+
     return result || null;
   }
 
   async getUserTestHistory(
-    userId: string, 
-    limit: number = 100, 
+    userId: string,
+    limit: number = 100,
     offset: number = 0
   ): Promise<{ tests: TestResult[]; total: number }> {
     const tests = await this.db
@@ -238,8 +247,8 @@ export class DatabaseService {
   }
 
   async getUserTestsByType(
-    userId: string, 
-    testType: string, 
+    userId: string,
+    testType: string,
     limit: number = 50
   ): Promise<TestResult[]> {
     const result = await this.db
@@ -262,7 +271,7 @@ export class DatabaseService {
   async saveAIReport(report: Omit<AIReport, 'id' | 'created_at'>): Promise<AIReport> {
     const id = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
-    
+
     const reportData: AIReport = {
       id,
       ...report,
@@ -293,7 +302,7 @@ export class DatabaseService {
       .prepare('SELECT * FROM ai_reports WHERE test_result_id = ? AND language = ? ORDER BY created_at DESC LIMIT 1')
       .bind(testResultId, language)
       .first<AIReport>();
-    
+
     return result || null;
   }
 
@@ -304,7 +313,7 @@ export class DatabaseService {
   async saveRoutine(routine: Omit<Routine, 'id' | 'created_at'>): Promise<Routine> {
     const id = `routine_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
-    
+
     const routineData: Routine = {
       id,
       ...routine,
@@ -341,7 +350,7 @@ export class DatabaseService {
       .prepare('SELECT * FROM routines WHERE user_id = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1')
       .bind(userId)
       .first<Routine>();
-    
+
     return result || null;
   }
 
@@ -352,7 +361,7 @@ export class DatabaseService {
   async saveReminder(reminder: Omit<Reminder, 'id' | 'created_at' | 'updated_at'>): Promise<Reminder> {
     const id = `reminder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
-    
+
     const reminderData: Reminder = {
       id,
       ...reminder,
@@ -427,7 +436,7 @@ export class DatabaseService {
   async saveChatHistory(chat: Omit<ChatHistory, 'id' | 'created_at'>): Promise<ChatHistory> {
     const id = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
-    
+
     const chatData: ChatHistory = {
       id,
       ...chat,
@@ -502,7 +511,7 @@ export class DatabaseService {
       .prepare('SELECT * FROM user_settings WHERE user_id = ?')
       .bind(userId)
       .first<UserSettings>();
-    
+
     return result || null;
   }
 
@@ -511,12 +520,12 @@ export class DatabaseService {
   // ============================================================
 
   async trackEvent(
-    eventType: string, 
-    userId?: string, 
+    eventType: string,
+    userId?: string,
     eventData?: any
   ): Promise<void> {
     const id = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     await this.db
       .prepare(
         `INSERT INTO analytics (id, user_id, event_type, event_data, created_at)
@@ -539,7 +548,7 @@ export class DatabaseService {
   async cleanup(): Promise<void> {
     // Delete expired sessions
     await this.deleteExpiredSessions();
-    
+
     // Delete old analytics (keep last 90 days)
     const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
     await this.db

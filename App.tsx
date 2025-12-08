@@ -63,6 +63,7 @@ const DuochromeTest = lazy(() => import('./components/DuochromeTest').then(m => 
 const HospitalLocator = lazy(() => import('./components/HospitalLocator'));
 const RemindersPage = lazy(() => import('./pages/RemindersPage'));
 const ProgressPage = lazy(() => import('./pages/ProgressPage'));
+const HealthProfile = lazy(() => import('./pages/HealthProfile'));
 const VisionCoach = lazy(() => import('./components/VisionCoach').then(m => ({ default: m.VisionCoach })));
 const TestInstructionsPlayer = lazy(() => import('./components/TestInstructionsPlayer').then(m => ({ default: m.TestInstructionsPlayer })));
 
@@ -132,6 +133,7 @@ const MainAppLayout: React.FC = () => {
                         <Route path="hospitals" element={<HospitalLocator />} />
                         <Route path="reminders" element={<RemindersPage />} />
                         <Route path="progress" element={<ProgressPage />} />
+                        <Route path="health-profile" element={<HealthProfile />} />
                         <Route path="*" element={<Navigate to="/home" replace />} />
                     </Routes>
                 </Suspense>
