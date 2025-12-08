@@ -7,7 +7,7 @@
  */
 
 import { IRequest } from 'itty-router';
-import { GeminiService } from '../services/gemini';
+import { createGeminiFromEnv } from '../services/gemini';
 import { createChatPrompt } from '../prompts/chat';
 
 export async function chat(
@@ -40,7 +40,7 @@ export async function chat(
     }
 
     // Initialize Gemini
-    const gemini = new GeminiService(env.GEMINI_API_KEY);
+    const gemini = createGeminiFromEnv(env);
 
     // Build prompt
     const prompt = createChatPrompt(

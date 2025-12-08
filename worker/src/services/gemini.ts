@@ -28,9 +28,12 @@ export interface GenerateContentOptions {
 export class GeminiService {
   private apiKey: string;
   private config: GeminiConfig;
+  // Direct Gemini API URL
   private baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+  // Cloudflare AI Gateway URL (optional, for bypassing region restrictions)
+  private gatewayUrl: string | null = null;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, gatewayConfig?: { accountId?: string; gatewayName?: string }) {
     this.apiKey = apiKey;
     this.config = {
       apiKey,
@@ -40,10 +43,16 @@ export class GeminiService {
       topP: 0.8,
       topK: 40,
     };
+
+    // Configure Cloudflare AI Gateway if provided
+    if (gatewayConfig?.accountId && gatewayConfig?.gatewayName) {
+      this.gatewayUrl = `https://gateway.ai.cloudflare.com/v1/${gatewayConfig.accountId}/${gatewayConfig.gatewayName}/google-ai-studio`;
+      console.log('Using Cloudflare AI Gateway for Gemini API');
+    }
   }
 
   /**
-   * Generate content using Gemini API
+   * Generate content using Gemini API (via Cloudflare AI Gateway if configured)
    */
   async generateContent(
     prompt: string,
@@ -53,7 +62,19 @@ export class GeminiService {
 
     try {
       const model = options?.model || this.config.model;
-      const url = `${this.baseUrl}/${model}:generateContent?key=${this.apiKey}`;
+
+      // Use Cloudflare AI Gateway URL if configured, otherwise direct Gemini API
+      let url: string;
+      let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+      if (this.gatewayUrl) {
+        // Cloudflare AI Gateway format
+        url = `${this.gatewayUrl}/v1/models/${model}:generateContent`;
+        headers['x-goog-api-key'] = this.apiKey;
+      } else {
+        // Direct Gemini API format
+        url = `${this.baseUrl}/${model}:generateContent?key=${this.apiKey}`;
+      }
 
       const requestBody = {
         contents: [
@@ -95,9 +116,7 @@ export class GeminiService {
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(requestBody),
       });
 
@@ -179,14 +198,28 @@ export class GeminiService {
  */
 let geminiInstance: GeminiService | null = null;
 
-export function initGemini(apiKey: string): GeminiService {
+export interface GatewayConfig {
+  accountId?: string;
+  gatewayName?: string;
+}
+
+export function initGemini(apiKey: string, gatewayConfig?: GatewayConfig): GeminiService {
   if (!geminiInstance) {
-    geminiInstance = new GeminiService(apiKey);
+    geminiInstance = new GeminiService(apiKey, gatewayConfig);
   }
   return geminiInstance;
 }
 
-export function getGemini(apiKey: string): GeminiService {
-  return new GeminiService(apiKey);
+export function getGemini(apiKey: string, gatewayConfig?: GatewayConfig): GeminiService {
+  return new GeminiService(apiKey, gatewayConfig);
 }
 
+/**
+ * Create GeminiService from environment (helper for handlers)
+ */
+export function createGeminiFromEnv(env: any): GeminiService {
+  return new GeminiService(env.GEMINI_API_KEY, {
+    accountId: env.CF_AI_GATEWAY_ACCOUNT_ID,
+    gatewayName: env.CF_AI_GATEWAY_NAME,
+  });
+}

@@ -8,7 +8,7 @@
  */
 
 import { IRequest } from 'itty-router';
-import { GeminiService } from '../services/gemini';
+import { createGeminiFromEnv } from '../services/gemini';
 import { CacheService, CACHE_TTL } from '../services/cache';
 import { createReportPrompt, createReportSchema } from '../prompts/report';
 
@@ -42,7 +42,7 @@ export async function generateReport(
 
     // Initialize services
     const cacheService = new CacheService(env.CACHE);
-    const gemini = new GeminiService(env.GEMINI_API_KEY);
+    const gemini = createGeminiFromEnv(env);
 
     // Generate cache key
     const cacheKey = cacheService.generateKey(

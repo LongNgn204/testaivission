@@ -7,7 +7,7 @@
  */
 
 import { IRequest } from 'itty-router';
-import { GeminiService } from '../services/gemini';
+import { createGeminiFromEnv } from '../services/gemini';
 import { CacheService, CACHE_TTL } from '../services/cache';
 import { createDashboardPrompt, createDashboardSchema } from '../prompts/dashboard';
 
@@ -41,7 +41,7 @@ export async function generateDashboardInsights(
 
     // Initialize services
     const cacheService = new CacheService(env.CACHE);
-    const gemini = new GeminiService(env.GEMINI_API_KEY);
+    const gemini = createGeminiFromEnv(env);
 
     // Generate cache key based on recent history
     const recentHistory = history.slice(0, 5);

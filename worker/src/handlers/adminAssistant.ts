@@ -8,7 +8,7 @@
  */
 
 import { IRequest } from 'itty-router';
-import { GeminiService } from '../services/gemini';
+import { createGeminiFromEnv } from '../services/gemini';
 
 // Professional Medical AI System Prompt - Expert Ophthalmologist
 const ADMIN_AI_SYSTEM_PROMPT = `# Dr. Vision AI - Trợ Lý Chuyên Môn Nhãn Khoa
@@ -259,7 +259,7 @@ ${message}
 Hãy trả lời chuyên nghiệp, súc tích và có hệ thống. Không sử dụng emoji.`;
 
         // Initialize Gemini
-        const gemini = new GeminiService(env.GEMINI_API_KEY);
+        const gemini = createGeminiFromEnv(env);
 
         // Generate response
         const response = await gemini.generateContent(fullPrompt, {
