@@ -13,6 +13,7 @@ import { generateDashboardInsights } from './handlers/dashboard';
 import { chat } from './handlers/chat';
 import { generateRoutine } from './handlers/routine';
 import { generateProactiveTip } from './handlers/proactiveTip';
+import { adminAIAssistant } from './handlers/adminAssistant';
 import { login, verifyToken, logout } from './handlers/auth';
 import { DatabaseService } from './services/database';
 
@@ -87,6 +88,12 @@ router.post('/api/routine', generateRoutine);
  * Generate proactive health tip
  */
 router.post('/api/proactive-tip', generateProactiveTip);
+
+/**
+ * POST /api/admin/assistant
+ * AI Assistant for doctors/admins
+ */
+router.post('/api/admin/assistant', adminAIAssistant);
 
 /**
  * POST /api/tts/generate

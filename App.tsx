@@ -64,6 +64,7 @@ const HospitalLocator = lazy(() => import('./components/HospitalLocator'));
 const RemindersPage = lazy(() => import('./pages/RemindersPage'));
 const ProgressPage = lazy(() => import('./pages/ProgressPage'));
 const HealthProfile = lazy(() => import('./pages/HealthProfile'));
+const AdminApp = lazy(() => import('./admin'));
 const VisionCoach = lazy(() => import('./components/VisionCoach').then(m => ({ default: m.VisionCoach })));
 const TestInstructionsPlayer = lazy(() => import('./components/TestInstructionsPlayer').then(m => ({ default: m.TestInstructionsPlayer })));
 
@@ -237,6 +238,8 @@ const AppContent: React.FC = () => {
         <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Suspense fallback={<LoadingFallback />}>
                 <Routes>
+                    {/* Admin Dashboard - Standalone, no auth required from app */}
+                    <Route path="/admin" element={<AdminApp />} />
                     <Route
                         path="/login"
                         element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
