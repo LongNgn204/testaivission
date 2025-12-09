@@ -1,178 +1,56 @@
 /**
  * ============================================================
- * 💬 ChatbotService - Giao tiếp với Google Gemini AI
+ * 💬 ChatbotService - Direct OpenRouter API Calls
  * ============================================================
  * 
- * Cung cấp các hàm gọi Google Gemini API trực tiếp
- * Fallback: Nếu có backend, sẽ dùng backend thay vì AI trực tiếp
+ * Gọi trực tiếp OpenRouter API từ frontend
+ * Không còn phụ thuộc backend
  */
 
-import { getAuthToken } from './authService';
-import { GoogleGenAI } from '@google/genai';
-
-const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
-const GEMINI_API_KEY = (import.meta as any)?.env?.VITE_GEMINI_API_KEY || '';
-
-function authHeaders() {
-  const token = getAuthToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  return headers;
-}
-
-// Generic fetch with retry and timeout for robustness
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit & { timeoutMs?: number } = {}
-): Promise<Response> {
-  const { timeoutMs = 15000, ...rest } = options;
-  let lastError: any;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, { ...rest, signal: controller.signal });
-      clearTimeout(timer);
-      if (res.status >= 500 && attempt < 2) {
-        const delay = Math.pow(2, attempt) * 500;
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      return res;
-    } catch (e) {
-      clearTimeout(timer);
-      lastError = e;
-      if (attempt < 2) {
-        const delay = Math.pow(2, attempt) * 500;
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-    }
-  }
-  throw lastError || new Error('Network error');
-}
-
-async function apiPost<T>(path: string, body: any): Promise<T> {
-  const res = await fetchWithRetry(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data?.message || data?.error || 'API request failed');
-  }
-  return data as T;
-}
+import { openRouterChat, hasOpenRouterKey } from './openRouterService';
 
 export class ChatbotService {
-  // Try backend first, fallback to direct AI
-  private async tryBackendFirst<T>(path: string, body: any): Promise<T> {
-    try {
-      // Always try backend
-      if (API_BASE_URL) {
-        return await apiPost<T>(path, body);
-      }
-    } catch (error) {
-      console.warn(`Backend ${path} failed, will try direct AI if available`);
-    }
-    throw new Error('No backend available and no API key configured');
-  }
-
+  /**
+   * 💬 Chat with Dr. Eva via OpenRouter
+   */
   async chat(message: string, lastTestResult: any, userProfile: any, language: 'vi' | 'en'): Promise<string> {
+    if (!hasOpenRouterKey()) {
+      throw new Error(language === 'vi'
+        ? 'Chưa cấu hình OpenRouter API Key'
+        : 'OpenRouter API Key not configured');
+    }
+
     try {
-      // Try backend first - backend returns { message, timestamp, language, model }
-      const data = await apiPost<{ message: string; error?: string }>(
-        '/api/chat',
-        { message, lastTestResult, userProfile, language }
-      );
-
-      // Check for error response
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      if (!data.message) {
-        throw new Error('No message in response');
-      }
-
-      return data.message;
+      const response = await openRouterChat(message, lastTestResult, userProfile, language);
+      return response;
     } catch (error: any) {
-      console.error('Backend chat error:', error.message);
-      // If backend fails and we have API key, use direct AI as fallback
-      if (GEMINI_API_KEY) {
-        console.log('Using direct Gemini API as fallback...');
-        return await this.chatWithDirectAI(message, language);
-      }
-      throw new Error('Chat service unavailable: ' + error.message);
+      console.error('Chat error:', error.message);
+      throw new Error(language === 'vi'
+        ? 'Không thể kết nối với AI: ' + error.message
+        : 'Cannot connect to AI: ' + error.message);
     }
   }
 
-  private async chatWithDirectAI(message: string, language: 'vi' | 'en'): Promise<string> {
-    if (!GEMINI_API_KEY) {
-      throw new Error('Gemini API key not configured');
-    }
-
-    const client = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-    const systemPrompt = language === 'vi'
-      ? 'Bạn là Bác sĩ Eva - trợ lý y tế chuyên khoa nhãn khoa. Hãy trả lời ngắn gọn (30-40 từ) nhưng đầy đủ thông tin. Sử dụng tiếng Việt.'
-      : 'You are Dr. Eva - an ophthalmology medical assistant. Answer concisely (30-40 words) but informatively. Use English.';
-
-    const response = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: `${systemPrompt}\n\nUser message: ${message}`
-            }
-          ]
-        }
-      ]
-    });
-
-    const text = response.response.text();
-    return text || 'Xin lỗi, tôi không thể trả lời lúc này.';
-  }
-
+  /**
+   * Legacy methods - redirect to OpenRouter
+   */
   async report(testType: string, testData: any, history: any[], language: 'vi' | 'en') {
-    try {
-      return await apiPost('/api/report', { testType, testData, history, language });
-    } catch (error) {
-      console.warn('Backend report failed');
-      throw error;
-    }
+    const { openRouterReport } = await import('./openRouterService');
+    return await openRouterReport(testType, testData, history, language);
   }
 
   async routine(userProfile: any, testResults: any[], language: 'vi' | 'en') {
-    try {
-      return await apiPost('/api/routine', { userProfile, testResults, language });
-    } catch (error) {
-      console.warn('Backend routine failed');
-      throw error;
-    }
+    const { openRouterRoutine } = await import('./openRouterService');
+    return await openRouterRoutine(userProfile, language);
   }
 
   async tip(userProfile: any, language: 'vi' | 'en') {
-    try {
-      return await apiPost('/api/proactive-tip', { userProfile, language });
-    } catch (error) {
-      console.warn('Backend tip failed');
-      throw error;
-    }
+    const { openRouterProactiveTip } = await import('./openRouterService');
+    return await openRouterProactiveTip(null, userProfile, language);
   }
 
   async dashboard(testHistory: any[], language: 'vi' | 'en') {
-    try {
-      return await apiPost('/api/dashboard', { testHistory, language });
-    } catch (error) {
-      console.warn('Backend dashboard failed');
-      throw error;
-    }
+    const { openRouterDashboard } = await import('./openRouterService');
+    return await openRouterDashboard(testHistory, language);
   }
 }
-

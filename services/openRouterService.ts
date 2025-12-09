@@ -244,18 +244,24 @@ export async function openRouterDashboard(
     const systemPrompt = language === 'vi'
         ? `Phân tích lịch sử test mắt và tạo insights. Trả về JSON:
 {
-  "overallHealth": "GOOD|FAIR|POOR",
-  "summary": "Tóm tắt sức khỏe mắt (50 từ)",
-  "recommendations": ["Khuyến nghị 1", "Khuyến nghị 2"],
-  "nextSteps": ["Bước tiếp theo 1", "Bước tiếp theo 2"]
+  "score": 75,
+  "rating": "GOOD|EXCELLENT|AVERAGE|NEEDS_ATTENTION",
+  "trend": "IMPROVING|STABLE|DECLINING|INSUFFICIENT_DATA",
+  "overallSummary": "Tóm tắt sức khỏe mắt (50 từ)",
+  "positives": ["Điểm tích cực 1", "Điểm tích cực 2"],
+  "areasToMonitor": ["Vấn đề cần theo dõi 1"],
+  "proTip": "Mẹo chuyên gia"
 }
 CHỈ TRẢ VỀ JSON.`
         : `Analyze eye test history and create insights. Return JSON:
 {
-  "overallHealth": "GOOD|FAIR|POOR",
-  "summary": "Eye health summary (50 words)",
-  "recommendations": ["Recommendation 1", "Recommendation 2"],
-  "nextSteps": ["Next step 1", "Next step 2"]
+  "score": 75,
+  "rating": "GOOD|EXCELLENT|AVERAGE|NEEDS_ATTENTION",
+  "trend": "IMPROVING|STABLE|DECLINING|INSUFFICIENT_DATA",
+  "overallSummary": "Eye health summary (50 words)",
+  "positives": ["Positive 1", "Positive 2"],
+  "areasToMonitor": ["Area to monitor 1"],
+  "proTip": "Expert tip"
 }
 RETURN ONLY JSON.`;
 
@@ -275,10 +281,13 @@ RETURN ONLY JSON.`;
     } catch (e) {
         console.error('Failed to parse dashboard JSON:', e);
         return {
-            overallHealth: 'FAIR',
-            summary: response,
-            recommendations: [],
-            nextSteps: [],
+            score: 70,
+            rating: 'AVERAGE',
+            trend: 'INSUFFICIENT_DATA',
+            overallSummary: response || (language === 'vi' ? 'Chưa đủ dữ liệu để phân tích' : 'Not enough data for analysis'),
+            positives: [],
+            areasToMonitor: [],
+            proTip: language === 'vi' ? 'Hãy làm thêm bài test để có đánh giá chính xác hơn' : 'Complete more tests for accurate assessment',
         };
     }
 }
