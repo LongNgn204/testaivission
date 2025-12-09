@@ -399,15 +399,23 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
                         : 'Ask about eye health, or say "start Snellen test", "show history"...'}
                     </p>
                 </div>
+
+                {/* Mic Button for repeated speaking */}
+                {(status === 'speaking' || status === 'idle') && (
+                    <button
+                        onClick={startListening}
+                        className="mt-6 flex items-center gap-2 px-6 py-3 bg-green-500/20 hover:bg-green-500/40 border border-green-500/50 rounded-full text-green-300 font-medium transition-all"
+                    >
+                        <Mic size={20} />
+                        {language === 'vi' ? 'Nhấn để nói tiếp' : 'Tap to speak again'}
+                    </button>
+                )}
             </div>
 
             {/* Footer */}
             <div className="mb-8 text-center">
                 <p className="text-sm text-white/40 font-light tracking-widest uppercase">
                     {language === 'vi' ? 'Bác sĩ Eva - Trợ lý AI' : 'Dr. Eva - AI Assistant'}
-                </p>
-                <p className="text-xs text-green-400 mt-1">
-                    ✅ {language === 'vi' ? 'Miễn phí 100% - Không cần API key' : '100% Free - No API key required'}
                 </p>
             </div>
 

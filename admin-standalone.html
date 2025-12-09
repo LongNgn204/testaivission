@@ -500,11 +500,11 @@
                         <label class="block text-sm font-medium text-white/80 mb-2">API URL</label>
                         <input type="text" id="apiUrl" value="https://vision-coach-worker.stu725114073.workers.dev"
                             class="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <p class="text-xs text-white/50 mt-1">Dữ liệu sẽ được tải từ D1 database thực</p>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-white/80 mb-2">JWT Token (để trống để dùng demo
-                            data)</label>
-                        <input type="password" id="tokenInput" placeholder="Nhập JWT token hoặc để trống..."
+                    <div class="hidden">
+                        <label class="block text-sm font-medium text-white/80 mb-2">JWT Token (không bắt buộc)</label>
+                        <input type="password" id="tokenInput" placeholder="Để trống..."
                             class="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div id="loginError"
@@ -513,13 +513,13 @@
                         class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold hover:from-indigo-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
-                        Đăng Nhập
+                        Xem Dữ Liệu Thực (D1 Database)
                     </button>
                     <button onclick="loginDemo()"
                         class="w-full py-3 px-4 rounded-xl border border-white/30 text-white/80 font-medium hover:bg-white/10 transition-all">
-                        Xem Demo (Dữ liệu mẫu)
+                        Xem Demo (25 hồ sơ mẫu)
                     </button>
                 </div>
             </div>
@@ -966,7 +966,7 @@
             document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
         }
 
-        // Load records
+        // Load records from real API
         async function loadRecords() {
             if (isDemo) {
                 loadDemoData();
@@ -974,19 +974,48 @@
             }
 
             try {
-                const response = await fetch(`${API_URL}/api/tests/history?limit=1000`, {
-                    headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }
-                });
+                // Call new admin API endpoints
+                const [recordsRes, statsRes] = await Promise.all([
+                    fetch(`${API_URL}/api/admin/records`, {
+                        headers: { 'Content-Type': 'application/json' }
+                    }),
+                    fetch(`${API_URL}/api/admin/stats`, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                ]);
 
-                if (!response.ok) throw new Error('API Error');
+                if (!recordsRes.ok) {
+                    console.error('Records API Error:', recordsRes.status);
+                    throw new Error('Records API Error');
+                }
 
-                const data = await response.json();
-                allRecords = (data.history || []).map(r => ({ ...r, ...analyzeResult(r) }));
+                const recordsData = await recordsRes.json();
 
-                document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('vi-VN');
+                if (recordsData.success && recordsData.records) {
+                    // Map API response to our format
+                    allRecords = recordsData.records.map(r => ({
+                        id: r.id,
+                        userId: r.userId,
+                        userName: r.userName || 'Unknown',
+                        testType: r.testType,
+                        testData: {},
+                        timestamp: r.timestamp,
+                        severity: r.severity || 'NORMAL',
+                        aiAnalysis: r.aiAnalysis || 'N/A',
+                        score: r.score
+                    }));
+
+                    document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('vi-VN');
+                    console.log(`✅ Loaded ${allRecords.length} records from D1 database`);
+                } else {
+                    console.warn('No records from API, using demo data');
+                    loadDemoData();
+                    return;
+                }
+
                 updateAll();
             } catch (err) {
-                console.error(err);
+                console.error('Load records error:', err);
                 // Fallback to localStorage or demo
                 const local = localStorage.getItem('vision_test_history');
                 if (local) {

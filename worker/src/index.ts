@@ -14,6 +14,7 @@ import { chat } from './handlers/chat';
 import { generateRoutine } from './handlers/routine';
 import { generateProactiveTip } from './handlers/proactiveTip';
 import { adminAIAssistant } from './handlers/adminAssistant';
+import { getAdminUsers, getAdminRecords, getAdminStats } from './handlers/admin';
 import { syncPull, syncHistory, syncSettings, syncRoutine } from './handlers/sync';
 import { login, verifyToken, logout } from './handlers/auth';
 import { DatabaseService } from './services/database';
@@ -95,6 +96,15 @@ router.post('/api/proactive-tip', generateProactiveTip);
  * AI Assistant for doctors/admins
  */
 router.post('/api/admin/assistant', adminAIAssistant);
+
+/**
+ * GET /api/admin/users - Get all users from D1 database
+ * GET /api/admin/records - Get all test records
+ * GET /api/admin/stats - Get dashboard statistics
+ */
+router.get('/api/admin/users', getAdminUsers);
+router.get('/api/admin/records', getAdminRecords);
+router.get('/api/admin/stats', getAdminStats);
 
 /**
  * Sync Endpoints - Frontend-Backend Data Synchronization
