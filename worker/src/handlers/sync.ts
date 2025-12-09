@@ -47,13 +47,14 @@ export async function syncPull(request: IRequest, env: any): Promise<Response> {
         const db = new DatabaseService(env.DB);
 
         // Get user's test history
-        const history = await db.getUserTestHistory(userId, 50);
+        const historyResult = await db.getUserTestHistory(userId, 50);
+        const history = historyResult?.tests || [];
 
         // Get user's settings
         const settings = await db.getUserSettings(userId);
 
-        // Get user's routine
-        const routine = await db.getUserRoutine(userId);
+        // Get user's routine (using getActiveRoutine)
+        const routine = await db.getActiveRoutine(userId);
 
         return new Response(JSON.stringify({
             success: true,
@@ -109,13 +110,11 @@ export async function syncHistory(request: IRequest, env: any): Promise<Response
                     await db.saveTestResult({
                         user_id: userId,
                         test_type: item.testType || item.test_type,
-                        result: typeof item.resultData === 'string' ? item.resultData : JSON.stringify(item.resultData),
-                        ai_analysis: item.report?.aiAnalysis || item.aiAnalysis || '',
-                        ai_recommendations: item.report?.recommendations ? JSON.stringify(item.report.recommendations) : '[]',
-                        severity: item.report?.severity || item.severity || 'NORMAL',
-                        test_date: item.date || new Date().toISOString(),
+                        test_data: typeof item.resultData === 'string' ? item.resultData : JSON.stringify(item.resultData || item),
+                        result: item.report?.aiAnalysis || item.aiAnalysis || '',
+                        notes: item.report?.severity || item.severity || 'NORMAL',
                     });
-                    synced++;
+                    synced++;;
                 }
             } catch (err) {
                 console.warn('Failed to sync item:', item.id, err);
@@ -218,7 +217,8 @@ export async function syncRoutine(request: IRequest, env: any): Promise<Response
         await db.saveRoutine({
             user_id: userId,
             routine_data: typeof routine === 'string' ? routine : JSON.stringify(routine),
-            generated_at: new Date().toISOString(),
+            language: 'vi',
+            is_active: 1,
         });
 
         return new Response(JSON.stringify({
