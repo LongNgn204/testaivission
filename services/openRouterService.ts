@@ -94,8 +94,13 @@ async function callOpenRouter(
     const { maxTokens = 1024, temperature = 0.7 } = options;
 
     if (!OPENROUTER_API_KEY) {
+        console.error('❌ OpenRouter API key not found in environment');
         throw new Error('OpenRouter API key not configured. Add VITE_OPENROUTER_API_KEY to environment.');
     }
+
+    console.log(`🤖 Calling OpenRouter API...`);
+    console.log(`   Model: ${MODEL}`);
+    console.log(`   API Key: ${OPENROUTER_API_KEY.slice(0, 8)}...${OPENROUTER_API_KEY.slice(-4)}`);
 
     const response = await fetch(API_URL, {
         method: 'POST',
@@ -118,17 +123,40 @@ async function callOpenRouter(
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({}));
+        console.error('❌ OpenRouter API error:', error);
         throw new Error((error as any)?.error?.message || `OpenRouter API error: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || '';
+    const content = data.choices?.[0]?.message?.content || '';
+    console.log(`✅ OpenRouter response received (${content.length} chars)`);
+    console.log(`   Raw response preview:`, content.slice(0, 200));
+    return content;
 }
 
-// Parse JSON from AI response (handles markdown code blocks)
+// Parse JSON from AI response (handles markdown code blocks and DeepSeek thinking)
 function parseJsonResponse<T>(text: string): T {
-    // Remove markdown code blocks if present
     let cleaned = text.trim();
+
+    // DeepSeek models often include <think>...</think> tags - remove them
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // Try to find JSON in the response - look for first { and last }
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+    } else {
+        // Try array format
+        const arrStart = cleaned.indexOf('[');
+        const arrEnd = cleaned.lastIndexOf(']');
+        if (arrStart !== -1 && arrEnd !== -1 && arrEnd > arrStart) {
+            cleaned = cleaned.slice(arrStart, arrEnd + 1);
+        }
+    }
+
+    // Remove markdown code blocks if still present
     if (cleaned.startsWith('```json')) {
         cleaned = cleaned.slice(7);
     } else if (cleaned.startsWith('```')) {
