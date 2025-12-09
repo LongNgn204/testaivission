@@ -1,16 +1,16 @@
 /**
  * ============================================================
- * 📋 AI Report Handler
+ * 📋 AI Report Handler (Cloudflare AI - FREE)
  * ============================================================
  * 
  * Generates detailed medical reports for test results
- * using Gemini AI with caching
+ * using Cloudflare Workers AI (LLAMA 3.1) - FREE!
  */
 
 import { IRequest } from 'itty-router';
-import { createGeminiFromEnv } from '../services/gemini';
+import { generateJSONWithCloudflareAI } from '../services/gemini';
 import { CacheService, CACHE_TTL } from '../services/cache';
-import { createReportPrompt, createReportSchema } from '../prompts/report';
+import { createReportPrompt } from '../prompts/report';
 
 export async function generateReport(
   request: IRequest,
@@ -40,9 +40,19 @@ export async function generateReport(
       );
     }
 
-    // Initialize services
+    // Check if Cloudflare AI is available
+    if (!env.AI) {
+      return new Response(
+        JSON.stringify({
+          error: 'AI service not configured',
+          message: 'Cloudflare Workers AI binding not found',
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize cache service
     const cacheService = new CacheService(env.CACHE);
-    const gemini = createGeminiFromEnv(env);
 
     // Generate cache key
     const cacheKey = cacheService.generateKey(
@@ -68,35 +78,10 @@ export async function generateReport(
       );
     }
 
-    // Generate report
+    // Generate report using Cloudflare AI
     const prompt = createReportPrompt(testType, testData, history, language);
-    const schema = createReportSchema(language);
 
-    const responseText = await gemini.generateContent(prompt, {
-      temperature: 0.3,
-      maxTokens: 4000,
-      responseSchema: schema,
-      responseMimeType: 'application/json',
-    });
-
-    // Parse response
-    let report: any;
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      report = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error('Failed to parse report response:', responseText);
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to parse AI response',
-          details: parseError instanceof Error ? parseError.message : 'Unknown error',
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    const report = await generateJSONWithCloudflareAI(env.AI, prompt, language);
 
     // Add metadata
     const result = {
@@ -130,4 +115,3 @@ export async function generateReport(
     );
   }
 }
-

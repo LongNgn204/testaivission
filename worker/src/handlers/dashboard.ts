@@ -1,15 +1,16 @@
 /**
  * ============================================================
- * 📊 Dashboard Handler
+ * 📊 Dashboard Handler (Cloudflare AI - FREE)
  * ============================================================
  * 
  * Generates dashboard insights from test history
+ * using Cloudflare Workers AI - FREE!
  */
 
 import { IRequest } from 'itty-router';
-import { createGeminiFromEnv } from '../services/gemini';
+import { generateJSONWithCloudflareAI } from '../services/gemini';
 import { CacheService, CACHE_TTL } from '../services/cache';
-import { createDashboardPrompt, createDashboardSchema } from '../prompts/dashboard';
+import { createDashboardPrompt } from '../prompts/dashboard';
 
 export async function generateDashboardInsights(
   request: IRequest,
@@ -39,9 +40,19 @@ export async function generateDashboardInsights(
       );
     }
 
-    // Initialize services
+    // Check if Cloudflare AI is available
+    if (!env.AI) {
+      return new Response(
+        JSON.stringify({
+          error: 'AI service not configured',
+          message: 'Cloudflare Workers AI binding not found',
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize cache service
     const cacheService = new CacheService(env.CACHE);
-    const gemini = createGeminiFromEnv(env);
 
     // Generate cache key based on recent history
     const recentHistory = history.slice(0, 5);
@@ -67,35 +78,10 @@ export async function generateDashboardInsights(
       );
     }
 
-    // Generate insights
+    // Generate insights using Cloudflare AI
     const prompt = createDashboardPrompt(history, language);
-    const schema = createDashboardSchema();
 
-    const responseText = await gemini.generateContent(prompt, {
-      temperature: 0.2,
-      maxTokens: 4000,
-      responseSchema: schema,
-      responseMimeType: 'application/json',
-    });
-
-    // Parse response
-    let insights: any;
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      insights = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error('Failed to parse dashboard response:', responseText);
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to parse AI response',
-          details: parseError instanceof Error ? parseError.message : 'Unknown error',
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    const insights = await generateJSONWithCloudflareAI(env.AI, prompt, language);
 
     // Add metadata
     const result = {
@@ -127,4 +113,3 @@ export async function generateDashboardInsights(
     );
   }
 }
-

@@ -161,7 +161,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     const [botTranscript, setBotTranscript] = useState('');
 
     const aiRef = useRef<GoogleGenAI | null>(null);
-    const sessionPromiseRef = useRef<Promise<any> | null>(null);
+    const sessionPromiseRef = useRef<any | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);

@@ -1,13 +1,14 @@
 /**
  * ============================================================
- * 💡 Proactive Tip Handler
+ * 💡 Proactive Tip Handler (Cloudflare AI - FREE)
  * ============================================================
  * 
  * Generates proactive health tips
+ * using Cloudflare Workers AI - FREE!
  */
 
 import { IRequest } from 'itty-router';
-import { createGeminiFromEnv } from '../services/gemini';
+import { generateWithCloudflareAI } from '../services/gemini';
 import { CacheService, CACHE_TTL } from '../services/cache';
 import { createProactiveTipPrompt } from '../prompts/proactiveTip';
 
@@ -39,9 +40,19 @@ export async function generateProactiveTip(
       );
     }
 
-    // Initialize services
+    // Check if Cloudflare AI is available
+    if (!env.AI) {
+      return new Response(
+        JSON.stringify({
+          error: 'AI service not configured',
+          message: 'Cloudflare Workers AI binding not found',
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize cache service
     const cacheService = new CacheService(env.CACHE);
-    const gemini = createGeminiFromEnv(env);
 
     // Generate cache key
     const cacheKey = cacheService.generateKey(
@@ -68,13 +79,14 @@ export async function generateProactiveTip(
       );
     }
 
-    // Generate tip
+    // Generate tip using Cloudflare AI
     const prompt = createProactiveTipPrompt(lastTest, userProfile, language);
 
-    const tip = await gemini.generateContent(prompt, {
-      temperature: 0.6,
-      maxTokens: 100,
-    });
+    const systemPrompt = language === 'vi'
+      ? 'Đưa ra 1 mẹo hữu ích ngắn gọn (20-30 từ) về chăm sóc mắt. Thân thiện, có emoji.'
+      : 'Give 1 short helpful tip (20-30 words) about eye care. Friendly, with emoji.';
+
+    const tip = await generateWithCloudflareAI(env.AI, prompt, systemPrompt);
 
     // Cache result
     await cacheService.set(
@@ -110,4 +122,3 @@ export async function generateProactiveTip(
     );
   }
 }
-

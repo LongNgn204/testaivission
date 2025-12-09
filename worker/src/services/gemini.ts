@@ -263,3 +263,61 @@ export async function generateWithCloudflareAI(
     throw error;
   }
 }
+
+/**
+ * Generate JSON content using Cloudflare Workers AI (Llama 3.1)
+ * Parses the response as JSON for reports, dashboard, routine, etc.
+ */
+export async function generateJSONWithCloudflareAI(
+  ai: any,
+  prompt: string,
+  language: 'vi' | 'en'
+): Promise<any> {
+  const systemPrompt = language === 'vi'
+    ? 'Bạn là chuyên gia AI y tế. Trả lời CHÍNH XÁC bằng JSON hợp lệ, không kèm text thừa, không markdown.'
+    : 'You are a medical AI expert. Respond with ONLY valid JSON, no extra text, no markdown.';
+
+  const text = await generateWithCloudflareAI(ai, prompt, systemPrompt);
+
+  // Parse JSON from response
+  try {
+    let cleaned = text.trim();
+
+    // Remove markdown code blocks if present
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.slice(7);
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.slice(3);
+    }
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.slice(0, -3);
+    }
+    cleaned = cleaned.trim();
+
+    // Try to find JSON object or array
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+    } else {
+      // Try array format
+      const arrStart = cleaned.indexOf('[');
+      const arrEnd = cleaned.lastIndexOf(']');
+      if (arrStart !== -1 && arrEnd !== -1 && arrEnd > arrStart) {
+        cleaned = cleaned.slice(arrStart, arrEnd + 1);
+      }
+    }
+
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error('Failed to parse JSON from Cloudflare AI:', text);
+    // Return fallback
+    return {
+      summary: text,
+      recommendations: [],
+      severity: 'LOW',
+      confidence: 70,
+    };
+  }
+}

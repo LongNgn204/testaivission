@@ -1,10 +1,10 @@
 /**
  * =================================================================
- * 🤖 AIService - Direct OpenRouter API Calls from Frontend
+ * 🤖 AIService - Calls Worker API (Cloudflare AI - FREE)
  * =================================================================
  *
- * Tất cả AI calls giờ đi trực tiếp qua OpenRouter API
- * Không còn phụ thuộc backend
+ * Tất cả AI calls đi qua Worker API, sử dụng Cloudflare Workers AI
+ * MIỄN PHÍ 100% - Không cần API key
  * 
  * FUNCTIONS:
  * - generateReport: Tạo báo cáo AI cho test results
@@ -16,14 +16,30 @@
  */
 
 import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
-import {
-   openRouterChat,
-   openRouterReport,
-   openRouterDashboard,
-   openRouterRoutine,
-   openRouterProactiveTip,
-   hasOpenRouterKey,
-} from './openRouterService';
+import { getAuthToken } from './authService';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
+
+// Helper for API calls
+async function callWorkerAPI(endpoint: string, body: any): Promise<any> {
+   const token = getAuthToken();
+
+   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+         'Content-Type': 'application/json',
+         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+   });
+
+   if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error((error as any)?.message || `API error: ${response.status}`);
+   }
+
+   return response.json();
+}
 
 export class AIService {
    private audioCache: Map<string, { audioContent: string; timestamp: number; hits: number }>;
@@ -33,10 +49,10 @@ export class AIService {
    }
 
    /**
-    * Check if OpenRouter API is available
+    * Check if AI is available (always true with Worker API)
     */
    isAvailable(): boolean {
-      return hasOpenRouterKey();
+      return true; // AI always available via free Worker API
    }
 
    /**
@@ -49,10 +65,15 @@ export class AIService {
       language: 'vi' | 'en'
    ): Promise<AIReport> {
       const startTime = Date.now();
-      console.log(`📋 Generating ${testType} report via OpenRouter...`);
+      console.log(`📋 Generating ${testType} report via Worker API...`);
 
       try {
-         const report = await openRouterReport(testType, testData, history.slice(0, 10), language);
+         const report = await callWorkerAPI('/api/report', {
+            testType,
+            testData,
+            history: history.slice(0, 10),
+            language,
+         });
 
          const elapsed = Date.now() - startTime;
          console.log(`✅ Report generated in ${elapsed}ms`);
@@ -63,7 +84,24 @@ export class AIService {
          };
       } catch (error: any) {
          console.error('❌ Report generation failed:', error.message);
-         throw new Error(`Không thể tạo báo cáo AI. ${error.message}`);
+         // Return fallback report
+         return {
+            id: `report_${Date.now()}`,
+            testType,
+            timestamp: new Date().toISOString(),
+            totalResponseTime: Date.now() - startTime,
+            confidence: 70,
+            summary: language === 'vi'
+               ? 'Không thể tạo báo cáo AI lúc này. Vui lòng thử lại sau.'
+               : 'Unable to generate AI report at this time. Please try again later.',
+            causes: '',
+            recommendations: language === 'vi'
+               ? ['Thử làm lại bài test', 'Kiểm tra kết nối mạng', 'Liên hệ hỗ trợ nếu vấn đề vẫn tiếp tục']
+               : ['Try the test again', 'Check your network connection', 'Contact support if the issue persists'],
+            severity: 'LOW',
+            prediction: '',
+            trend: '',
+         };
       }
    }
 
@@ -75,10 +113,13 @@ export class AIService {
       language: 'vi' | 'en'
    ): Promise<DashboardInsights> {
       const startTime = Date.now();
-      console.log(`📊 Generating dashboard insights via OpenRouter...`);
+      console.log(`📊 Generating dashboard insights via Worker API...`);
 
       try {
-         const insights = await openRouterDashboard(history.slice(0, 20), language);
+         const insights = await callWorkerAPI('/api/dashboard', {
+            history: history.slice(0, 20),
+            language,
+         });
 
          const elapsed = Date.now() - startTime;
          console.log(`✅ Dashboard insights generated in ${elapsed}ms`);
@@ -86,7 +127,19 @@ export class AIService {
          return insights;
       } catch (error: any) {
          console.error('❌ Dashboard insights failed:', error.message);
-         throw new Error('Failed to generate dashboard insights');
+         return {
+            score: 70,
+            rating: 'AVERAGE',
+            trend: 'INSUFFICIENT_DATA',
+            overallSummary: language === 'vi'
+               ? 'Chưa đủ dữ liệu để phân tích chi tiết'
+               : 'Not enough data for detailed analysis',
+            positives: [],
+            areasToMonitor: [],
+            proTip: language === 'vi'
+               ? 'Hãy làm thêm bài test để có đánh giá chính xác hơn'
+               : 'Complete more tests for accurate assessment',
+         };
       }
    }
 
@@ -98,10 +151,13 @@ export class AIService {
       language: 'vi' | 'en'
    ): Promise<WeeklyRoutine> {
       const startTime = Date.now();
-      console.log(`📅 Generating personalized routine via OpenRouter...`);
+      console.log(`📅 Generating personalized routine via Worker API...`);
 
       try {
-         const routine = await openRouterRoutine(answers, language);
+         const routine = await callWorkerAPI('/api/routine', {
+            answers,
+            language,
+         });
 
          const elapsed = Date.now() - startTime;
          console.log(`✅ Routine generated in ${elapsed}ms`);
@@ -123,15 +179,20 @@ export class AIService {
       language: 'vi' | 'en'
    ): Promise<string> {
       const startTime = Date.now();
-      console.log(`💬 Sending chat message via OpenRouter...`);
+      console.log(`💬 Sending chat message via Worker API...`);
 
       try {
-         const response = await openRouterChat(userMessage, lastTestResult, userProfile, language);
+         const data = await callWorkerAPI('/api/chat', {
+            message: userMessage,
+            lastTestResult,
+            userProfile,
+            language,
+         });
 
          const elapsed = Date.now() - startTime;
          console.log(`✅ Chat response received in ${elapsed}ms`);
 
-         return response || (language === 'vi'
+         return data.message || (language === 'vi'
             ? 'Xin lỗi, tôi không thể trả lời câu hỏi này.'
             : 'Sorry, I cannot answer this question.');
       } catch (error: any) {
@@ -151,7 +212,12 @@ export class AIService {
       language: 'vi' | 'en'
    ): Promise<string | null> {
       try {
-         return await openRouterProactiveTip(lastTest, userProfile, language);
+         const data = await callWorkerAPI('/api/proactive-tip', {
+            lastTest,
+            userProfile,
+            language,
+         });
+         return data.tip || null;
       } catch (error: any) {
          console.error('❌ Proactive tip failed:', error.message);
          return null;
@@ -204,34 +270,6 @@ export class AIService {
             resolve(null);
          }
       });
-   }
-
-   /**
-    * 🔊 Play base64 audio
-    */
-   private async playAudioFromBase64(base64Audio: string): Promise<void> {
-      try {
-         const binaryString = atob(base64Audio);
-         const bytes = new Uint8Array(binaryString.length);
-         for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-         }
-
-         const blob = new Blob([bytes], { type: 'audio/mp3' });
-         const audioUrl = URL.createObjectURL(blob);
-         const audio = new Audio(audioUrl);
-
-         await new Promise<void>((resolve, reject) => {
-            audio.onended = () => {
-               URL.revokeObjectURL(audioUrl);
-               resolve();
-            };
-            audio.onerror = reject;
-            audio.play().catch(reject);
-         });
-      } catch (error) {
-         console.error('Failed to play audio:', error);
-      }
    }
 
    /**

@@ -1,15 +1,16 @@
 /**
  * ============================================================
- * 📅 Routine Handler
+ * 📅 Routine Handler (Cloudflare AI - FREE)
  * ============================================================
  * 
  * Generates personalized weekly routine
+ * using Cloudflare Workers AI - FREE!
  */
 
 import { IRequest } from 'itty-router';
-import { createGeminiFromEnv } from '../services/gemini';
+import { generateJSONWithCloudflareAI } from '../services/gemini';
 import { CacheService, CACHE_TTL } from '../services/cache';
-import { createRoutinePrompt, createRoutineSchema } from '../prompts/routine';
+import { createRoutinePrompt } from '../prompts/routine';
 
 export async function generateRoutine(
   request: IRequest,
@@ -39,9 +40,19 @@ export async function generateRoutine(
       );
     }
 
-    // Initialize services
+    // Check if Cloudflare AI is available
+    if (!env.AI) {
+      return new Response(
+        JSON.stringify({
+          error: 'AI service not configured',
+          message: 'Cloudflare Workers AI binding not found',
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize cache service
     const cacheService = new CacheService(env.CACHE);
-    const gemini = createGeminiFromEnv(env);
 
     // Generate cache key
     const cacheKey = cacheService.generateKey(
@@ -66,35 +77,10 @@ export async function generateRoutine(
       );
     }
 
-    // Generate routine
+    // Generate routine using Cloudflare AI
     const prompt = createRoutinePrompt(answers, language);
-    const schema = createRoutineSchema();
 
-    const responseText = await gemini.generateContent(prompt, {
-      temperature: 0.5,
-      maxTokens: 4000,
-      responseSchema: schema,
-      responseMimeType: 'application/json',
-    });
-
-    // Parse response
-    let routine: any;
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      routine = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error('Failed to parse routine response:', responseText);
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to parse AI response',
-          details: parseError instanceof Error ? parseError.message : 'Unknown error',
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    const routine = await generateJSONWithCloudflareAI(env.AI, prompt, language);
 
     // Add metadata
     const result = {
@@ -126,4 +112,3 @@ export async function generateRoutine(
     );
   }
 }
-
