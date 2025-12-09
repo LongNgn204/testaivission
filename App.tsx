@@ -54,7 +54,6 @@ const History = lazy(() => import('./pages/History').then(m => ({ default: m.His
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const PersonalizedSetupPage = lazy(() => import('./pages/PersonalizedSetupPage').then(m => ({ default: m.PersonalizedSetupPage })));
 const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
-const LoginPageWithBackend = lazy(() => import('./pages/LoginPageWithBackend'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const SnellenTest = lazy(() => import('./components/SnellenTest').then(m => ({ default: m.SnellenTest })));
 const ColorBlindTest = lazy(() => import('./components/ColorBlindTest').then(m => ({ default: m.ColorBlindTest })));
@@ -243,11 +242,11 @@ const AppContent: React.FC = () => {
                     <Route path="/admin" element={<AdminApp />} />
                     <Route
                         path="/login"
-                        element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <AuthPage />}
                     />
                     <Route
                         path="/login-legacy"
-                        element={isLoggedIn ? <Navigate to="/home" replace /> : <LoginPageWithBackend />}
+                        element={isLoggedIn ? <Navigate to="/home" replace /> : <AuthPage />}
                     />
                     <Route
                         path="/setup"
