@@ -1,0 +1,387 @@
+/**
+ * ============================================================
+ * 🤖 OpenRouter Service - Direct API Calls from Frontend
+ * ============================================================
+ * 
+ * Gọi trực tiếp OpenRouter API từ frontend
+ * Model: tngtech/deepseek-r1t2-chimera:free
+ * 
+ * ⚠️ API Key được expose trên frontend (đã chấp nhận)
+ */
+
+import { AIReport, StoredTestResult, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
+
+// ⚡ API Configuration
+const OPENROUTER_API_KEY = (import.meta as any)?.env?.VITE_OPENROUTER_API_KEY || '';
+const MODEL = 'tngtech/deepseek-r1t2-chimera:free';
+const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+// System prompts
+const getSystemPrompt = (language: 'vi' | 'en') => {
+    return language === 'vi'
+        ? `Bạn là Bác sĩ Eva - chuyên gia nhãn khoa với 30 năm kinh nghiệm tại Bệnh viện Mắt Trung ương.
+
+KIẾN THỨC CHUYÊN MÔN:
+- Các bài test thị lực: Snellen (đo thị lực), Ishihara (mù màu), Amsler Grid (thoái hóa điểm vàng), Astigmatism (loạn thị), Duochrome (cận/viễn thị)
+- Các vấn đề mắt phổ biến: Cận thị, viễn thị, loạn thị, lão thị, khô mắt, mỏi mắt số hóa, đục thủy tinh thể, tăng nhãn áp
+- Quy tắc 20-20-20: Mỗi 20 phút, nhìn xa 20 feet (6m) trong 20 giây
+- Chế độ ăn tốt cho mắt: Vitamin A, Lutein, Omega-3, rau xanh, cà rốt
+
+PHONG CÁCH TRẢ LỜI:
+- Thân thiện, dễ hiểu, như đang nói chuyện với bệnh nhân
+- Ngắn gọn (50-80 từ) nhưng đầy đủ thông tin quan trọng
+- Luôn đưa ra lời khuyên thiết thực
+- Nếu triệu chứng nghiêm trọng (đau dữ dội, mất thị lực đột ngột, nhìn đôi), khuyên đi khám ngay
+- Sử dụng emoji phù hợp để thân thiện hơn 👁️👓💪
+
+Hãy trả lời bằng tiếng Việt.`
+        : `You are Dr. Eva - an ophthalmologist with 30 years of experience at Central Eye Hospital.
+
+PROFESSIONAL KNOWLEDGE:
+- Vision tests: Snellen (visual acuity), Ishihara (color blindness), Amsler Grid (macular degeneration), Astigmatism, Duochrome (myopia/hyperopia)
+- Common eye issues: Myopia, hyperopia, astigmatism, presbyopia, dry eyes, digital eye strain, cataracts, glaucoma
+- 20-20-20 rule: Every 20 minutes, look at something 20 feet away for 20 seconds
+- Eye-healthy diet: Vitamin A, Lutein, Omega-3, leafy greens, carrots
+
+RESPONSE STYLE:
+- Friendly, easy to understand, like talking to a patient
+- Concise (50-80 words) but with important information
+- Always give practical advice
+- For serious symptoms (severe pain, sudden vision loss, double vision), advise immediate medical attention
+- Use appropriate emojis for friendliness 👁️👓💪
+
+Answer in English.`;
+};
+
+const getReportPrompt = (language: 'vi' | 'en') => {
+    return language === 'vi'
+        ? `Bạn là Bác sĩ Eva - chuyên gia nhãn khoa. Phân tích kết quả test và tạo báo cáo chuyên nghiệp.
+
+Trả về JSON với format:
+{
+  "summary": "Tóm tắt kết quả (100-150 từ)",
+  "causes": "Nguyên nhân có thể (50-100 từ)",
+  "recommendations": ["Khuyến nghị 1", "Khuyến nghị 2", "Khuyến nghị 3"],
+  "severity": "LOW|MEDIUM|HIGH",
+  "prediction": "Dự đoán nếu không điều trị (50 từ)",
+  "trend": "Xu hướng so với lịch sử (nếu có)",
+  "confidence": 0.85
+}
+
+CHỈ TRẢ VỀ JSON, KHÔNG CÓ TEXT KHÁC.`
+        : `You are Dr. Eva - ophthalmology expert. Analyze test results and create a professional report.
+
+Return JSON with format:
+{
+  "summary": "Result summary (100-150 words)",
+  "causes": "Possible causes (50-100 words)",
+  "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"],
+  "severity": "LOW|MEDIUM|HIGH",
+  "prediction": "Prediction if untreated (50 words)",
+  "trend": "Trend compared to history (if available)",
+  "confidence": 0.85
+}
+
+RETURN ONLY JSON, NO OTHER TEXT.`;
+};
+
+// Generic API call helper
+async function callOpenRouter(
+    systemPrompt: string,
+    userMessage: string,
+    options: { maxTokens?: number; temperature?: number } = {}
+): Promise<string> {
+    const { maxTokens = 1024, temperature = 0.7 } = options;
+
+    if (!OPENROUTER_API_KEY) {
+        throw new Error('OpenRouter API key not configured. Add VITE_OPENROUTER_API_KEY to environment.');
+    }
+
+    const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Vision Coach - Eye Health App',
+        },
+        body: JSON.stringify({
+            model: MODEL,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userMessage },
+            ],
+            max_tokens: maxTokens,
+            temperature,
+        }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error((error as any)?.error?.message || `OpenRouter API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+}
+
+// Parse JSON from AI response (handles markdown code blocks)
+function parseJsonResponse<T>(text: string): T {
+    // Remove markdown code blocks if present
+    let cleaned = text.trim();
+    if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.slice(7);
+    } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.slice(3);
+    }
+    if (cleaned.endsWith('```')) {
+        cleaned = cleaned.slice(0, -3);
+    }
+    cleaned = cleaned.trim();
+
+    return JSON.parse(cleaned) as T;
+}
+
+/**
+ * 💬 Chat with Dr. Eva
+ */
+export async function openRouterChat(
+    message: string,
+    context: StoredTestResult | null,
+    userProfile: AnswerState | null,
+    language: 'vi' | 'en'
+): Promise<string> {
+    let userMessage = message;
+
+    if (context) {
+        const contextInfo = language === 'vi'
+            ? `\n\n[Kết quả test gần nhất: ${context.testType}, ngày ${context.date}, mức độ: ${context.report?.severity || 'N/A'}]`
+            : `\n\n[Latest test: ${context.testType}, date ${context.date}, severity: ${context.report?.severity || 'N/A'}]`;
+        userMessage += contextInfo;
+    }
+
+    const response = await callOpenRouter(getSystemPrompt(language), userMessage, {
+        maxTokens: 512,
+        temperature: 0.7,
+    });
+
+    return response || (language === 'vi'
+        ? 'Xin lỗi, tôi không thể trả lời lúc này.'
+        : 'Sorry, I cannot respond at this time.');
+}
+
+/**
+ * 📋 Generate AI Report
+ */
+export async function openRouterReport(
+    testType: string,
+    testData: any,
+    history: StoredTestResult[],
+    language: 'vi' | 'en'
+): Promise<AIReport> {
+    const userMessage = language === 'vi'
+        ? `Phân tích kết quả test ${testType}:
+Dữ liệu test: ${JSON.stringify(testData)}
+Lịch sử (${history.length} tests gần đây): ${JSON.stringify(history.slice(0, 5).map(h => ({
+            type: h.testType,
+            date: h.date,
+            severity: h.report?.severity
+        })))}`
+        : `Analyze ${testType} test results:
+Test data: ${JSON.stringify(testData)}
+History (${history.length} recent tests): ${JSON.stringify(history.slice(0, 5).map(h => ({
+            type: h.testType,
+            date: h.date,
+            severity: h.report?.severity
+        })))}`;
+
+    const response = await callOpenRouter(getReportPrompt(language), userMessage, {
+        maxTokens: 1024,
+        temperature: 0.5,
+    });
+
+    try {
+        const parsed = parseJsonResponse<any>(response);
+        return {
+            id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            testType: testType as any,
+            timestamp: new Date().toISOString(),
+            totalResponseTime: 0,
+            confidence: (parsed.confidence || 0.85) * 100,
+            summary: parsed.summary || '',
+            causes: parsed.causes || '',
+            recommendations: parsed.recommendations || [],
+            severity: parsed.severity || 'LOW',
+            prediction: parsed.prediction || '',
+            trend: parsed.trend || '',
+        };
+    } catch (e) {
+        console.error('Failed to parse report JSON:', e);
+        // Fallback: return text as summary
+        return {
+            id: `report_${Date.now()}`,
+            testType: testType as any,
+            timestamp: new Date().toISOString(),
+            totalResponseTime: 0,
+            confidence: 75,
+            summary: response,
+            causes: '',
+            recommendations: [],
+            severity: 'LOW',
+            prediction: '',
+            trend: '',
+        };
+    }
+}
+
+/**
+ * 📊 Generate Dashboard Insights
+ */
+export async function openRouterDashboard(
+    history: StoredTestResult[],
+    language: 'vi' | 'en'
+): Promise<DashboardInsights> {
+    const systemPrompt = language === 'vi'
+        ? `Phân tích lịch sử test mắt và tạo insights. Trả về JSON:
+{
+  "overallHealth": "GOOD|FAIR|POOR",
+  "summary": "Tóm tắt sức khỏe mắt (50 từ)",
+  "recommendations": ["Khuyến nghị 1", "Khuyến nghị 2"],
+  "nextSteps": ["Bước tiếp theo 1", "Bước tiếp theo 2"]
+}
+CHỈ TRẢ VỀ JSON.`
+        : `Analyze eye test history and create insights. Return JSON:
+{
+  "overallHealth": "GOOD|FAIR|POOR",
+  "summary": "Eye health summary (50 words)",
+  "recommendations": ["Recommendation 1", "Recommendation 2"],
+  "nextSteps": ["Next step 1", "Next step 2"]
+}
+RETURN ONLY JSON.`;
+
+    const userMessage = `Test history: ${JSON.stringify(history.slice(0, 10).map(h => ({
+        type: h.testType,
+        date: h.date,
+        severity: h.report?.severity
+    })))}`;
+
+    const response = await callOpenRouter(systemPrompt, userMessage, {
+        maxTokens: 512,
+        temperature: 0.5,
+    });
+
+    try {
+        return parseJsonResponse<DashboardInsights>(response);
+    } catch (e) {
+        console.error('Failed to parse dashboard JSON:', e);
+        return {
+            overallHealth: 'FAIR',
+            summary: response,
+            recommendations: [],
+            nextSteps: [],
+        };
+    }
+}
+
+/**
+ * 📅 Generate Weekly Routine
+ */
+export async function openRouterRoutine(
+    answers: { worksWithComputer: string; wearsGlasses: string; goal: string },
+    language: 'vi' | 'en'
+): Promise<WeeklyRoutine> {
+    const systemPrompt = language === 'vi'
+        ? `Tạo lịch tập mắt hàng tuần. Trả về JSON với format:
+{
+  "Monday": [{"type": "test|exercise", "key": "snellen", "name": "Tên", "duration": 3}],
+  "Tuesday": [...],
+  "Wednesday": [...],
+  "Thursday": [...],
+  "Friday": [...],
+  "Saturday": [],
+  "Sunday": []
+}
+Tests: snellen, colorblind, astigmatism, amsler, duochrome
+Exercises: exercise_20_20_20, exercise_palming, exercise_focus_change
+CHỈ TRẢ VỀ JSON.`
+        : `Create weekly eye exercise routine. Return JSON:
+{
+  "Monday": [{"type": "test|exercise", "key": "snellen", "name": "Name", "duration": 3}],
+  ...
+}
+RETURN ONLY JSON.`;
+
+    const userMessage = `User profile: ${JSON.stringify(answers)}`;
+
+    const response = await callOpenRouter(systemPrompt, userMessage, {
+        maxTokens: 1024,
+        temperature: 0.6,
+    });
+
+    try {
+        return parseJsonResponse<WeeklyRoutine>(response);
+    } catch (e) {
+        console.error('Failed to parse routine JSON:', e);
+        // Return default routine
+        return getDefaultRoutine(language);
+    }
+}
+
+/**
+ * 💡 Generate Proactive Tip
+ */
+export async function openRouterProactiveTip(
+    lastTest: StoredTestResult | null,
+    userProfile: AnswerState | null,
+    language: 'vi' | 'en'
+): Promise<string | null> {
+    const systemPrompt = language === 'vi'
+        ? 'Đưa ra 1 mẹo hữu ích ngắn gọn (20-30 từ) về chăm sóc mắt. Thân thiện, có emoji.'
+        : 'Give 1 short helpful tip (20-30 words) about eye care. Friendly, with emoji.';
+
+    const userMessage = lastTest
+        ? `Last test: ${lastTest.testType}, severity: ${lastTest.report?.severity || 'N/A'}`
+        : 'No recent tests';
+
+    try {
+        const response = await callOpenRouter(systemPrompt, userMessage, {
+            maxTokens: 100,
+            temperature: 0.8,
+        });
+        return response || null;
+    } catch {
+        return null;
+    }
+}
+
+// Default routine fallback
+function getDefaultRoutine(language: 'vi' | 'en'): WeeklyRoutine {
+    const isVi = language === 'vi';
+    return {
+        Monday: [
+            { type: 'test', key: 'snellen', name: isVi ? 'Kiểm tra thị lực Snellen' : 'Snellen Test', duration: 3 },
+            { type: 'exercise', key: 'exercise_20_20_20', name: isVi ? 'Bài tập 20-20-20' : '20-20-20 Exercise', duration: 2 }
+        ],
+        Tuesday: [
+            { type: 'exercise', key: 'exercise_palming', name: isVi ? 'Bài tập thư giãn mắt' : 'Eye Relaxation', duration: 3 }
+        ],
+        Wednesday: [
+            { type: 'test', key: 'colorblind', name: isVi ? 'Kiểm tra mù màu' : 'Color Blind Test', duration: 3 },
+            { type: 'exercise', key: 'exercise_focus_change', name: isVi ? 'Bài tập thay đổi tiêu điểm' : 'Focus Change', duration: 3 }
+        ],
+        Thursday: [
+            { type: 'exercise', key: 'exercise_20_20_20', name: isVi ? 'Bài tập 20-20-20' : '20-20-20 Exercise', duration: 2 }
+        ],
+        Friday: [
+            { type: 'test', key: 'amsler', name: isVi ? 'Kiểm tra lưới Amsler' : 'Amsler Grid Test', duration: 2 },
+            { type: 'exercise', key: 'exercise_palming', name: isVi ? 'Bài tập thư giãn' : 'Palming Exercise', duration: 3 }
+        ],
+        Saturday: [],
+        Sunday: [],
+    };
+}
+
+// Export for checking API key availability
+export function hasOpenRouterKey(): boolean {
+    return !!OPENROUTER_API_KEY && OPENROUTER_API_KEY.length > 10;
+}
