@@ -1,6 +1,12 @@
 /**
  * Environment Configuration Helper
- * Simplified - AI is now FREE via Worker API (no keys needed!)
+ * 
+ * ALL AI FEATURES ARE 100% FREE!
+ * - Chat: Cloudflare Workers AI (LLAMA 3.1)
+ * - Voice: Browser Web Speech API + Cloudflare AI
+ * - Reports: Cloudflare Workers AI
+ * 
+ * NO API KEYS REQUIRED ON FRONTEND!
  */
 
 export const ENV_CONFIG = {
@@ -14,7 +20,9 @@ export const ENV_CONFIG = {
 export function logConfigStatus(): void {
     console.log('📋 Environment Configuration Status:');
     console.log(`  API URL: ${ENV_CONFIG.API_URL}`);
-    console.log('  AI: ✅ Free via Cloudflare Workers AI');
+    console.log('  AI Chat: ✅ Free via Cloudflare Workers AI');
+    console.log('  Voice Chat: ✅ Free via Browser Speech API');
+    console.log('  AI Reports: ✅ Free via Cloudflare Workers AI');
 }
 
 // Log on module load

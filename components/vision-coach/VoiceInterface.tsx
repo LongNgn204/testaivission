@@ -1,148 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Bot } from 'lucide-react';
-import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration, Blob } from '@google/genai';
+import { X, Bot, Mic, MicOff, Volume2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useRoutine } from '../../context/RoutineContext';
 import { StorageService } from '../../services/storageService';
-
-import { encode, decode, decodeAudioData } from '../../utils/audioUtils';
-import { AIService } from '../../services/aiService';
-import { getGeminiKey, hasGeminiKey } from '../../utils/envConfig';
-
-// --- Function Declarations for Gemini ---
-const startTestFunctionDeclaration: FunctionDeclaration = {
-    name: 'startTest',
-    parameters: {
-        type: Type.OBJECT,
-        description: 'Starts a specific vision test for the user.',
-        properties: {
-            testName: {
-                type: Type.STRING,
-                description: 'The name of the test to start. Must be one of: snellen, colorblind, astigmatism, amsler, duochrome.',
-            },
-        },
-        required: ['testName'],
-    },
-};
-
-const navigateToFunctionDeclaration: FunctionDeclaration = {
-    name: 'navigateTo',
-    parameters: {
-        type: Type.OBJECT,
-        description: 'Navigates the user to a specific page in the application.',
-        properties: {
-            page: {
-                type: Type.STRING,
-                description: 'The name of the page to navigate to. Must be one of: home, history, about, progress, reminders, hospitals.',
-            },
-        },
-        required: ['page'],
-    },
-};
-
-const getSystemInstruction = (language: 'vi' | 'en') => {
-    if (language === 'vi') {
-        return `Bạn là Bác sĩ Eva - Trợ lý Bác sĩ Chuyên khoa Nhãn khoa thông minh với chuyên môn sâu.
-
-CHUYÊN MÔN & VAI TRÒ:
-- Bạn là bác sĩ nhãn khoa với 15+ năm kinh nghiệm lâm sàng
-- Chuyên sâu: Thị lực, bệnh võng mạc, loạn thị, mù màu, khúc xạ
-- Phong cách: Chuyên nghiệp, chi tiết, giải thích dễ hiểu như giáo sư dạy học
-- Ngôn ngữ: TIẾNG VIỆT thuần túy, dùng thuật ngữ y khoa chuẩn
-
-CÁCH TƯ VẤN:
-1. GIẢI THÍCH CHI TIẾT: 
-   - Giải thích bệnh lý, nguyên nhân, cơ chế bệnh
-   - Dùng ví dụ thực tế dễ hiểu
-   - Liên hệ với sinh hoạt hàng ngày
-   
-2. PHÂN TÍCH CHUYÊN SÂU:
-   - Đọc kết quả test như đọc bệnh án
-   - Phân tích từng chỉ số (độ chính xác, mức độ nghiêm trọng)
-   - So sánh với tiêu chuẩn y khoa quốc tế
-   
-3. TƯ VẤN THỰC TẾ:
-   - Lộ trình điều trị cụ thể (ngắn hạn/dài hạn)
-   - Đưa ra thời gian theo dõi rõ ràng
-   - Khuyến cáo khi nào CẦN gặp bác sĩ KHẨN CẤP
-   - Hướng dẫn chăm sóc tại nhà chi tiết
-   
-4. GIÁO DỤC BỆNH NHÂN:
-   - Giải thích "Tại sao" sau mỗi khuyến nghị
-   - Dạy cách tự theo dõi sức khỏe mắt
-   - Phòng ngừa biến chứng
-   
-5. TƯƠNG TÁC GIỌNG NÓI:
-   - Giọng điệu ấm áp, dễ gần như bác sĩ gia đình
-   - Trả lời ngắn gọn (30-40 từ) nhưng đủ thông tin
-   - Hỏi lại nếu không rõ triệu chứng
-   
-6. SỬ DỤNG CÔNG CỤ:
-   - startTest(testName): Bắt đầu bài kiểm tra (snellen, colorblind, astigmatism, amsler, duochrome)
-     VD: Khi user nói "tôi muốn làm test thị lực" → gọi startTest({testName: "snellen"})
-     VD: Khi user nói "test mù màu" → gọi startTest({testName: "colorblind"})
-   
-   - navigateTo(page): Chuyển trang (home, history, about, progress, reminders, hospitals)
-     VD: Khi user nói "xem lịch sử" → gọi navigateTo({page: "history"})
-     VD: Khi user nói "tìm bệnh viện" → gọi navigateTo({page: "hospitals"})
-
-PHONG CÁCH NÓI CHUYỆN:
-"Chào anh/chị, tôi là Bác sĩ Eva. Để tôi xem kết quả kiểm tra của anh/chị..."
-"Từ kết quả này, tôi thấy thị lực của anh/chị đang ở mức..."
-"Điều này có nghĩa là... Tôi khuyên anh/chị nên..."
-"Lý do là vì... nên cần phải..."
-
-HÃY LÀM NHƯ MỘT BÁC SĨ THẬT SỰ: Chuyên nghiệp, tận tâm, giải thích dễ hiểu.`;
-    } else {
-        return `You are Dr. Eva - AI Medical Assistant specializing in Ophthalmology with deep expertise.
-
-EXPERTISE & ROLE:
-- Ophthalmologist with 15+ years clinical experience
-- Specialties: Vision, retinal diseases, astigmatism, color blindness, refractive errors
-- Style: Professional, detailed, explain like a professor
-- Language: ENGLISH only, use proper medical terminology
-
-CONSULTATION APPROACH:
-1. DETAILED EXPLANATION:
-   - Explain pathology, causes, disease mechanisms
-   - Use real-life examples
-   - Relate to daily activities
-   
-2. IN-DEPTH ANALYSIS:
-   - Read test results like medical records
-   - Analyze each metric (accuracy, severity)
-   - Compare with international standards
-   
-3. PRACTICAL ADVICE:
-   - Specific treatment roadmap (short/long-term)
-   - Clear follow-up timeline
-   - Urgent care warnings
-   - Detailed home care instructions
-   
-4. PATIENT EDUCATION:
-   - Explain "Why" behind each recommendation
-   - Teach self-monitoring techniques
-   - Prevent complications
-   
-5. VOICE INTERACTION:
-   - Warm, friendly like a family doctor
-   - Concise (30-40 words) but informative
-   - Ask clarifying questions about symptoms
-   
-6. TOOLS USAGE:
-   - startTest: Begin specialized vision tests
-   - navigateTo: View results/history
-
-SPEAKING STYLE:
-"Hello, I'm Dr. Eva. Let me review your test results..."
-"Based on these findings, your vision is at..."
-"This means... I recommend you should..."
-"The reason is... so you need to..."
-
-BE A REAL DOCTOR: Professional, caring, easy to understand.`;
-    }
-};
+import { ChatbotService } from '../../services/chatbotService';
 
 const storageService = new StorageService();
 
@@ -151,412 +13,410 @@ interface VoiceInterfaceProps {
     onClose: () => void;
 }
 
+/**
+ * Free Voice Chat Interface
+ * Uses:
+ * - Browser Web Speech API for Speech Recognition (STT)
+ * - Cloudflare Workers AI (LLAMA 3.1) for AI response - FREE!
+ * - Browser SpeechSynthesis for Text-to-Speech (TTS)
+ * 
+ * NO API KEY REQUIRED!
+ */
 export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose }) => {
     const { t, language } = useLanguage();
     const { userProfile } = useRoutine();
     const navigate = useNavigate();
-    const [status, setStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'thinking'>('idle');
 
+    const [status, setStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
     const [userTranscript, setUserTranscript] = useState('');
     const [botTranscript, setBotTranscript] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
-    const aiRef = useRef<GoogleGenAI | null>(null);
-    const sessionPromiseRef = useRef<any | null>(null);
-    const inputAudioContextRef = useRef<AudioContext | null>(null);
-    const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const mediaStreamRef = useRef<MediaStream | null>(null);
-    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-    const mediaSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+    const recognitionRef = useRef<any>(null);
+    const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const chatbotService = useRef(new ChatbotService());
 
-    const audioQueueRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-    const nextStartTimeRef = useRef(0);
-    const idleTimerRef = useRef<number | null>(null);
+    // Check if speech recognition is supported
+    const isSpeechSupported = typeof window !== 'undefined' &&
+        ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-    const aiService = new AIService();
+    // Check if speech synthesis is supported
+    const isSynthesisSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
-    const availableFunctions = {
-        startTest: ({ testName }: { testName: string }) => {
-            const validTests = ['snellen', 'colorblind', 'astigmatism', 'amsler', 'duochrome'];
-            const lowerTestName = testName.toLowerCase();
-            if (validTests.includes(lowerTestName)) {
-                cleanup();
+    // Get best voice for language
+    const getBestVoice = useCallback(() => {
+        if (!isSynthesisSupported) return null;
+
+        const voices = speechSynthesis.getVoices();
+        const targetLang = language === 'vi' ? 'vi' : 'en';
+
+        // Try to find a good quality voice
+        const preferredVoices = voices.filter(v =>
+            v.lang.startsWith(targetLang) &&
+            (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Natural') || v.localService === false)
+        );
+
+        if (preferredVoices.length > 0) return preferredVoices[0];
+
+        // Fallback to any voice for the language
+        const langVoices = voices.filter(v => v.lang.startsWith(targetLang));
+        if (langVoices.length > 0) return langVoices[0];
+
+        // Last resort: first available voice
+        return voices[0] || null;
+    }, [language, isSynthesisSupported]);
+
+    // Speak text using browser TTS
+    const speak = useCallback((text: string) => {
+        if (!isSynthesisSupported || !text) return;
+
+        // Cancel any ongoing speech
+        speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = getBestVoice();
+        utterance.lang = language === 'vi' ? 'vi-VN' : 'en-US';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
+        utterance.onstart = () => setStatus('speaking');
+        utterance.onend = () => {
+            setStatus('listening');
+            setBotTranscript('');
+            startListening();
+        };
+        utterance.onerror = () => {
+            setStatus('listening');
+            startListening();
+        };
+
+        synthRef.current = utterance;
+        speechSynthesis.speak(utterance);
+    }, [language, isSynthesisSupported, getBestVoice]);
+
+    // Process voice command and handle navigation/tests
+    const processCommand = useCallback((transcript: string): boolean => {
+        const lower = transcript.toLowerCase();
+
+        // Test commands
+        const testMap: Record<string, string> = {
+            'snellen': 'snellen',
+            'thị lực': 'snellen',
+            'visual acuity': 'snellen',
+            'mù màu': 'colorblind',
+            'color blind': 'colorblind',
+            'colorblind': 'colorblind',
+            'loạn thị': 'astigmatism',
+            'astigmatism': 'astigmatism',
+            'amsler': 'amsler',
+            'hoàng điểm': 'amsler',
+            'macular': 'amsler',
+            'duochrome': 'duochrome',
+            'hai màu': 'duochrome',
+        };
+
+        for (const [keyword, test] of Object.entries(testMap)) {
+            if (lower.includes(keyword) && (lower.includes('test') || lower.includes('kiểm tra') || lower.includes('làm'))) {
+                const msg = language === 'vi'
+                    ? `Đang bắt đầu bài kiểm tra ${test}...`
+                    : `Starting ${test} test...`;
+                setBotTranscript(msg);
+                speak(msg);
                 setTimeout(() => {
-                    navigate(`/home/test/${lowerTestName}`);
+                    navigate(`/home/test/${test}`);
                     onClose();
-                }, 100);
-                return language === 'vi' ? `Được rồi, đang bắt đầu bài test ${testName}.` : `Okay, starting the ${testName} test.`;
+                }, 1500);
+                return true;
             }
-            return language === 'vi' ? `Xin lỗi, tôi không thể bắt đầu bài test ${testName}.` : `Sorry, I can't start a test called ${testName}.`;
-        },
-        navigateTo: ({ page }: { page: string }) => {
-            const validPages = ['home', 'history', 'about', 'progress', 'reminders', 'hospitals'];
-            const lowerPage = page.toLowerCase();
-            if (validPages.includes(lowerPage)) {
-                cleanup();
-                setTimeout(() => {
-                    const path = lowerPage === 'home' ? '/home' : `/home/${lowerPage}`;
-                    navigate(path);
-                    onClose();
-                }, 100);
-                return language === 'vi' ? `Đang chuyển đến trang ${page}.` : `Navigating to the ${page} page.`;
-            }
-            return language === 'vi' ? `Xin lỗi, tôi không thể chuyển đến trang ${page}.` : `Sorry, I can't navigate to a page called ${page}.`;
         }
-    };
 
-    const stopAudioPlayback = () => {
-        audioQueueRef.current.forEach(source => {
-            source.stop();
-            audioQueueRef.current.delete(source);
-        });
-        nextStartTimeRef.current = 0;
-    };
+        // Navigation commands
+        const navMap: Record<string, string> = {
+            'lịch sử': 'history',
+            'history': 'history',
+            'tiến trình': 'progress',
+            'progress': 'progress',
+            'nhắc nhở': 'reminders',
+            'reminders': 'reminders',
+            'bệnh viện': 'hospitals',
+            'hospitals': 'hospitals',
+            'trang chủ': '',
+            'home': '',
+        };
 
-    const triggerProactiveTip = useCallback(async () => {
-        if (status !== 'listening') return;
+        for (const [keyword, page] of Object.entries(navMap)) {
+            if (lower.includes(keyword)) {
+                const msg = language === 'vi'
+                    ? `Đang chuyển đến ${keyword}...`
+                    : `Navigating to ${keyword}...`;
+                setBotTranscript(msg);
+                speak(msg);
+                setTimeout(() => {
+                    navigate(`/home${page ? '/' + page : ''}`);
+                    onClose();
+                }, 1500);
+                return true;
+            }
+        }
+
+        return false;
+    }, [language, navigate, onClose, speak]);
+
+    // Send message to AI and speak response
+    const sendToAI = useCallback(async (text: string) => {
+        if (!text.trim()) return;
 
         setStatus('thinking');
-        const history = storageService.getTestHistory();
-        const lastTest = history.length > 0 ? history[0] : null;
 
-        const tipText = await aiService.generateProactiveTip(lastTest, userProfile, language);
+        try {
+            const history = storageService.getTestHistory();
+            const context = history.length > 0 ? history[0] : null;
 
-        if (tipText) {
-            setBotTranscript(tipText);
-            const audioData = await aiService.generateSpeech(tipText, language);
-            if (audioData && outputAudioContextRef.current) {
-                setStatus('speaking');
-                const outputContext = outputAudioContextRef.current;
-                const audioBuffer = await decodeAudioData(decode(audioData), outputContext, 24000, 1);
-                const source = outputContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(outputContext.destination);
-                source.start();
-                audioQueueRef.current.add(source);
-                source.onended = () => {
-                    audioQueueRef.current.delete(source);
-                    setBotTranscript('');
-                    setStatus('listening');
-                };
-            } else {
-                setStatus('listening');
-            }
-        } else {
+            const response = await chatbotService.current.chat(text, context, userProfile, language);
+
+            setBotTranscript(response);
+            speak(response);
+        } catch (err: any) {
+            console.error('Voice AI error:', err);
+            const errorMsg = language === 'vi'
+                ? 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.'
+                : 'Sorry, an error occurred. Please try again.';
+            setBotTranscript(errorMsg);
+            speak(errorMsg);
+        }
+    }, [language, userProfile, speak]);
+
+    // Start speech recognition
+    const startListening = useCallback(() => {
+        if (!isSpeechSupported) {
+            setError(language === 'vi'
+                ? 'Trình duyệt không hỗ trợ nhận diện giọng nói'
+                : 'Browser does not support speech recognition');
+            return;
+        }
+
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.lang = language === 'vi' ? 'vi-VN' : 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
             setStatus('listening');
-        }
-    }, [language, userProfile, status]);
-
-    useEffect(() => {
-        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-        if (isOpen && status === 'listening') {
-            idleTimerRef.current = window.setTimeout(triggerProactiveTip, 15000);
-        }
-        return () => {
-            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            setUserTranscript('');
+            setError(null);
         };
-    }, [isOpen, status, triggerProactiveTip]);
 
-    const cleanup = useCallback(() => {
-        stopAudioPlayback();
-        if (mediaStreamRef.current) {
-            mediaStreamRef.current.getTracks().forEach(track => track.stop());
-            mediaStreamRef.current = null;
+        recognition.onresult = (event: any) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript;
+            }
+            setUserTranscript(transcript);
+
+            // If final result
+            if (event.results[event.results.length - 1].isFinal) {
+                const finalTranscript = transcript.trim();
+
+                // Check if it's a command first
+                if (!processCommand(finalTranscript)) {
+                    // Not a command, send to AI
+                    sendToAI(finalTranscript);
+                }
+            }
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error('Speech recognition error:', event.error);
+            if (event.error === 'not-allowed') {
+                setError(language === 'vi'
+                    ? 'Vui lòng cho phép truy cập microphone'
+                    : 'Please allow microphone access');
+            } else if (event.error !== 'no-speech') {
+                setError(language === 'vi'
+                    ? 'Lỗi nhận diện giọng nói: ' + event.error
+                    : 'Speech recognition error: ' + event.error);
+            }
+            setStatus('idle');
+        };
+
+        recognition.onend = () => {
+            // Auto-restart if still in listening mode and no error
+            if (status === 'listening' && !error) {
+                // Don't auto-restart, wait for user to click again
+            }
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+    }, [isSpeechSupported, language, status, error, processCommand, sendToAI]);
+
+    // Stop listening
+    const stopListening = useCallback(() => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
         }
-        if (scriptProcessorRef.current) {
-            scriptProcessorRef.current.disconnect();
-            scriptProcessorRef.current = null;
-        }
-        if (mediaSourceNodeRef.current) {
-            mediaSourceNodeRef.current.disconnect();
-            mediaSourceNodeRef.current = null;
-        }
-        if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-            inputAudioContextRef.current.close();
-        }
-        if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') {
-            outputAudioContextRef.current.close();
-        }
-        sessionPromiseRef.current?.then(session => session.close());
-        sessionPromiseRef.current = null;
+        speechSynthesis.cancel();
         setStatus('idle');
     }, []);
 
-    // Helper: timeout wrapper
-    const withTimeout = useCallback(<T,>(promise: Promise<T>, ms: number): Promise<T> => {
-        return Promise.race([
-            promise,
-            new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), ms)) as Promise<T>,
-        ]);
-    }, []);
-
-    const startSession = useCallback(async () => {
-        // Resolve API key from Vite env
-        let apiKey: string;
-        try {
-            apiKey = getGeminiKey();
-        } catch (error) {
-            console.error('VoiceInterface: Missing API key or session already exists');
-            const msg = language === 'vi'
-                ? 'Chưa cấu hình API Key. Vui lòng thêm VITE_GEMINI_API_KEY vào .env'
-                : 'API Key not configured. Please add VITE_GEMINI_API_KEY to .env';
-            alert(msg);
-            onClose();
-            return;
+    // Toggle listening
+    const toggleListening = useCallback(() => {
+        if (status === 'listening') {
+            stopListening();
+        } else if (status === 'idle') {
+            startListening();
         }
+    }, [status, startListening, stopListening]);
 
-        if (sessionPromiseRef.current) {
-            console.error('VoiceInterface: Session already exists');
-            onClose();
-            return;
-        }
-        setStatus('connecting');
-
-        aiRef.current = new GoogleGenAI({ apiKey });
-
-        // Check if AudioContext is available
-        if (!window.AudioContext && !(window as any).webkitAudioContext) {
-            console.error('AudioContext not supported');
-            alert(language === 'vi' ? 'Trình duyệt không hỗ trợ audio' : 'Browser does not support audio');
-            setStatus('idle');
-            onClose();
-            return;
-        }
-
-        try {
-            inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-            outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        } catch (error) {
-            console.error('AudioContext creation error:', error);
-            alert(language === 'vi' ? 'Lỗi khởi tạo audio' : 'Audio initialization error');
-            setStatus('idle');
-            onClose();
-            return;
-        }
-
-        // Resume contexts if suspended (Safari/Chrome autoplay policies)
-        if (inputAudioContextRef.current?.state === 'suspended') {
-            try {
-                await inputAudioContextRef.current.resume();
-            } catch (e) {
-                console.warn('Could not resume input audio context:', e);
-            }
-        }
-        if (outputAudioContextRef.current?.state === 'suspended') {
-            try {
-                await outputAudioContextRef.current.resume();
-            } catch (e) {
-                console.warn('Could not resume output audio context:', e);
-            }
-        }
-
-        // Require secure context (HTTPS) or localhost for mic access
-        const isLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
-        if (!window.isSecureContext && !isLocalhost) {
-            console.error('Microphone requires HTTPS or localhost. Current origin is not secure.');
-            alert(language === 'vi'
-                ? 'Trình duyệt yêu cầu HTTPS hoặc truy cập qua localhost để dùng micro. Hãy mở trang bằng http://localhost:3000 hoặc bật HTTPS cho dev server.'
-                : 'Browser requires HTTPS or localhost to use the microphone. Open the app at http://localhost:3000 or enable HTTPS for the dev server.');
-            setStatus('idle');
-            onClose();
-            return;
-        }
-
-        // Check if mediaDevices is available
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            console.error('getUserMedia not supported');
-            alert(language === 'vi' ? 'Trình duyệt không hỗ trợ microphone' : 'Browser does not support microphone');
-            setStatus('idle');
-            onClose();
-            return;
-        }
-
-        try {
-            mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-        } catch (error: any) {
-            console.error('Microphone error:', error);
-            let msg = 'Microphone error';
-            if (error?.name === 'NotAllowedError') {
-                msg = language === 'vi' ? 'Cần cấp quyền truy cập microphone' : 'Microphone permission required';
-            } else if (error?.name === 'NotFoundError') {
-                msg = language === 'vi' ? 'Không tìm thấy microphone' : 'No microphone found';
-            } else if (error?.name === 'NotReadableError') {
-                msg = language === 'vi' ? 'Microphone đang được ứng dụng khác sử dụng' : 'Microphone is in use by another application';
-            } else if (error?.name === 'SecurityError') {
-                msg = language === 'vi' ? 'Lỗi bảo mật: Chỉ HTTPS được hỗ trợ' : 'Security error: Only HTTPS is supported';
-            }
-            alert(msg);
-            setStatus('idle');
-            onClose();
-            return;
-        }
-
-        try {
-            sessionPromiseRef.current = await withTimeout(
-                aiRef.current.live.connect({
-                    model: 'gemini-2.5-flash-native-audio-dialog',
-                    config: {
-                        responseModalities: [Modality.AUDIO],
-                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: language === 'vi' ? 'Kore' : 'Zephyr' } } },
-                        systemInstruction: getSystemInstruction(language),
-                        tools: [{ functionDeclarations: [startTestFunctionDeclaration, navigateToFunctionDeclaration] }],
-                        inputAudioTranscription: {},
-                        outputAudioTranscription: {},
-                    },
-                    callbacks: {
-                        onopen: () => {
-                            setStatus('listening');
-                            const inputCtx = inputAudioContextRef.current!;
-                            mediaSourceNodeRef.current = inputCtx.createMediaStreamSource(mediaStreamRef.current!);
-                            scriptProcessorRef.current = inputCtx.createScriptProcessor(4096, 1, 1);
-
-                            // Proper Float32 -> Int16 conversion with clipping
-                            scriptProcessorRef.current.onaudioprocess = (event) => {
-                                const inputData = event.inputBuffer.getChannelData(0);
-                                const int16Data = new Int16Array(inputData.length);
-                                for (let i = 0; i < inputData.length; i++) {
-                                    const s = Math.max(-1, Math.min(1, inputData[i]));
-                                    int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-                                }
-                                const pcmBlob: Blob = {
-                                    data: encode(new Uint8Array(int16Data.buffer)),
-                                    mimeType: 'audio/pcm;rate=16000',
-                                };
-                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                            };
-
-                            // Gain for mic boost
-                            const gainNode = inputCtx.createGain();
-                            gainNode.gain.value = 1.5; // +50%
-
-                            // Silent output chain to keep processor running without feedback
-                            const silentGain = inputCtx.createGain();
-                            silentGain.gain.value = 0; // mute
-
-                            mediaSourceNodeRef.current.connect(gainNode);
-                            gainNode.connect(scriptProcessorRef.current);
-                            scriptProcessorRef.current.connect(silentGain);
-                            silentGain.connect(inputCtx.destination);
-                        },
-                        onmessage: async (message: LiveServerMessage) => {
-                            if (message.serverContent?.interrupted) stopAudioPlayback();
-                            if (message.serverContent?.inputTranscription?.text) setUserTranscript(prev => prev + message.serverContent!.inputTranscription!.text);
-                            if (message.serverContent?.outputTranscription?.text) setBotTranscript(prev => prev + message.serverContent!.outputTranscription!.text);
-                            if (message.serverContent?.turnComplete) {
-                                setUserTranscript('');
-                                setBotTranscript('');
-                            }
-
-                            const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-                            if (audioData) {
-                                setStatus('speaking');
-                                const outputContext = outputAudioContextRef.current!;
-                                nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputContext.currentTime);
-                                const audioBuffer = await decodeAudioData(decode(audioData), outputContext, 24000, 1);
-                                const source = outputContext.createBufferSource();
-                                source.buffer = audioBuffer;
-                                source.connect(outputContext.destination);
-                                source.start(nextStartTimeRef.current);
-                                nextStartTimeRef.current += audioBuffer.duration;
-                                audioQueueRef.current.add(source);
-                                source.onended = () => {
-                                    audioQueueRef.current.delete(source);
-                                    if (audioQueueRef.current.size === 0) setStatus('listening');
-                                };
-                            }
-
-                            if (message.toolCall?.functionCalls) {
-                                setStatus('thinking');
-                                for (const fc of message.toolCall.functionCalls) {
-                                    const func = (availableFunctions as any)[fc.name];
-                                    if (func) {
-                                        const result = func(fc.args);
-                                        sessionPromiseRef.current?.then(session => {
-                                            session.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response: { result } } });
-                                        });
-                                    }
-                                }
-                            }
-                        },
-                        onerror: (e) => console.error('Session error:', e),
-                        onclose: () => cleanup(),
-                    },
-                }),
-                10000 // 10s timeout
-            );
-
-            sessionPromiseRef.current.catch(err => {
-                console.error('Session connection failed:', err);
-                setStatus('idle');
-                onClose();
-            });
-        } catch (error) {
-            console.error('Failed to start session:', error);
-            setStatus('idle');
-        }
-    }, [language, navigate, cleanup, onClose, withTimeout]);
-
+    // Cleanup on close
     useEffect(() => {
-        if (isOpen) startSession();
-        else cleanup();
-        return cleanup;
-    }, [isOpen, startSession, cleanup]);
+        if (!isOpen) {
+            stopListening();
+            setUserTranscript('');
+            setBotTranscript('');
+            setError(null);
+        }
+    }, [isOpen, stopListening]);
+
+    // Auto-start listening when opened
+    useEffect(() => {
+        if (isOpen && status === 'idle' && !error) {
+            // Small delay to ensure modal is visible
+            const timer = setTimeout(startListening, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    // Load voices
+    useEffect(() => {
+        if (isSynthesisSupported) {
+            speechSynthesis.getVoices();
+            speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+        }
+    }, [isSynthesisSupported]);
 
     const getStatusText = () => {
         switch (status) {
-            case 'connecting': return t('coach_status_connecting');
-            case 'listening': return t('coach_status_speak');
-            case 'speaking': return t('coach_status_listening');
-            case 'thinking': return t('coach_status_thinking');
-            default: return '';
+            case 'listening': return language === 'vi' ? '🎤 Đang nghe...' : '🎤 Listening...';
+            case 'thinking': return language === 'vi' ? '🤔 Đang suy nghĩ...' : '🤔 Thinking...';
+            case 'speaking': return language === 'vi' ? '🔊 Đang nói...' : '🔊 Speaking...';
+            default: return language === 'vi' ? 'Nhấn để nói' : 'Tap to speak';
         }
     };
 
+    const getStatusColor = () => {
+        switch (status) {
+            case 'listening': return 'from-green-400 to-emerald-600';
+            case 'thinking': return 'from-yellow-400 to-orange-500';
+            case 'speaking': return 'from-blue-400 to-indigo-600';
+            default: return 'from-gray-400 to-gray-600';
+        }
+    };
+
+    if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-fade-in p-4">
-            <button onClick={onClose} className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10">
+            {/* Close button */}
+            <button
+                onClick={onClose}
+                className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10"
+            >
                 <X size={32} />
             </button>
 
             <div className="flex flex-col items-center justify-center text-center text-white flex-grow w-full max-w-2xl">
-                {/* Visualizer Effect */}
-                <div className={`relative w-64 h-64 rounded-full flex items-center justify-center transition-all duration-500 ${status === 'speaking' ? 'scale-110' : 'scale-100'}`}>
-                    {/* Outer Glow */}
-                    <div className={`absolute inset-0 rounded-full blur-3xl transition-opacity duration-500 ${status === 'speaking' ? 'bg-green-500/30 opacity-100' : 'bg-blue-500/20 opacity-50'}`}></div>
 
-                    {/* Ripple Rings */}
-                    <div className={`absolute w-full h-full rounded-full border-2 border-white/10 ${status === 'listening' || status === 'speaking' ? 'animate-ping' : ''}`} style={{ animationDuration: '3s' }}></div>
-                    <div className={`absolute w-3/4 h-3/4 rounded-full border-2 border-white/20 ${status === 'listening' || status === 'speaking' ? 'animate-ping' : ''}`} style={{ animationDuration: '2s', animationDelay: '0.5s' }}></div>
+                {/* Error message */}
+                {error && (
+                    <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200">
+                        {error}
+                    </div>
+                )}
 
-                    {/* Core Circle */}
-                    <div className={`relative w-48 h-48 rounded-full flex items-center justify-center backdrop-blur-md border border-white/10 shadow-2xl transition-colors duration-300 ${status === 'speaking' ? 'bg-green-500/20' : 'bg-blue-600/20'}`}>
-                        <Bot size={80} className={`transition-colors duration-300 ${status === 'speaking' ? 'text-green-300' : 'text-blue-300'}`} />
+                {/* Visualizer */}
+                <div
+                    onClick={toggleListening}
+                    className={`relative w-48 h-48 rounded-full flex items-center justify-center cursor-pointer
+                        transition-all duration-500 ${status === 'listening' ? 'scale-110' : 'scale-100'}
+                        bg-gradient-to-br ${getStatusColor()} shadow-2xl`}
+                >
+                    {/* Pulse animation */}
+                    {status === 'listening' && (
+                        <>
+                            <div className="absolute inset-0 rounded-full bg-green-500/30 animate-ping"></div>
+                            <div className="absolute inset-0 rounded-full bg-green-500/20 animate-pulse"></div>
+                        </>
+                    )}
+
+                    {/* Icon */}
+                    <div className="relative z-10">
+                        {status === 'listening' ? (
+                            <Mic size={64} className="text-white animate-pulse" />
+                        ) : status === 'speaking' ? (
+                            <Volume2 size={64} className="text-white" />
+                        ) : status === 'thinking' ? (
+                            <Bot size={64} className="text-white animate-bounce" />
+                        ) : (
+                            <MicOff size={64} className="text-white/70" />
+                        )}
                     </div>
                 </div>
 
-                <div className="mt-12 space-y-6 w-full">
-                    <p className="text-3xl font-light tracking-wide h-10 text-blue-200">{getStatusText()}</p>
+                {/* Status text */}
+                <p className="mt-8 text-2xl font-light tracking-wide text-white/90">
+                    {getStatusText()}
+                </p>
 
-                    <div className="min-h-[120px] space-y-4 px-4">
-                        {userTranscript && (
-                            <p className="text-xl text-gray-300 font-light animate-fade-in">
-                                "{userTranscript}"
+                {/* Transcripts */}
+                <div className="mt-8 min-h-[120px] space-y-4 px-4 w-full">
+                    {userTranscript && (
+                        <div className="bg-white/10 rounded-lg p-4 animate-fade-in">
+                            <p className="text-sm text-gray-400 mb-1">
+                                {language === 'vi' ? 'Bạn nói:' : 'You said:'}
                             </p>
-                        )}
-                        {botTranscript && (
-                            <p className="text-2xl font-medium text-white leading-relaxed animate-fade-in text-shadow-sm">
-                                {botTranscript}
+                            <p className="text-lg text-white">"{userTranscript}"</p>
+                        </div>
+                    )}
+
+                    {botTranscript && (
+                        <div className="bg-green-500/20 rounded-lg p-4 animate-fade-in">
+                            <p className="text-sm text-green-300 mb-1">
+                                {language === 'vi' ? 'Bác sĩ Eva:' : 'Dr. Eva:'}
                             </p>
-                        )}
-                    </div>
+                            <p className="text-lg text-white">{botTranscript}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Instructions */}
+                <div className="mt-8 text-white/50 text-sm max-w-md">
+                    <p>{language === 'vi'
+                        ? 'Bạn có thể hỏi về sức khỏe mắt, hoặc nói "làm test Snellen", "xem lịch sử"...'
+                        : 'Ask about eye health, or say "start Snellen test", "show history"...'}
+                    </p>
                 </div>
             </div>
 
-            <p className="text-sm text-white/40 mb-8 font-light tracking-widest uppercase">{t('coach_title')}</p>
+            {/* Footer */}
+            <div className="mb-8 text-center">
+                <p className="text-sm text-white/40 font-light tracking-widest uppercase">
+                    {language === 'vi' ? 'Bác sĩ Eva - Trợ lý AI' : 'Dr. Eva - AI Assistant'}
+                </p>
+                <p className="text-xs text-green-400 mt-1">
+                    ✅ {language === 'vi' ? 'Miễn phí 100% - Không cần API key' : '100% Free - No API key required'}
+                </p>
+            </div>
 
             <style>{`
-                .text-shadow-sm { text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-                .animate-fade-in { animation: fadeIn 0.5s ease-out both; }
-                @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+                .animate-fade-in { animation: fadeIn 0.3s ease-out both; }
+                @keyframes fadeIn { 
+                    0% { opacity: 0; transform: translateY(10px); } 
+                    100% { opacity: 1; transform: translateY(0); } 
+                }
             `}</style>
         </div>
     );

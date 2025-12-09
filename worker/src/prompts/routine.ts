@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * 📅 Routine Prompts
+ * 📅 Routine Prompts - LANGUAGE CONSISTENT
  * ============================================================
  * 
  * Prompts for personalized routine generation
@@ -11,9 +11,34 @@ export function createRoutinePrompt(
   language: 'vi' | 'en'
 ): string {
   const isVi = language === 'vi';
-  const langInstruction = isVi ? 'VIETNAMESE' : 'ENGLISH';
 
-  return `You are creating a personalized 7-day eye care routine based on the user's profile.
+  if (isVi) {
+    return `Bạn đang tạo lịch trình chăm sóc mắt 7 ngày cá nhân hóa dựa trên hồ sơ người dùng.
+
+HỒ SƠ NGƯỜI DÙNG:
+- Làm việc với máy tính thường xuyên: ${answers.worksWithComputer}
+- Đeo kính: ${answers.wearsGlasses}
+- Mục tiêu chính: ${answers.goal}
+
+QUY TẮC:
+1. Thứ Hai đến Thứ Sáu: PHẢI có đúng HAI hoạt động: một 'test' và một 'exercise'.
+2. Thứ Bảy và Chủ Nhật: PHẢI là ngày nghỉ (mảng rỗng []).
+3. Tên hoạt động ('name') phải bằng TIẾNG VIỆT.
+4. Khóa 'test': 'snellen', 'colorblind', 'astigmatism', 'amsler', 'duochrome'
+5. Khóa 'exercise': 'exercise_20_20_20', 'exercise_palming', 'exercise_focus_change'
+
+ĐỊNH DẠNG ĐẦU RA - Chỉ trả về JSON hợp lệ (không markdown, không giải thích):
+{
+  "Monday": [{"type": "test", "key": "snellen", "name": "Kiểm tra thị lực Snellen", "duration": 3}, {"type": "exercise", "key": "exercise_20_20_20", "name": "Bài tập 20-20-20", "duration": 2}],
+  "Tuesday": [...],
+  "Wednesday": [...],
+  "Thursday": [...],
+  "Friday": [...],
+  "Saturday": [],
+  "Sunday": []
+}`;
+  } else {
+    return `You are creating a personalized 7-day eye care routine based on the user's profile.
 
 USER PROFILE:
 - Works with computers frequently: ${answers.worksWithComputer}
@@ -23,13 +48,13 @@ USER PROFILE:
 RULES:
 1. Monday to Friday: MUST contain exactly TWO activities: one 'test' and one 'exercise'.
 2. Saturday and Sunday: MUST be rest days (empty array []).
-3. Language: Activity 'name' must be in ${langInstruction}.
+3. Activity 'name' must be in ENGLISH.
 4. Test 'key': 'snellen', 'colorblind', 'astigmatism', 'amsler', 'duochrome'
 5. Exercise 'key': 'exercise_20_20_20', 'exercise_palming', 'exercise_focus_change'
 
-OUTPUT FORMAT - Respond with ONLY a valid JSON object (no markdown, no explanation):
+OUTPUT FORMAT - Respond with ONLY valid JSON (no markdown, no explanation):
 {
-  "Monday": [{"type": "test", "key": "snellen", "name": "<activity name>", "duration": 3}, {"type": "exercise", "key": "exercise_20_20_20", "name": "<exercise name>", "duration": 2}],
+  "Monday": [{"type": "test", "key": "snellen", "name": "Snellen Visual Acuity Test", "duration": 3}, {"type": "exercise", "key": "exercise_20_20_20", "name": "20-20-20 Eye Break", "duration": 2}],
   "Tuesday": [...],
   "Wednesday": [...],
   "Thursday": [...],
@@ -37,6 +62,7 @@ OUTPUT FORMAT - Respond with ONLY a valid JSON object (no markdown, no explanati
   "Saturday": [],
   "Sunday": []
 }`;
+  }
 }
 
 export function createRoutineSchema(): any {
@@ -108,4 +134,3 @@ export function createRoutineSchema(): any {
     ],
   };
 }
-
