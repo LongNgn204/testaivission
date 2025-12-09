@@ -83,20 +83,30 @@ export class ChatbotService {
 
   async chat(message: string, lastTestResult: any, userProfile: any, language: 'vi' | 'en'): Promise<string> {
     try {
-      // Try backend first
-      const data = await apiPost<{ success: boolean; message: string }>(
+      // Try backend first - backend returns { message, timestamp, language, model }
+      const data = await apiPost<{ message: string; error?: string }>(
         '/api/chat',
         { message, lastTestResult, userProfile, language }
       );
-      if (!data.success) throw new Error('Chat failed');
+
+      // Check for error response
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data.message) {
+        throw new Error('No message in response');
+      }
+
       return data.message;
-    } catch (error) {
-      console.warn('Backend chat failed, using direct AI');
-      // If backend fails and we have API key, use direct AI
+    } catch (error: any) {
+      console.error('Backend chat error:', error.message);
+      // If backend fails and we have API key, use direct AI as fallback
       if (GEMINI_API_KEY) {
+        console.log('Using direct Gemini API as fallback...');
         return await this.chatWithDirectAI(message, language);
       }
-      throw new Error('Chat service unavailable: No backend and no API key');
+      throw new Error('Chat service unavailable: ' + error.message);
     }
   }
 
@@ -106,7 +116,7 @@ export class ChatbotService {
     }
 
     const client = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    const model = client.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const systemPrompt = language === 'vi'
       ? 'Bạn là Bác sĩ Eva - trợ lý y tế chuyên khoa nhãn khoa. Hãy trả lời ngắn gọn (30-40 từ) nhưng đầy đủ thông tin. Sử dụng tiếng Việt.'

@@ -37,7 +37,7 @@ export class GeminiService {
     this.apiKey = apiKey;
     this.config = {
       apiKey,
-      model: 'gemini-2.5-flash',  // Default to Flash for text generation
+      model: 'gemini-2.0-flash',  // Gemini 2.0 Flash for text generation
       temperature: 0.3,
       maxTokens: 4000,
       topP: 0.8,
@@ -222,4 +222,44 @@ export function createGeminiFromEnv(env: any): GeminiService {
     accountId: env.CF_AI_GATEWAY_ACCOUNT_ID,
     gatewayName: env.CF_AI_GATEWAY_NAME,
   });
+}
+
+/**
+ * Generate content using Cloudflare Workers AI (Llama 3.1)
+ * FREE - No API key required!
+ */
+export async function generateWithCloudflareAI(
+  ai: any,  // env.AI binding
+  prompt: string,
+  systemPrompt?: string
+): Promise<string> {
+  try {
+    console.log('🤖 Using Cloudflare Workers AI (Llama 3.1)...');
+
+    const messages = [];
+
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    messages.push({ role: 'user', content: prompt });
+
+    const response = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages,
+      max_tokens: 2000,
+      temperature: 0.7,
+    });
+
+    const text = response?.response || '';
+
+    if (!text) {
+      throw new Error('No response from Cloudflare AI');
+    }
+
+    console.log('✅ Cloudflare AI response received');
+    return text;
+  } catch (error: any) {
+    console.error('❌ Cloudflare AI error:', error.message);
+    throw error;
+  }
 }

@@ -31,6 +31,10 @@ preview_id = "80b0ee1abfbd4b28b401ab6094fedfa6"
 # Secrets (set via: wrangler secret put GEMINI_API_KEY)
 # GEMINI_API_KEY will be available as env.GEMINI_API_KEY
 
+# Cloudflare Workers AI (free, no API key needed)
+[ai]
+binding = "AI"
+
 # Observability
 [observability]
 enabled = true

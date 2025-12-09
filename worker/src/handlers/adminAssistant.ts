@@ -273,7 +273,7 @@ Hãy trả lời chuyên nghiệp, súc tích và có hệ thống. Không sử 
             JSON.stringify({
                 message: response,
                 timestamp: new Date().toISOString(),
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.0-flash',
             }),
             {
                 status: 200,

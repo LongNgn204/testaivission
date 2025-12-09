@@ -14,7 +14,7 @@
  * - POST /api/chat - Chat with Dr. Eva
  * - POST /api/routine - Generate personalized routine
  * - POST /api/proactive-tip - Generate proactive health tips
- * - POST /api/tts/generate - Generate TTS audio
+ * - TTS now uses browser's SpeechSynthesis API (no backend needed)
  */
 
 import { AIReport, StoredTestResult, TestType, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
@@ -27,11 +27,7 @@ const API_CONFIG = {
    retryDelay: 1000,
 };
 
-// 💾 TTS Cache Configuration
-const TTS_CONFIG = {
-   cacheDuration: 60 * 60 * 1000, // 60 minutes
-   maxCacheSize: 500,
-};
+
 
 // 🔐 Auth Helper
 const getAuthToken = (): string | null => {
@@ -277,66 +273,57 @@ export class AIService {
    }
 
    /**
-    * 🎙️ Generate TTS using backend (Google Cloud TTS)
-    * Routes to: POST /api/tts/generate
+    * 🎙️ Generate TTS using browser's SpeechSynthesis API (no backend needed)
     */
    async generateSpeech(text: string, language: 'vi' | 'en'): Promise<string | null> {
-      try {
-         const startTime = Date.now();
-         const cacheKey = `${language}:${text}`;
-
-         // Check cache
-         const cached = this.audioCache.get(cacheKey);
-         if (cached && Date.now() - cached.timestamp < TTS_CONFIG.cacheDuration) {
-            cached.hits++;
-            console.log(`⚡ TTS Cache HIT (${cached.hits}x) - 0ms`);
-            await this.playAudioFromBase64(cached.audioContent);
-            return cacheKey;
-         }
-
-         const response = await apiRequest<{ audioContent: string }>('/api/tts/generate', {
-            text: text.trim(),
-            language,
-         });
-
-         if (!response.audioContent) {
-            console.error('No audio content received');
-            return null;
-         }
-
-         // Cache the audio
-         this.audioCache.set(cacheKey, {
-            audioContent: response.audioContent,
-            timestamp: Date.now(),
-            hits: 0,
-         });
-
-         // LRU eviction
-         if (this.audioCache.size > TTS_CONFIG.maxCacheSize) {
-            let leastUsedKey = '';
-            let leastHits = Infinity;
-            this.audioCache.forEach((value, key) => {
-               if (value.hits < leastHits) {
-                  leastHits = value.hits;
-                  leastUsedKey = key;
-               }
-            });
-            if (leastUsedKey) {
-               this.audioCache.delete(leastUsedKey);
+      return new Promise((resolve) => {
+         try {
+            // Check if SpeechSynthesis is available
+            if (!('speechSynthesis' in window)) {
+               console.warn('⚠️ Browser does not support SpeechSynthesis');
+               resolve(null);
+               return;
             }
+
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            // Set language
+            utterance.lang = language === 'vi' ? 'vi-VN' : 'en-US';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            // Try to find a voice that matches the language
+            const voices = window.speechSynthesis.getVoices();
+            const targetVoice = voices.find(v =>
+               v.lang.startsWith(language === 'vi' ? 'vi' : 'en')
+            );
+            if (targetVoice) {
+               utterance.voice = targetVoice;
+            }
+
+            utterance.onend = () => {
+               console.log(`✅ Browser TTS completed`);
+               resolve(`tts:${Date.now()}`);
+            };
+
+            utterance.onerror = (event) => {
+               console.error('❌ Browser TTS error:', event.error);
+               resolve(null);
+            };
+
+            // Speak
+            window.speechSynthesis.speak(utterance);
+            console.log(`🎙️ Browser TTS started (${language})`);
+
+         } catch (error: any) {
+            console.error('❌ TTS failed:', error.message);
+            resolve(null);
          }
-
-         // Play audio
-         await this.playAudioFromBase64(response.audioContent);
-
-         const elapsed = Date.now() - startTime;
-         console.log(`⚡ TTS Generated in ${elapsed}ms`);
-
-         return cacheKey;
-      } catch (error: any) {
-         console.error('❌ TTS failed:', error.message);
-         return null;
-      }
+      });
    }
 
    /**
