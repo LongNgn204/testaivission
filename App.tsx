@@ -43,7 +43,11 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { initializeReminderSystem } from './services/reminderService';
 import { initPerformanceOptimizations } from './utils/performanceUtils';
 import { verifyUserToken, getAuthToken, clearAuthToken, processOfflineQueue } from './services/authService';
+import { checkAndMigrateData } from './utils/dataMigration';
 import './utils/envConfig';
+
+// 🧹 Auto-clear old data on version change
+checkAndMigrateData();
 
 // ⚡ LAZY LOADING (Tải các component khi cần):
 // - Giảm bundle size ban đầu
