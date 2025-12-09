@@ -31,18 +31,22 @@ RULES:
 2. Calculate a Score (0-100): 100 is perfect vision. Deduct points based on severity.
 3. Determine a Rating: 'EXCELLENT' (85-100), 'GOOD' (70-84), 'AVERAGE' (50-69), or 'NEEDS_ATTENTION' (<50).
 4. Determine the Trend: 'IMPROVING', 'STABLE', 'DECLINING', or 'INSUFFICIENT_DATA'.
-5. Provide Detailed Insights:
-   - overallSummary: 40-60 words
-   - positives: 1-2 specific positive points
-   - areasToMonitor: 1-2 areas of concern
-   - proTip: ONE single actionable tip (20-30 words)
+5. Provide Detailed Insights.
 6. Language: All text output MUST be in ${langInstruction}.
 
 PATIENT HISTORY DIGEST:
 ${historyDigest}
 
-RAW TEST SNAPSHOT (most recent 12):
-${JSON.stringify(history.slice(0, 12), null, 2)}`;
+OUTPUT FORMAT - Respond with ONLY a valid JSON object (no markdown, no explanation):
+{
+  "score": <number 0-100>,
+  "rating": "EXCELLENT" | "GOOD" | "AVERAGE" | "NEEDS_ATTENTION",
+  "trend": "IMPROVING" | "STABLE" | "DECLINING" | "INSUFFICIENT_DATA",
+  "overallSummary": "<40-60 words summary>",
+  "positives": ["<positive point 1>", "<positive point 2>"],
+  "areasToMonitor": ["<area 1>", "<area 2>"],
+  "proTip": "<20-30 words actionable tip>"
+}`;
 }
 
 export function createDashboardSchema(): any {

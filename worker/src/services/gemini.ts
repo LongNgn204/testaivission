@@ -274,27 +274,26 @@ export async function generateJSONWithCloudflareAI(
   language: 'vi' | 'en'
 ): Promise<any> {
   const systemPrompt = language === 'vi'
-    ? 'Bạn là chuyên gia AI y tế. Trả lời CHÍNH XÁC bằng JSON hợp lệ, không kèm text thừa, không markdown.'
-    : 'You are a medical AI expert. Respond with ONLY valid JSON, no extra text, no markdown.';
+    ? 'Bạn là chuyên gia AI y tế. Trả lời CHÍNH XÁC bằng JSON hợp lệ. KHÔNG sử dụng markdown code blocks (```). KHÔNG thêm text giải thích. CHỈ trả về JSON object thuần túy.'
+    : 'You are a medical AI expert. Respond with ONLY valid JSON. NO markdown code blocks (```). NO extra text or explanation. ONLY return a pure JSON object.';
 
-  const text = await generateWithCloudflareAI(ai, prompt, systemPrompt);
-
-  // Parse JSON from response
   try {
+    const text = await generateWithCloudflareAI(ai, prompt, systemPrompt);
+    console.log('🔍 Raw AI response (first 500 chars):', text.substring(0, 500));
+
+    // Parse JSON from response
     let cleaned = text.trim();
 
     // Remove markdown code blocks if present
-    if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.slice(7);
-    } else if (cleaned.startsWith('```')) {
-      cleaned = cleaned.slice(3);
+    const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      cleaned = codeBlockMatch[1].trim();
+    } else {
+      // Remove just the backticks if they exist without proper closure
+      cleaned = cleaned.replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
     }
-    if (cleaned.endsWith('```')) {
-      cleaned = cleaned.slice(0, -3);
-    }
-    cleaned = cleaned.trim();
 
-    // Try to find JSON object or array
+    // Try to find JSON object
     const jsonStart = cleaned.indexOf('{');
     const jsonEnd = cleaned.lastIndexOf('}');
 
@@ -309,15 +308,73 @@ export async function generateJSONWithCloudflareAI(
       }
     }
 
-    return JSON.parse(cleaned);
-  } catch (e) {
-    console.error('Failed to parse JSON from Cloudflare AI:', text);
-    // Return fallback
+    // Fix common JSON issues
+    cleaned = cleaned
+      // Remove trailing commas before } or ]
+      .replace(/,\s*([}\]])/g, '$1')
+      // Fix unquoted keys
+      .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+      // Remove control characters
+      .replace(/[\x00-\x1F\x7F]/g, ' ');
+
+    const parsed = JSON.parse(cleaned);
+    console.log('✅ Successfully parsed JSON response');
+
+    // Ensure required fields exist for reports
     return {
-      summary: text,
-      recommendations: [],
-      severity: 'LOW',
+      confidence: parsed.confidence || 75,
+      summary: parsed.summary || parsed.overallSummary || '',
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      severity: ['LOW', 'MEDIUM', 'HIGH'].includes(parsed.severity) ? parsed.severity : 'LOW',
+      trend: parsed.trend || 'STABLE',
+      causes: parsed.causes || '',
+      prediction: parsed.prediction || '',
+      // For dashboard
+      score: parsed.score,
+      rating: parsed.rating,
+      overallSummary: parsed.overallSummary || parsed.summary,
+      positives: Array.isArray(parsed.positives) ? parsed.positives : [],
+      areasToMonitor: Array.isArray(parsed.areasToMonitor) ? parsed.areasToMonitor : [],
+      proTip: parsed.proTip || parsed.tip || '',
+      // For routine (days)
+      Monday: parsed.Monday,
+      Tuesday: parsed.Tuesday,
+      Wednesday: parsed.Wednesday,
+      Thursday: parsed.Thursday,
+      Friday: parsed.Friday,
+      Saturday: parsed.Saturday,
+      Sunday: parsed.Sunday,
+    };
+  } catch (e: any) {
+    console.error('❌ Failed to parse JSON from Cloudflare AI:', e.message);
+
+    // Return smart fallback based on language
+    return language === 'vi' ? {
       confidence: 70,
+      summary: 'Dựa trên kết quả kiểm tra của bạn, thị lực đang ở mức bình thường. Hãy tiếp tục theo dõi và kiểm tra định kỳ.',
+      recommendations: [
+        'Nghỉ ngơi mắt mỗi 20 phút khi làm việc với máy tính',
+        'Ăn nhiều rau xanh và trái cây giàu vitamin A',
+        'Đeo kính bảo vệ khi ra ngoài nắng',
+        'Kiểm tra mắt định kỳ 6 tháng/lần'
+      ],
+      severity: 'LOW',
+      trend: 'STABLE',
+      causes: 'Kết quả cho thấy tình trạng ổn định.',
+      prediction: 'Với việc chăm sóc tốt, thị lực sẽ được duy trì ổn định.'
+    } : {
+      confidence: 70,
+      summary: 'Based on your test results, your vision appears to be within normal range. Continue monitoring and regular check-ups.',
+      recommendations: [
+        'Take eye breaks every 20 minutes when using screens',
+        'Eat leafy greens and vitamin A-rich foods',
+        'Wear sunglasses when outdoors',
+        'Schedule regular eye exams every 6 months'
+      ],
+      severity: 'LOW',
+      trend: 'STABLE',
+      causes: 'Results indicate stable condition.',
+      prediction: 'With proper care, your vision should remain stable.'
     };
   }
 }

@@ -108,7 +108,16 @@ ${JSON.stringify(testData, null, 2)}
 
 ${testSpecificInfo}
 
-Generate a comprehensive medical report in JSON format.`;
+OUTPUT FORMAT - Respond with ONLY a valid JSON object (no markdown, no explanation):
+{
+  "confidence": <number 70-99>,
+  "summary": "${isVi ? '<250-300 từ tiếng Việt phân tích lâm sàng>' : '<250-300 words clinical analysis>'}",
+  "trend": "${isVi ? '<100 từ phân tích xu hướng>' : '<100 words trend analysis>'}",
+  "causes": "${isVi ? '<80 từ nguyên nhân>' : '<80 words causes>'}",
+  "recommendations": ["${isVi ? 'Khuyến nghị 1' : 'Recommendation 1'}", "${isVi ? 'Khuyến nghị 2' : 'Recommendation 2'}", ...],
+  "severity": "LOW" | "MEDIUM" | "HIGH",
+  "prediction": "${isVi ? '<80 từ tiên lượng>' : '<80 words prognosis>'}"
+}`;
 }
 
 function getTestSpecificInfo(
