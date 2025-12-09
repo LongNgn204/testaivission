@@ -52,7 +52,7 @@ export async function chat(
   env: any
 ): Promise<Response> {
   try {
-    const { message, lastTestResult, userProfile, language } =
+    const { message, lastTestResult, language } =
       (await request.json()) as any;
 
     // Validate input

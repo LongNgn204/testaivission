@@ -614,15 +614,16 @@
                 <h2 id="pageTitle" class="text-lg font-bold text-slate-800">Dashboard</h2>
                 <div class="flex items-center gap-3">
                     <button onclick="loadRecords()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
-                        title="Làm mới">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        title="Làm mới" aria-label="Làm mới dữ liệu">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                     </button>
                     <button onclick="exportToExcel()"
-                        class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium hover:from-green-500 hover:to-emerald-500">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium hover:from-green-500 hover:to-emerald-500"
+                        aria-label="Xuất dữ liệu ra file Excel">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -840,7 +841,43 @@
     </div>
 
     <script>
-        // State
+        // ============================================================
+        // SECURITY UTILITIES
+        // ============================================================
+
+        /**
+         * Escape HTML to prevent XSS attacks
+         * @param {string} text - Raw text that might contain HTML
+         * @returns {string} - Escaped safe text
+         */
+        function escapeHtml(text) {
+            if (text == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        /**
+         * Sanitize text for display
+         * @param {string} text - Text to sanitize
+         * @param {number} maxLength - Maximum length (default 200)
+         * @returns {string} - Sanitized text
+         */
+        function sanitizeText(text, maxLength = 200) {
+            const escaped = escapeHtml(text);
+            return escaped.length > maxLength ? escaped.substring(0, maxLength) + '...' : escaped;
+        }
+
+        // ============================================================
+        // CONSTANTS
+        // ============================================================
+        const RECENT_ACTIVITY_LIMIT = 8;
+        const SESSION_EXPIRY_DAYS = 7;
+        const MAX_RECORDS_DISPLAY = 1000;
+
+        // ============================================================
+        // STATE
+        // ============================================================
         let API_URL = '';
         let TOKEN = '';
         let isDemo = false;
@@ -857,6 +894,23 @@
             NORMAL: 'bg-green-100 text-green-700 border-green-200'
         };
         const chartColors = { snellen: '#3B82F6', colorblind: '#10B981', astigmatism: '#8B5CF6', amsler: '#F59E0B', duochrome: '#EC4899' };
+
+        /**
+         * Format date consistently
+         * @param {string|Date} date - Date to format
+         * @param {string} format - 'date' or 'datetime'
+         * @returns {string} - Formatted date string
+         */
+        function formatDate(date, format = 'date') {
+            try {
+                const d = new Date(date);
+                if (isNaN(d.getTime())) return 'N/A';
+                if (format === 'datetime') return d.toLocaleString('vi-VN');
+                return d.toLocaleDateString('vi-VN');
+            } catch (e) {
+                return 'N/A';
+            }
+        }
 
         // Demo data - Comprehensive test records
         const DEMO_DATA = [
@@ -906,33 +960,56 @@
             { id: '25', userId: 'user_010', userName: 'Dương Thị Lan', testType: 'colorblind', testData: { accuracy: 92 }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
         ];
 
-        // Check saved session
+        // Check saved session with expiry validation
         window.onload = () => {
             const saved = localStorage.getItem('admin_session');
             if (saved) {
-                const data = JSON.parse(saved);
-                API_URL = data.apiUrl || '';
-                TOKEN = data.token || '';
-                isDemo = data.isDemo || false;
-                showDashboard();
-                loadRecords();
+                try {
+                    const data = JSON.parse(saved);
+
+                    // Check session expiry
+                    if (data.expiresAt && Date.now() > data.expiresAt) {
+                        console.log('Session expired, clearing...');
+                        localStorage.removeItem('admin_session');
+                        return;
+                    }
+
+                    API_URL = data.apiUrl || '';
+                    TOKEN = data.token || '';
+                    isDemo = data.isDemo || false;
+                    showDashboard();
+                    loadRecords();
+                } catch (e) {
+                    console.error('Failed to parse session:', e);
+                    localStorage.removeItem('admin_session');
+                }
             }
         };
 
-        // Login
+        // Login with session expiry
         function login() {
             API_URL = document.getElementById('apiUrl').value.trim();
             TOKEN = document.getElementById('tokenInput').value.trim();
             isDemo = false;
 
-            localStorage.setItem('admin_session', JSON.stringify({ apiUrl: API_URL, token: TOKEN, isDemo: false }));
+            const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+            localStorage.setItem('admin_session', JSON.stringify({
+                apiUrl: API_URL,
+                token: TOKEN,
+                isDemo: false,
+                expiresAt
+            }));
             showDashboard();
             loadRecords();
         }
 
         function loginDemo() {
             isDemo = true;
-            localStorage.setItem('admin_session', JSON.stringify({ isDemo: true }));
+            const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+            localStorage.setItem('admin_session', JSON.stringify({
+                isDemo: true,
+                expiresAt
+            }));
             showDashboard();
             loadDemoData();
         }
@@ -1116,7 +1193,7 @@
 
         // Update recent activity
         function updateRecentActivity() {
-            const recent = allRecords.slice(0, 8);
+            const recent = allRecords.slice(0, RECENT_ACTIVITY_LIMIT);
             document.getElementById('recentActivity').innerHTML = recent.map(r => `
                 <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
                     <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
@@ -1125,10 +1202,10 @@
                         </svg>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm text-slate-700 truncate">${r.userName} - ${testTypeLabels[r.testType]}</p>
-                        <p class="text-xs text-slate-400">${new Date(r.timestamp).toLocaleDateString('vi-VN')}</p>
+                        <p class="text-sm text-slate-700 truncate">${escapeHtml(r.userName)} - ${escapeHtml(testTypeLabels[r.testType] || r.testType)}</p>
+                        <p class="text-xs text-slate-400">${escapeHtml(formatDate(r.timestamp))}</p>
                     </div>
-                    <span class="px-2 py-0.5 rounded-full text-xs font-bold ${severityColors[r.severity]}">${severityLabels[r.severity]}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold ${severityColors[r.severity] || ''}">${escapeHtml(severityLabels[r.severity] || r.severity)}</span>
                 </div>
             `).join('') || '<p class="text-center text-slate-400 py-8">Chưa có hoạt động</p>';
         }
@@ -1143,18 +1220,22 @@
                 if (new Date(r.timestamp) > new Date(userMap[r.userId].lastTest)) userMap[r.userId].lastTest = r.timestamp;
             });
 
-            document.getElementById('usersGrid').innerHTML = Object.values(userMap).map(u => `
+            document.getElementById('usersGrid').innerHTML = Object.values(userMap).map(u => {
+                const safeUserId = escapeHtml(u.userId);
+                const safeUserName = escapeHtml(u.userName || 'Người dùng');
+                const initial = (u.userName || u.userId || 'U').charAt(0).toUpperCase();
+                return `
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-lg transition-all">
                     <div class="flex items-start gap-4 mb-4">
                         <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                            ${(u.userName || u.userId).charAt(0).toUpperCase()}
+                            ${escapeHtml(initial)}
                         </div>
                         <div class="flex-1">
-                            <p class="font-bold text-slate-800">${u.userName || 'Người dùng'}</p>
-                            <p class="text-xs text-slate-400">${u.userId}</p>
+                            <p class="font-bold text-slate-800">${safeUserName}</p>
+                            <p class="text-xs text-slate-400">${safeUserId}</p>
                         </div>
-                        <button onclick="openEditUserModal('${u.userId}', '${u.userName || ''}')" 
-                            class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-500 hover:text-white text-slate-500 flex items-center justify-center transition-all" title="Sửa thông tin">
+                        <button onclick="openEditUserModal('${safeUserId.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${safeUserName.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" 
+                            class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-500 hover:text-white text-slate-500 flex items-center justify-center transition-all" title="Sửa thông tin" aria-label="Sửa thông tin người dùng ${safeUserName}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
@@ -1166,7 +1247,8 @@
                     </div>
                     <p class="text-xs text-slate-400 mt-3">Test cuối: ${new Date(u.lastTest).toLocaleDateString('vi-VN')}</p>
                 </div>
-            `).join('') || '<p class="col-span-full text-center text-slate-400 py-12">Chưa có người dùng</p>';
+            `;
+            }).join('') || '<p class="col-span-full text-center text-slate-400 py-12">Chưa có người dùng</p>';
         }
 
         // Edit User Modal
@@ -1267,7 +1349,7 @@
             renderTable();
         }
 
-        // Render table
+        // Render table with XSS protection
         function renderTable() {
             const tbody = document.getElementById('recordsTable');
             if (!tbody) return;
@@ -1279,22 +1361,22 @@
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-3">
                             <div>
-                                <p class="font-medium text-slate-800">${r.userName || 'N/A'}</p>
-                                <p class="text-xs text-slate-400">${r.userId}</p>
+                                <p class="font-medium text-slate-800">${escapeHtml(r.userName || 'N/A')}</p>
+                                <p class="text-xs text-slate-400">${escapeHtml(r.userId)}</p>
                             </div>
                         </td>
                         <td class="px-4 py-3">
                             <span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
-                                ${testTypeLabels[r.testType] || r.testType}
+                                ${escapeHtml(testTypeLabels[r.testType] || r.testType)}
                             </span>
                         </td>
                         <td class="px-4 py-3">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${severityColors[r.severity]}">
-                                ${severityLabels[r.severity]}
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${severityColors[r.severity] || ''}">
+                                ${escapeHtml(severityLabels[r.severity] || r.severity)}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">${r.aiAnalysis}</td>
-                        <td class="px-4 py-3 text-sm text-slate-500">${new Date(r.timestamp).toLocaleDateString('vi-VN')}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">${sanitizeText(r.aiAnalysis, 100)}</td>
+                        <td class="px-4 py-3 text-sm text-slate-500">${escapeHtml(formatDate(r.timestamp))}</td>
                     </tr>
                 `).join('');
             }

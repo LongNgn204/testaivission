@@ -167,9 +167,16 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
       });
     }
 
+    // Sanitize text - remove HTML tags and control characters
+    const sanitizedText = text
+      .trim()
+      .replace(/<[^>]*>/g, '')  // Remove HTML tags
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')  // Remove control characters
+      .replace(/[<>]/g, '');  // Remove any remaining angle brackets
+
     // Limit text length
     const maxLength = 5000;
-    if (text.length > maxLength) {
+    if (sanitizedText.length > maxLength) {
       return new Response(JSON.stringify({
         success: false,
         message: `Text too long. Maximum ${maxLength} characters allowed.`,
@@ -215,7 +222,7 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`;
 
     const ttsRequest = {
-      input: { text: text.trim() },
+      input: { text: sanitizedText },
       voice: {
         languageCode: ttsLanguage,
         name: voiceName,
@@ -245,7 +252,7 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
         success: true,
         useFallback: true,
         message: 'Use browser TTS fallback',
-        text: text.trim(),
+        text: sanitizedText,
         language: language
       }), {
         status: 200,
@@ -450,21 +457,63 @@ router.all('*', () => {
 });
 
 // ============================================================
+// ALLOWED ORIGINS (CSRF Protection)
+// ============================================================
+const ALLOWED_ORIGINS = [
+  'https://slht4653.testaivision.pages.dev',
+  'https://testaivision.pages.dev',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+];
+
+// ============================================================
 // ERROR HANDLER
 // ============================================================
 
 export default {
   async fetch(request: Request, env: any, ctx: any) {
     try {
+      // CSRF Protection for non-GET requests
+      if (request.method !== 'GET' && request.method !== 'OPTIONS') {
+        const origin = request.headers.get('Origin');
+        if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+          console.warn(`Rejected request from origin: ${origin}`);
+          return addCorsHeaders(
+            new Response(
+              JSON.stringify({
+                error: 'Forbidden',
+                message: 'Invalid origin',
+                timestamp: new Date().toISOString(),
+              }),
+              {
+                status: 403,
+                headers: { 'Content-Type': 'application/json' },
+              }
+            )
+          );
+        }
+      }
+
       const response = await router.handle(request, env, ctx);
       return addCorsHeaders(response);
     } catch (error: any) {
       console.error('Worker error:', error);
+
+      // Determine if this is a production environment
+      const url = new URL(request.url);
+      const isProduction = !['localhost', '127.0.0.1'].includes(url.hostname);
+
+      // In production, hide detailed error messages
+      const errorMessage = isProduction
+        ? 'An unexpected error occurred. Please try again later.'
+        : error.message;
+
       return addCorsHeaders(
         new Response(
           JSON.stringify({
             error: 'Internal Server Error',
-            message: error.message,
+            message: errorMessage,
             timestamp: new Date().toISOString(),
           }),
           {
@@ -476,4 +525,3 @@ export default {
     }
   },
 };
-

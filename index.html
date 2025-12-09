@@ -5,71 +5,83 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
 
-  <!-- ⚡ PWA & SEO Meta Tags -->
+  <!-- SEO Meta Tags -->
   <title>Sức Khỏe AI - Kiểm Tra Thị Lực Thông Minh</title>
   <meta name="description"
     content="Nền tảng kiểm tra thị lực AI với điều khiển giọng nói, phân tích chuyên sâu và lời khuyên cá nhân hóa. Miễn phí 100%!" />
   <meta name="keywords" content="kiểm tra mắt, thị lực, AI, sức khỏe mắt, snellen, mù màu, astigmatism, amsler" />
   <meta name="author" content="Sức Khỏe AI Team" />
-  <meta name="theme-color" content="#059669" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://slht4653.testaivision.pages.dev/" />
 
-  <!-- ⚡ PWA Manifest -->
+  <!-- Theme Color (matched with manifest.json) -->
+  <meta name="theme-color" content="#4f46e5" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://slht4653.testaivision.pages.dev/" />
+  <meta property="og:title" content="Sức Khỏe AI - Kiểm Tra Thị Lực Thông Minh" />
+  <meta property="og:description" content="Nền tảng kiểm tra thị lực AI với điều khiển giọng nói. Miễn phí 100%!" />
+  <meta property="og:image" content="https://slht4653.testaivision.pages.dev/assets/logo.png" />
+  <meta property="og:site_name" content="Sức Khỏe AI" />
+  <meta property="og:locale" content="vi_VN" />
+
+  <!-- Twitter Card -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://slht4653.testaivision.pages.dev/" />
+  <meta property="twitter:title" content="Sức Khỏe AI - Kiểm Tra Thị Lực Thông Minh" />
+  <meta property="twitter:description" content="Nền tảng kiểm tra thị lực AI với điều khiển giọng nói. Miễn phí!" />
+  <meta property="twitter:image" content="https://slht4653.testaivision.pages.dev/assets/logo.png" />
+
+  <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
 
-  <!-- ⚡ Icons -->
-  <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/logo.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/logo.png" />
 
   <!-- iOS PWA Support -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Suc Khoe AI" />
+  <meta name="apple-mobile-web-app-title" content="Sức Khỏe AI" />
+  <meta name="format-detection" content="telephone=no" />
 
-  <!-- ⚡ Performance: Preconnect to external domains -->
-  <link rel="preconnect" href="https://aistudiocdn.com" />
-  <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
-
-  <!-- Tailwind CSS now processed via PostCSS + Vite -->
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/client": "https://aistudiocdn.com/react-dom@19.2.0/client",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.548.0",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^6.23.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
-    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1"
-  }
-}
-</script>
+  <!-- Performance: Preconnect to critical domains -->
+  <link rel="preconnect" href="https://vision-coach-worker.stu725114073.workers.dev" crossorigin />
+  <link rel="dns-prefetch" href="https://vision-coach-worker.stu725114073.workers.dev" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 </head>
 
 <body>
-  <!-- Global styles & animations now in index.css (PostCSS processed) -->
-  <style>
-    /* Keep fadeIn animation if used inline, but moved to Tailwind utilities */
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .animate-fade-in {
-      animation: fadeIn 0.3s ease-out;
-    }
-  </style>
+  <!-- App Root -->
   <div id="root"></div>
+
+  <!-- Fallback for JavaScript disabled -->
+  <noscript>
+    <div
+      style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; font-family: system-ui, -apple-system, sans-serif; text-align: center; background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);">
+      <div
+        style="width: 80px; height: 80px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </div>
+      <h1 style="font-size: 28px; font-weight: 700; color: #1e1b4b; margin: 0 0 12px 0;">Sức Khỏe AI</h1>
+      <p style="font-size: 16px; color: #475569; margin: 0 0 24px 0; max-width: 400px;">
+        Vui lòng bật JavaScript trong trình duyệt để sử dụng ứng dụng kiểm tra thị lực.
+      </p>
+      <a href="https://www.enable-javascript.com/vi/" target="_blank" rel="noopener"
+        style="display: inline-block; padding: 12px 24px; background: #4f46e5; color: white; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 14px;">
+        Hướng dẫn bật JavaScript
+      </a>
+    </div>
+  </noscript>
+
+  <!-- Main App Script -->
   <script type="module" src="/index.tsx"></script>
 </body>
 

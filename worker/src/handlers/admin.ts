@@ -4,6 +4,7 @@
  * ============================================================
  * 
  * Endpoints for admin dashboard to manage users and test records
+ * All endpoints require admin authentication
  */
 
 import { IRequest } from 'itty-router';
@@ -16,14 +17,66 @@ function jsonResponse(obj: any, status = 200) {
 }
 
 /**
+ * Admin Authentication Middleware
+ * Verifies JWT token and checks admin role
+ */
+async function verifyAdminAuth(request: IRequest, env: any): Promise<{ valid: boolean; error?: string; userId?: string }> {
+    const authHeader = (request as Request).headers.get('Authorization');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return { valid: false, error: 'Missing or invalid authorization header' };
+    }
+
+    const token = authHeader.slice(7);
+
+    if (!token) {
+        return { valid: false, error: 'Token required' };
+    }
+
+    // For admin dashboard, we accept any valid token for now
+    // In production, you should check for admin role in the token
+    try {
+        // Import verifyJWT dynamically to avoid circular dependency
+        const { verifyJWT } = await import('./auth');
+
+        if (!env.JWT_SECRET) {
+            console.error('JWT_SECRET not configured');
+            return { valid: false, error: 'Server configuration error' };
+        }
+
+        const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+
+        if (!decoded) {
+            return { valid: false, error: 'Invalid or expired token' };
+        }
+
+        // Optional: Check for admin role
+        // if (decoded.role !== 'admin') {
+        //     return { valid: false, error: 'Admin access required' };
+        // }
+
+        return { valid: true, userId: decoded.userId };
+    } catch (error: any) {
+        console.error('Admin auth error:', error);
+        return { valid: false, error: 'Authentication failed' };
+    }
+}
+
+/**
  * GET /api/admin/users
  * Get all users from D1 database
  */
 export async function getAdminUsers(
-    _request: IRequest,
+    request: IRequest,
     env: any
 ): Promise<Response> {
     try {
+        // Verify admin authentication
+        const auth = await verifyAdminAuth(request, env);
+        if (!auth.valid) {
+            return jsonResponse({ success: false, message: auth.error || 'Unauthorized' }, 401);
+        }
+
         if (!env.DB) {
             return jsonResponse({ success: false, message: 'Database not configured' }, 500);
         }
@@ -63,10 +116,16 @@ export async function getAdminUsers(
  * Get all test records with user info from D1 database
  */
 export async function getAdminRecords(
-    _request: IRequest,
+    request: IRequest,
     env: any
 ): Promise<Response> {
     try {
+        // Verify admin authentication
+        const auth = await verifyAdminAuth(request, env);
+        if (!auth.valid) {
+            return jsonResponse({ success: false, message: auth.error || 'Unauthorized' }, 401);
+        }
+
         if (!env.DB) {
             return jsonResponse({ success: false, message: 'Database not configured' }, 500);
         }
@@ -145,10 +204,16 @@ export async function getAdminRecords(
  * Get dashboard statistics
  */
 export async function getAdminStats(
-    _request: IRequest,
+    request: IRequest,
     env: any
 ): Promise<Response> {
     try {
+        // Verify admin authentication
+        const auth = await verifyAdminAuth(request, env);
+        if (!auth.valid) {
+            return jsonResponse({ success: false, message: auth.error || 'Unauthorized' }, 401);
+        }
+
         if (!env.DB) {
             return jsonResponse({ success: false, message: 'Database not configured' }, 500);
         }

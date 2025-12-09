@@ -315,15 +315,26 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Validate phone number format (Vietnamese format: 0xxx xxx xxxx)
+ * Validate phone number format
+ * Supports Vietnamese format (0xxx xxx xxxx) and international format
  */
-export function isValidPhone(phone: string): boolean {
-  const phoneRegex = /^0\d{9}$/;
-  return phoneRegex.test(phone.replace(/\s/g, ''));
+export function isValidPhone(phone: string, countryCode: string = 'VN'): boolean {
+  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+
+  const patterns: Record<string, RegExp> = {
+    'VN': /^(0|\+84)[3-9]\d{8}$/,  // Vietnamese mobile numbers
+    'US': /^(\+1)?[2-9]\d{9}$/,     // US numbers
+    'INTERNATIONAL': /^\+?[1-9]\d{9,14}$/  // International format
+  };
+
+  // Try specific country pattern first, fallback to international
+  return patterns[countryCode]?.test(cleanPhone) ||
+    patterns['INTERNATIONAL'].test(cleanPhone);
 }
 
 /**
  * Validate password strength (optional - only validate if provided)
+ * Requirements: 8+ chars, uppercase, lowercase, number, special char
  */
 export function validatePassword(password: string | undefined): PasswordValidation {
   const errors: string[] = [];
@@ -336,17 +347,24 @@ export function validatePassword(password: string | undefined): PasswordValidati
     };
   }
 
-  if (password.length < 6) {
-    errors.push('Password must be at least 6 characters');
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters');
   }
-
 
   if (!/[a-z]/.test(password)) {
     errors.push('Password must contain at least one lowercase letter');
   }
 
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+
   if (!/[0-9]/.test(password)) {
     errors.push('Password must contain at least one number');
+  }
+
+  if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(password)) {
+    errors.push('Password must contain at least one special character (!@#$%^&*...)');
   }
 
   return {
