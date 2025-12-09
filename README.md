@@ -1,286 +1,182 @@
-# 👁️ Vision Coach - AI-Powered Eye Health Platform
+# 👁️ Vision Coach - Nền Tảng Chăm Sóc Sức Khỏe Mắt AI
 
-A comprehensive web application for eye health testing, monitoring, and personalized recommendations powered by Google Gemini AI.
+<div align="center">
 
-## ✨ Features
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![React](https://img.shields.io/badge/React-19-61dafb.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)
 
-### 👁️ Vision Tests
-- **Snellen Test**: Visual acuity measurement
-- **Ishihara Test**: Color blindness detection
-- **Amsler Grid**: Macular degeneration screening
-- **Astigmatism Test**: Refractive error detection
-- **Duochrome Test**: Prescription accuracy
+**Ứng dụng web toàn diện cho kiểm tra, giám sát và tư vấn sức khỏe mắt được hỗ trợ bởi AI**
 
-### 🤖 AI-Powered Features
-- **Dr. Eva AI Assistant**: 2-way conversation about eye health
-- **AI Reports**: Detailed analysis of test results
-- **Dashboard Insights**: Trend analysis and health summary
-- **Personalized Routine**: Weekly eye care schedule
-- **Proactive Tips**: Daily health recommendations
-- **Text-to-Speech**: Natural voice synthesis (via backend)
+[Demo](https://testaivision.pages.dev) • [Báo lỗi](https://github.com/LongNgn204/testaivission/issues)
 
-### 🔐 Security & Backend
-- **Cloudflare Workers**: Serverless backend
-- **JWT Authentication**: Secure user sessions
-- **D1 Database**: Persistent data storage
-- **Hidden API Keys**: All API keys on backend only
-- **Rate Limiting**: DDoS protection
-- **Input Validation**: Security hardening
+</div>
 
-### 🌐 Localization
-- **Vietnamese (Tiếng Việt)**: Full support
-- **English**: Full support
-- **Easy to extend**: Add more languages
+---
 
-## 🚀 Quick Start
+## ✨ Tính Năng Chính
 
-### Prerequisites
+### 👁️ Bài Test Thị Lực
+| Test | Mô tả |
+|------|-------|
+| **Snellen** | Đo thị lực thông minh với chữ E xoay |
+| **Ishihara** | Phát hiện mù màu |
+| **Amsler Grid** | Sàng lọc thoái hóa điểm vàng |
+| **Astigmatism** | Phát hiện loạn thị |
+| **Duochrome** | Kiểm tra cận thị/viễn thị |
+
+### 🤖 Trợ Lý AI - Bác Sĩ Eva
+- **Chat thông minh**: Hỏi đáp về sức khỏe mắt
+- **Phân tích kết quả**: Báo cáo chi tiết từ AI
+- **Lời khuyên cá nhân hóa**: Mẹo chăm sóc mắt hàng ngày
+- **Text-to-Speech**: Đọc hướng dẫn bằng giọng nói (Browser API)
+
+### 📊 Dashboard & Báo Cáo
+- Điểm số sức khỏe mắt tổng thể
+- Xu hướng thị lực theo thời gian
+- Lịch trình chăm sóc mắt hàng tuần
+- Xuất PDF báo cáo
+
+### 🛡️ Bảo Mật
+- JWT Authentication
+- API keys an toàn trên backend
+- Mã hóa mật khẩu SHA-256
+- Rate limiting & CORS
+
+---
+
+## 🚀 Cài Đặt Nhanh
+
+### Yêu Cầu
 - Node.js 18+
-- npm or yarn
-- Cloudflare account (for backend)
+- Cloudflare account
 
-### Frontend Setup
+### Frontend
 
 ```bash
-# Install dependencies
+# Cài đặt dependencies
 npm install
 
-# Create .env.local
-echo "VITE_API_URL=http://localhost:8787" > .env.local
-
-# Development
+# Chạy development
 npm run dev
 
-# Build
+# Build production
 npm run build
 ```
 
-### Backend Setup (Cloudflare Worker)
+### Backend (Cloudflare Worker)
 
 ```bash
 cd worker
 
-# Install dependencies
+# Cài đặt dependencies
 npm install
 
-# Create secrets
-npx wrangler secret put GEMINI_API_KEY
-npx wrangler secret put GOOGLE_TTS_API_KEY
-npx wrangler secret put JWT_SECRET
-
-# Development
-npm run dev
-
 # Deploy
-npm run deploy:prod
+npm run deploy
 ```
 
-## 📁 Project Structure
+---
+
+## 🛠️ Công Nghệ
+
+### Frontend
+- **React 19** + TypeScript
+- **Tailwind CSS** - Styling
+- **Vite** - Build tool
+- **React Router** - Navigation
+
+### Backend
+- **Cloudflare Workers** - Serverless
+- **Cloudflare Workers AI** - Llama 3.1 (miễn phí)
+- **D1 Database** - SQLite cloud
+- **itty-router** - API routing
+
+### AI Models
+- **Llama 3.1** (Cloudflare Workers AI) - Chat, phân tích
+- **Browser SpeechSynthesis** - Text-to-Speech
+
+---
+
+## 📁 Cấu Trúc Dự Án
 
 ```
-.
-├── src/                    # Frontend source
-│   ├── components/         # React components
-│   ├── pages/             # Page components
-│   ├── services/          # API services
-│   ├── hooks/             # Custom hooks
-│   ├── context/           # React context
-│   ├── utils/             # Utilities
-│   └── i18n/              # Localization
-├── worker/                # Cloudflare Worker backend
-│   ├── src/
-│   │   ├── handlers/      # Request handlers
-│   │   ├── services/      # Business logic
-│   │   ├── middleware/    # Middleware
-│   │   └── prompts/       # AI prompts
-│   └── wrangler.toml      # Worker config
-├── public/                # Static assets
-└── package.json
+testaivission/
+├── components/          # React components
+│   ├── vision-coach/    # Chat & Voice interface
+│   ├── ui/              # UI components
+│   └── *.tsx            # Test components
+├── pages/               # Page components
+├── services/            # API services
+├── context/             # React context
+├── hooks/               # Custom hooks
+├── i18n/                # Đa ngôn ngữ (VI/EN)
+├── worker/              # Cloudflare Worker backend
+│   ├── src/handlers/    # API handlers
+│   ├── src/services/    # Business logic
+│   └── wrangler.toml    # Worker config
+└── index.html           # Entry point
 ```
 
-## 🔧 Configuration
-
-### Frontend Environment Variables
-
-```bash
-# .env.local
-VITE_API_URL=https://your-worker-url.workers.dev
-```
-
-### Backend Environment Variables (Cloudflare Secrets)
-
-```bash
-GEMINI_API_KEY=your_gemini_api_key
-GOOGLE_TTS_API_KEY=your_google_tts_key
-JWT_SECRET=your_strong_secret_min_32_chars
-```
+---
 
 ## 📚 API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/verify` - Verify JWT token
-- `POST /api/auth/logout` - User logout
+```
+POST /api/auth/register   - Đăng ký
+POST /api/auth/login      - Đăng nhập
+POST /api/auth/verify     - Xác thực token
+```
 
 ### AI Services
-- `POST /api/report` - Generate AI report
-- `POST /api/dashboard` - Generate dashboard insights
-- `POST /api/chat` - Chat with Dr. Eva
-- `POST /api/routine` - Generate weekly routine
-- `POST /api/proactive-tip` - Get daily tip
-- `POST /api/tts/generate` - Generate TTS audio
-
-### Test Management
-- `POST /api/tests/save` - Save test result
-- `GET /api/tests/history` - Get test history
-
-## 🔒 Security Features
-
-- ✅ JWT authentication with 7-day expiration
-- ✅ Rate limiting (100 req/min global, 5 req/min auth)
-- ✅ IP-based blocking for suspicious activity
-- ✅ Input sanitization and validation
-- ✅ Security headers (HSTS, CSP, X-Frame-Options)
-- ✅ Password hashing (SHA-256 with salt)
-- ✅ HTTPS enforcement
-- ✅ CORS protection
-- ✅ Security event logging
-
-## 🧪 Testing
-
-```bash
-# Frontend tests
-npm run test
-
-# Type checking
-npm run type-check
-
-# Build check
-npm run build
-
-# Backend tests
-cd worker
-npm run test
-npm run type-check
+```
+POST /api/chat            - Chat với Eva (Llama 3.1)
+POST /api/report          - Tạo báo cáo AI
+POST /api/dashboard       - Dashboard insights
+POST /api/routine         - Lịch trình cá nhân
 ```
 
-## 📊 Database Schema
-
-### Users
-- id, name, age, phone, email
-- password_hash, password_salt
-- created_at, updated_at, last_login
-
-### Sessions
-- id, user_id, token, expires_at
-- device_info, created_at
-
-### Test Results
-- id, user_id, test_type, test_data
-- score, result, duration, created_at
-
-### Analytics
-- id, user_id, event_type, event_data
-- created_at
-
-## 🚀 Deployment
-
-### Deploy Frontend
-```bash
-npm run build
-# Deploy dist/ folder to Vercel, Netlify, or your hosting
+### Sync & Data
 ```
-
-### Deploy Backend
-```bash
-cd worker
-npm run deploy:prod
+POST /api/sync/pull       - Lấy dữ liệu từ backend
+POST /api/sync/history    - Đồng bộ lịch sử test
+POST /api/sync/settings   - Đồng bộ cài đặt
 ```
-
-See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for detailed instructions.
-
-## 📖 Documentation
-
-- [Cloudflare Worker Setup](CLOUDFLARE_WORKER_SETUP.md)
-- [Backend Upgrade Summary](BACKEND_UPGRADE_SUMMARY.md)
-- [Deployment Checklist](DEPLOYMENT_CHECKLIST.md)
-
-## 🛠️ Tech Stack
-
-### Frontend
-- React 19
-- TypeScript
-- Tailwind CSS
-- Vite
-- React Router
-
-### Backend
-- Cloudflare Workers
-- TypeScript
-- Cloudflare D1 (SQLite)
-- Google Gemini AI
-- Google Cloud Text-to-Speech
-
-### APIs
-- Google Gemini 2.5 Flash
-- Google Cloud Text-to-Speech
-- Web Speech API (fallback)
-
-## 📈 Performance
-
-- Frontend: Optimized with code splitting, lazy loading
-- Backend: Serverless, auto-scaling
-- Database: Optimized queries, caching
-- TTS: Backend caching, base64 encoding
-- AI: Streaming responses, token optimization
-
-## 🔄 CI/CD
-
-```bash
-# Automated checks
-npm run type-check
-npm run build
-
-# Manual deployment
-npm run deploy:prod
-```
-
-## 📝 License
-
-MIT License - See LICENSE file for details
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## 📞 Support
-
-For issues or questions:
-1. Check documentation files
-2. Review error logs
-3. Test endpoints with curl/Postman
-4. Check Cloudflare Workers status
-
-## 🎯 Roadmap
-
-- [ ] Add 2FA authentication
-- [ ] Implement OAuth (Google, Facebook)
-- [ ] Add prescription tracking
-- [ ] Implement appointment scheduling
-- [ ] Add doctor consultation feature
-- [ ] Mobile app (React Native)
-- [ ] Advanced analytics dashboard
-- [ ] Integration with EHR systems
-
-## 👨‍[object Object]
-
-Created with ❤️ for better eye health
 
 ---
 
-**Last Updated**: December 2024
-**Version**: 1.0.0
+## 🌐 Ngôn Ngữ
+
+- 🇻🇳 **Tiếng Việt** - Hoàn chỉnh
+- 🇺🇸 **English** - Hoàn chỉnh
+
+---
+
+## 📈 Tính Năng Sắp Tới
+
+- [ ] OAuth (Google, Facebook)
+- [ ] Đặt lịch khám bác sĩ
+- [ ] Mobile app (React Native)
+- [ ] Tích hợp bệnh viện
+- [ ] 2FA authentication
+
+---
+
+## 📝 License
+
+MIT License - Xem file LICENSE
+
+---
+
+## 👨‍💻 Tác Giả
+
+**Long Nguyễn**
+
+Tạo với ❤️ cho sức khỏe đôi mắt
+
+---
+
+**Last Updated**: December 2024  
+**Version**: 2.0.0
