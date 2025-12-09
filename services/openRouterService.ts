@@ -4,16 +4,16 @@
  * ============================================================
  * 
  * Gọi trực tiếp OpenRouter API từ frontend
- * Model: tngtech/deepseek-r1t2-chimera:free
+ * Model: amazon/nova-2-lite-v1:free
  * 
  * ⚠️ API Key được expose trên frontend (đã chấp nhận)
  */
 
 import { AIReport, StoredTestResult, WeeklyRoutine, DashboardInsights, AnswerState } from '../types';
+import { getOpenRouterKey, hasOpenRouterKey, ENV_CONFIG } from '../utils/envConfig';
 
 // ⚡ API Configuration
-const OPENROUTER_API_KEY = (import.meta as any)?.env?.VITE_OPENROUTER_API_KEY || '';
-const MODEL = 'tngtech/deepseek-r1t2-chimera:free';
+const MODEL = ENV_CONFIG.OPENROUTER_MODEL || 'amazon/nova-2-lite-v1:free';
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // System prompts
@@ -55,57 +55,73 @@ Answer in English.`;
 
 const getReportPrompt = (language: 'vi' | 'en') => {
     return language === 'vi'
-        ? `Bạn là Bác sĩ Eva - chuyên gia nhãn khoa. Phân tích kết quả test và tạo báo cáo chuyên nghiệp.
+        ? `Bạn là Bác sĩ Eva - chuyên gia nhãn khoa. Phân tích dữ liệu bài test và tạo báo cáo CHUẨN Y KHOA, NGẮN GỌN, CÓ CẤU TRÚC.
 
-Trả về JSON với format:
+YÊU CẦU NGHIÊM NGẶT:
+- Chỉ trả về 1 JSON object hợp lệ theo SCHEMA dưới đây
+- Không được kèm text thừa, không markdown, không giải thích
+- severity chỉ nhận 1 trong: LOW, MEDIUM, HIGH (nếu testData.severity là NONE thì coi là LOW)
+- recommendations phải là MẢNG có ÍT NHẤT 3 mục, ngắn gọn, hành động cụ thể
+- Nếu history có kết quả gần đây, hãy so sánh ngắn gọn ở field trend
+
+SCHEMA:
 {
   "summary": "Tóm tắt kết quả (100-150 từ)",
   "causes": "Nguyên nhân có thể (50-100 từ)",
   "recommendations": ["Khuyến nghị 1", "Khuyến nghị 2", "Khuyến nghị 3"],
   "severity": "LOW|MEDIUM|HIGH",
-  "prediction": "Dự đoán nếu không điều trị (50 từ)",
+  "prediction": "Dự đoán nếu không điều trị (≤ 60 từ)",
   "trend": "Xu hướng so với lịch sử (nếu có)",
   "confidence": 0.85
 }
 
-CHỈ TRẢ VỀ JSON, KHÔNG CÓ TEXT KHÁC.`
-        : `You are Dr. Eva - ophthalmology expert. Analyze test results and create a professional report.
+CHỈ TRẢ VỀ JSON hợp lệ.`
+        : `You are Dr. Eva - ophthalmology expert. Analyze the test data and produce a STRUCTURED, CLINICALLY SOUND report.
 
-Return JSON with format:
+STRICT REQUIREMENTS:
+- Return ONLY a valid JSON object (no extra text, no markdown)
+- severity MUST be one of: LOW, MEDIUM, HIGH (if testData.severity is NONE, coerce to LOW)
+- recommendations MUST be an array with AT LEAST 3 concrete, actionable items
+- If history exists, briefly compare in the trend field
+
+SCHEMA:
 {
   "summary": "Result summary (100-150 words)",
   "causes": "Possible causes (50-100 words)",
   "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"],
   "severity": "LOW|MEDIUM|HIGH",
-  "prediction": "Prediction if untreated (50 words)",
+  "prediction": "Prediction if untreated (≤ 60 words)",
   "trend": "Trend compared to history (if available)",
   "confidence": 0.85
 }
 
-RETURN ONLY JSON, NO OTHER TEXT.`;
+RETURN ONLY VALID JSON.`;
 };
 
 // Generic API call helper
 async function callOpenRouter(
     systemPrompt: string,
     userMessage: string,
-    options: { maxTokens?: number; temperature?: number } = {}
+    options: { maxTokens?: number; temperature?: number; forceJson?: boolean; seed?: number; retries?: number } = {}
 ): Promise<string> {
-    const { maxTokens = 1024, temperature = 0.7 } = options;
+    const { maxTokens = 1024, temperature = ENV_CONFIG.OPENROUTER_TEMPERATURE ?? 0.3, seed = 42, retries = 0 } = options;
 
-    if (!OPENROUTER_API_KEY) {
+    let apiKey: string;
+    try {
+        apiKey = getOpenRouterKey();
+    } catch (error) {
         console.error('❌ OpenRouter API key not found in environment');
-        throw new Error('OpenRouter API key not configured. Add VITE_OPENROUTER_API_KEY to environment.');
+        throw error;
     }
 
     console.log(`🤖 Calling OpenRouter API...`);
     console.log(`   Model: ${MODEL}`);
-    console.log(`   API Key: ${OPENROUTER_API_KEY.slice(0, 8)}...${OPENROUTER_API_KEY.slice(-4)}`);
+    console.log(`   API Key: ${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`);
 
     const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': window.location.origin,
             'X-Title': 'Vision Coach - Eye Health App',
@@ -118,6 +134,11 @@ async function callOpenRouter(
             ],
             max_tokens: maxTokens,
             temperature,
+            top_p: 0.1,
+            frequency_penalty: 0,
+            presence_penalty: 0,
+            seed,
+            ...(options.forceJson ? { response_format: { type: 'json_object' } } : {}),
         }),
     });
 
@@ -128,13 +149,42 @@ async function callOpenRouter(
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
+    let content: any = data.choices?.[0]?.message?.content ?? '';
+
+    // Some providers return content as an array of parts
+    if (Array.isArray(content)) {
+        try {
+            content = content.map((p: any) => p?.text ?? p?.content ?? '').join('');
+        } catch {
+            content = String(content);
+        }
+    }
+    content = typeof content === 'string' ? content : JSON.stringify(content);
+
     console.log(`✅ OpenRouter response received (${content.length} chars)`);
     console.log(`   Raw response preview:`, content.slice(0, 200));
-    return content;
+
+    // Retry once if content is empty
+    if (!content || String(content).trim().length === 0) {
+        if (retries < 2) {
+            console.warn('⚠️ Empty content from model, retrying with safer params...');
+            return await callOpenRouter(systemPrompt, userMessage, {
+                ...options,
+                temperature: Math.max(0.1, (options.temperature ?? ENV_CONFIG.OPENROUTER_TEMPERATURE ?? 0.3) - 0.1),
+                seed: (seed ?? 42) + 1,
+                retries: retries + 1,
+            });
+        }
+    }
+
+    return content as string;
 }
 
 // Parse JSON from AI response (handles markdown code blocks and DeepSeek thinking)
+function wordCount(text: string): number {
+    return (text || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
 function parseJsonResponse<T>(text: string): T {
     let cleaned = text.trim();
 
@@ -207,9 +257,11 @@ export async function openRouterReport(
     history: StoredTestResult[],
     language: 'vi' | 'en'
 ): Promise<AIReport> {
+    const normalizedTest = { ...testData, severity: testData?.severity === 'NONE' ? 'LOW' : testData?.severity } as any;
+    const historyBrief = history.slice(0, 5).map(h => ({ type: h.testType, date: h.date, severity: h.report?.severity }));
     const userMessage = language === 'vi'
         ? `Phân tích kết quả test ${testType}:
-Dữ liệu test: ${JSON.stringify(testData)}
+Dữ liệu test: ${JSON.stringify(normalizedTest)}
 Lịch sử (${history.length} tests gần đây): ${JSON.stringify(history.slice(0, 5).map(h => ({
             type: h.testType,
             date: h.date,
@@ -226,6 +278,7 @@ History (${history.length} recent tests): ${JSON.stringify(history.slice(0, 5).m
     const response = await callOpenRouter(getReportPrompt(language), userMessage, {
         maxTokens: 1024,
         temperature: 0.5,
+        forceJson: true,
     });
 
     try {
@@ -302,6 +355,7 @@ RETURN ONLY JSON.`;
     const response = await callOpenRouter(systemPrompt, userMessage, {
         maxTokens: 512,
         temperature: 0.5,
+        forceJson: true,
     });
 
     try {
@@ -418,7 +472,5 @@ function getDefaultRoutine(language: 'vi' | 'en'): WeeklyRoutine {
     };
 }
 
-// Export for checking API key availability
-export function hasOpenRouterKey(): boolean {
-    return !!OPENROUTER_API_KEY && OPENROUTER_API_KEY.length > 10;
-}
+// Export for checking API key availability (re-export from envConfig)
+export { hasOpenRouterKey } from '../utils/envConfig';

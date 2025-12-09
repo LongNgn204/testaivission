@@ -43,6 +43,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { initializeReminderSystem } from './services/reminderService';
 import { initPerformanceOptimizations } from './utils/performanceUtils';
 import { verifyUserToken, getAuthToken, clearAuthToken, processOfflineQueue } from './services/authService';
+import './utils/envConfig';
 
 // ⚡ LAZY LOADING (Tải các component khi cần):
 // - Giảm bundle size ban đầu

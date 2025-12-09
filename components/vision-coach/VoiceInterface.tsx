@@ -8,6 +8,7 @@ import { StorageService } from '../../services/storageService';
 
 import { encode, decode, decodeAudioData } from '../../utils/audioUtils';
 import { AIService } from '../../services/aiService';
+import { getGeminiKey, hasGeminiKey } from '../../utils/envConfig';
 
 // --- Function Declarations for Gemini ---
 const startTestFunctionDeclaration: FunctionDeclaration = {
@@ -289,17 +290,22 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     }, []);
 
     const startSession = useCallback(async () => {
-        // Resolve API key from Vite env (preferred) or process.env fallback
-        const apiKey: string | undefined = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_GEMINI_API_KEY)
-            || (typeof process !== 'undefined' && (process as any)?.env?.VITE_GEMINI_API_KEY)
-            || (typeof process !== 'undefined' && (process as any)?.env?.API_KEY);
-
-        if (!apiKey || sessionPromiseRef.current) {
+        // Resolve API key from Vite env
+        let apiKey: string;
+        try {
+            apiKey = getGeminiKey();
+        } catch (error) {
             console.error('VoiceInterface: Missing API key or session already exists');
             const msg = language === 'vi'
-                ? 'Chưa cấu hình API Key. Vui lòng thêm VITE_GEMINI_API_KEY vào .env.local'
-                : 'API Key not configured. Please add VITE_GEMINI_API_KEY to .env.local';
+                ? 'Chưa cấu hình API Key. Vui lòng thêm VITE_GEMINI_API_KEY vào .env'
+                : 'API Key not configured. Please add VITE_GEMINI_API_KEY to .env';
             alert(msg);
+            onClose();
+            return;
+        }
+
+        if (sessionPromiseRef.current) {
+            console.error('VoiceInterface: Session already exists');
             onClose();
             return;
         }
