@@ -74,12 +74,32 @@ export class SyncService {
      */
     async syncTestHistory(): Promise<SyncResult> {
         try {
-            const historyStr = localStorage.getItem('test_history');
+            // Get the correct history key based on user phone (matches storageService)
+            const userData = localStorage.getItem('user_data');
+            let userPhone = 'default';
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    userPhone = user.phone || 'default';
+                } catch (e) {
+                    console.warn('Failed to parse user data:', e);
+                }
+            }
+
+            // Match the key format from storageService: aiVisionTestHistory_<phone>
+            const historyKey = `aiVisionTestHistory_${userPhone}`;
+            const historyStr = localStorage.getItem(historyKey);
+
             if (!historyStr) {
+                console.log(`📭 No local history found at key: ${historyKey}`);
                 return { success: true, message: 'No local history to sync', synced: 0 };
             }
 
             const localHistory = JSON.parse(historyStr);
+            if (!Array.isArray(localHistory) || localHistory.length === 0) {
+                return { success: true, message: 'Empty history array', synced: 0 };
+            }
+
             const lastSyncTime = localStorage.getItem('last_sync_timestamp') || '0';
 
             // Filter items that need syncing (created after last sync)
@@ -91,6 +111,8 @@ export class SyncService {
             if (itemsToSync.length === 0) {
                 return { success: true, message: 'All items already synced', synced: 0 };
             }
+
+            console.log(`📤 Syncing ${itemsToSync.length} test results to backend...`);
 
             const result = await syncRequest<SyncResult>('/api/sync/history', {
                 history: itemsToSync,
@@ -166,9 +188,22 @@ export class SyncService {
                 routine: any;
             }>('/api/sync/pull', {});
 
+            // Get correct history key based on user phone (matches storageService)
+            const userData = localStorage.getItem('user_data');
+            let userPhone = 'default';
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    userPhone = user.phone || 'default';
+                } catch (e) {
+                    console.warn('Failed to parse user data:', e);
+                }
+            }
+            const historyKey = `aiVisionTestHistory_${userPhone}`;
+
             // Merge history (backend takes priority for duplicates)
             if (result.history && result.history.length > 0) {
-                const localHistoryStr = localStorage.getItem('test_history');
+                const localHistoryStr = localStorage.getItem(historyKey);
                 const localHistory = localHistoryStr ? JSON.parse(localHistoryStr) : [];
 
                 // Create a map of local items by ID
@@ -180,8 +215,8 @@ export class SyncService {
                 });
 
                 const mergedHistory = Array.from(localMap.values());
-                localStorage.setItem('test_history', JSON.stringify(mergedHistory));
-                console.log(`📥 Pulled ${result.history.length} history items from backend`);
+                localStorage.setItem(historyKey, JSON.stringify(mergedHistory));
+                console.log(`📥 Pulled ${result.history.length} history items from backend to ${historyKey}`);
             }
 
             // Apply settings

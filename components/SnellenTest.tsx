@@ -211,22 +211,27 @@ export const SnellenTest: React.FC = () => {
     } catch (err) {
       setError(t('error_report'));
       console.error('Snellen Test Error:', err);
-      const fallbackResult: StoredTestResult = {
+      const fallbackReport: AIReport = {
         id: Date.now().toString(),
+        testType: 'snellen',
+        timestamp: new Date().toISOString(),
+        totalResponseTime: 0,
+        confidence: 0,
+        summary: t('error_report'),
+        recommendations: [],
+        severity: 'MEDIUM',
+      };
+      const fallbackResult: StoredTestResult = {
+        id: fallbackReport.id,
         testType: 'snellen',
         date: testResult.date,
         resultData: testResult,
-        report: {
-          id: Date.now().toString(),
-          testType: 'snellen',
-          timestamp: new Date().toISOString(),
-          totalResponseTime: 0,
-          confidence: 0,
-          summary: t('error_report'),
-          recommendations: [],
-          severity: 'MEDIUM',
-        }
+        report: fallbackReport
       };
+
+      // FIX: Also save fallback result to history
+      storageService.saveTestResult(testResult, fallbackReport);
+
       setStoredResult(fallbackResult);
       setTestState('report');
     }
