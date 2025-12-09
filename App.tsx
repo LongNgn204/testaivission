@@ -196,6 +196,16 @@ const AppContent: React.FC = () => {
                     // Token is valid, user is authenticated
                     setAuthState('authenticated');
                     console.log('✅ Token verified successfully');
+                    
+                    // Trigger background sync
+                    import('./services/syncService').then(({ getSyncService }) => {
+                        console.log('🔄 Starting background sync...');
+                        getSyncService().fullSync().then(result => {
+                            console.log('Background sync result:', result);
+                        }).catch(err => {
+                            console.error('Background sync failed:', err);
+                        });
+                    });
                 } else {
                     // Token is invalid, clear auth data
                     console.warn('⚠️ Token verification failed, logging out');
