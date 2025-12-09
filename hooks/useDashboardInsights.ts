@@ -182,33 +182,33 @@ export const useDashboardInsights = (
             }
 
             try {
-                // Sử dụng backend API thay vì gọi trực tiếp AIService
+                // Sử dụng OpenRouter API trực tiếp qua ChatbotService
                 const { ChatbotService } = await import('../services/chatbotService');
                 const svc = new ChatbotService();
                 const backendInsights = await svc.dashboard(history, language as 'vi' | 'en');
-                
+
                 if (controller.signal.aborted) return;
-                
-                // Chuyển đổi response từ backend sang format DashboardInsights
-                const insights = backendInsights as any;
-                if (insights.success) {
+
+                // OpenRouter trả về DashboardInsights trực tiếp
+                const insights = backendInsights as DashboardInsights;
+                if (insights && (insights.overallSummary || insights.score)) {
                     const result: DashboardInsights = {
-                        score: insights.metrics?.score || 80,
-                        rating: (insights.status || 'GOOD') as DashboardInsights['rating'],
-                        trend: (insights.trends?.trend || 'STABLE') as DashboardInsights['trend'],
-                        overallSummary: insights.status || 'Tình trạng sức khỏe mắt ổn định.',
-                        positives: Array.isArray(insights.trends?.positives) ? insights.trends.positives : [],
-                        areasToMonitor: Array.isArray(insights.riskFactors) ? insights.riskFactors : [],
-                        proTip: insights.recommendations?.[0] || 'Tiếp tục duy trì thói quen tốt cho mắt.',
+                        score: insights.score || 80,
+                        rating: (insights.rating || 'GOOD') as DashboardInsights['rating'],
+                        trend: (insights.trend || 'STABLE') as DashboardInsights['trend'],
+                        overallSummary: insights.overallSummary || 'Tình trạng sức khỏe mắt ổn định.',
+                        positives: Array.isArray(insights.positives) ? insights.positives : [],
+                        areasToMonitor: Array.isArray(insights.areasToMonitor) ? insights.areasToMonitor : [],
+                        proTip: insights.proTip || 'Tiếp tục duy trì thói quen tốt cho mắt.',
                     };
                     setInsights(result);
                     persistInsights(result, fingerprint, language);
                 } else {
-                    throw new Error('Backend returned unsuccessful response');
+                    throw new Error('Invalid response format');
                 }
             } catch (err) {
                 if (controller.signal.aborted) return;
-                console.error('Failed to load dashboard insights from backend', err);
+                console.error('Failed to load dashboard insights from OpenRouter', err);
                 const fallback = buildFallbackInsights(history);
                 setInsights(fallback);
                 setError('AI đang bận, đã chuyển sang dữ liệu gần nhất.');
