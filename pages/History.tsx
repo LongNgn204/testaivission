@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Eye, Droplets, Target, Grid, CircleDot, Trash2, Calendar, FileText } from 'lucide-react';
 import { StorageService } from '../services/storageService';
-import { StoredTestResult, TestType, SnellenResult, ColorBlindResult, AstigmatismResult, AmslerGridResult, DuochromeResult } from '../types';
+import { StoredTestResult, TestType, SnellenResult, ColorBlindResult, AstigmatismResult, AmslerGridResult, DuochromeResult, AIReport } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { ReportDetailModal } from '../components/ReportDetailModal';
 import { getTestHistory } from '../services/authService';
@@ -17,39 +17,39 @@ const ICONS: Record<TestType, React.ElementType> = {
 };
 
 const ResultSummary: React.FC<{ result: StoredTestResult }> = ({ result }) => {
-    const { t } = useLanguage();
-    const data = result.resultData;
-    switch(result.testType) {
-        case 'snellen': {
-            const snellenData = data as SnellenResult;
-            return <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{snellenData.score}</p>;
-        }
-        case 'colorblind': {
-            const colorBlindData = data as ColorBlindResult;
-            return <p className="text-2xl font-bold text-green-600 dark:text-green-400">{colorBlindData.accuracy}%</p>;
-        }
-        case 'astigmatism': {
-            const astigData = data as AstigmatismResult;
-            const hasAstigmatism = astigData.overallSeverity !== 'NONE';
-            return <p className={`text-xl font-bold ${hasAstigmatism ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>{hasAstigmatism ? t('astigmatism_detected_short') : t('astigmatism_normal_short')}</p>;
-        }
-        case 'amsler': {
-            const amslerData = data as AmslerGridResult;
-            return <p className={`text-xl font-bold ${amslerData.issueDetected ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>{amslerData.issueDetected ? t('amsler_issue_short') : t('amsler_normal_short')}</p>;
-        }
-        case 'duochrome': {
-            const duochromeData = data as DuochromeResult;
-            const textMap: Record<DuochromeResult['overallResult'], string> = { 
-                normal: t('astigmatism_normal_short'), 
-                myopic: t('duochrome_myopic_short'), 
-                hyperopic: t('duochrome_hyperopic_short'), 
-                mixed: t('duochrome_mixed_short') 
-            };
-            return <p className={`text-xl font-bold text-yellow-700 dark:text-yellow-400`}>{textMap[duochromeData.overallResult]}</p>;
-        }
-        default:
-            return null;
+  const { t } = useLanguage();
+  const data = result.resultData;
+  switch (result.testType) {
+    case 'snellen': {
+      const snellenData = data as SnellenResult;
+      return <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{snellenData.score}</p>;
     }
+    case 'colorblind': {
+      const colorBlindData = data as ColorBlindResult;
+      return <p className="text-2xl font-bold text-green-600 dark:text-green-400">{colorBlindData.accuracy}%</p>;
+    }
+    case 'astigmatism': {
+      const astigData = data as AstigmatismResult;
+      const hasAstigmatism = astigData.overallSeverity !== 'NONE';
+      return <p className={`text-xl font-bold ${hasAstigmatism ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>{hasAstigmatism ? t('astigmatism_detected_short') : t('astigmatism_normal_short')}</p>;
+    }
+    case 'amsler': {
+      const amslerData = data as AmslerGridResult;
+      return <p className={`text-xl font-bold ${amslerData.issueDetected ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>{amslerData.issueDetected ? t('amsler_issue_short') : t('amsler_normal_short')}</p>;
+    }
+    case 'duochrome': {
+      const duochromeData = data as DuochromeResult;
+      const textMap: Record<DuochromeResult['overallResult'], string> = {
+        normal: t('astigmatism_normal_short'),
+        myopic: t('duochrome_myopic_short'),
+        hyperopic: t('duochrome_hyperopic_short'),
+        mixed: t('duochrome_mixed_short')
+      };
+      return <p className={`text-xl font-bold text-yellow-700 dark:text-yellow-400`}>{textMap[duochromeData.overallResult]}</p>;
+    }
+    default:
+      return null;
+  }
 }
 
 export const History: React.FC = () => {
@@ -72,32 +72,68 @@ export const History: React.FC = () => {
     duochrome: t('duochrome_test'),
   };
 
-  // Map backend record to StoredTestResult shape (with placeholder AI report)
+  // Get localStorage history once for report lookup
+  const localHistory = React.useMemo(() => storageService.getTestHistory(), []);
+
+  // Find matching report from localStorage by comparing testType and date
+  const findLocalReport = useCallback((testType: string, timestamp: number): AIReport | null => {
+    // Find a local item with same testType and similar timestamp (within 5 minutes)
+    const matchingItem = localHistory.find(item => {
+      const localTs = new Date(item.date).getTime();
+      const backendTs = timestamp;
+      const timeDiff = Math.abs(localTs - backendTs);
+      return item.testType === testType && timeDiff < 5 * 60 * 1000; // 5 minutes tolerance
+    });
+    return matchingItem?.report || null;
+  }, [localHistory]);
+
+  // Map backend record to StoredTestResult, try to find report from localStorage
   const mapBackendToStored = useCallback((item: any): StoredTestResult => {
     const ts = item.timestamp || Date.now();
+    const testType = item.testType as TestType;
+
+    // Try to find the report from localStorage
+    const localReport = findLocalReport(testType, ts);
+
+    // Use local report if available, otherwise create fallback
+    const report: AIReport = localReport || {
+      id: `report_${item.id}`,
+      testType: testType,
+      timestamp: new Date(ts).toISOString(),
+      totalResponseTime: 0,
+      confidence: 0,
+      summary: language === 'vi'
+        ? 'Báo cáo AI không có sẵn cho bản ghi này. Vui lòng làm lại bài test để nhận phân tích đầy đủ.'
+        : 'AI report not available for this record. Please retake the test for full analysis.',
+      recommendations: [],
+      severity: 'LOW',
+    };
+
     return {
       id: item.id,
-      testType: item.testType as TestType,
+      testType: testType,
       date: new Date(ts).toISOString(),
-      resultData: item.testData, // assume same structure used when saving
-      report: {
-        id: `report_${item.id}`,
-        testType: item.testType as TestType,
-        timestamp: new Date(ts).toISOString(),
-        totalResponseTime: 0,
-        confidence: 0,
-        summary: 'No AI report available for this record.',
-        recommendations: [],
-        severity: 'LOW',
-      },
+      resultData: item.testData,
+      report: report,
     };
-  }, []);
+  }, [findLocalReport, language]);
 
   const loadPage = useCallback(async () => {
     if (isLoading || !hasMore) return;
     setIsLoading(true);
     setError(null);
     try {
+      // First try: Use localStorage directly if available (has full report data)
+      if (offset === 0 && localHistory.length > 0) {
+        // Use localStorage which has complete report data
+        setHistory(localHistory);
+        setTotal(localHistory.length);
+        setHasMore(false);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fallback: Try backend API
       const res = await getTestHistory('', limit, offset);
       if (!res.success) {
         // Fallback to local if backend not available
@@ -126,7 +162,7 @@ export const History: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, hasMore, limit, offset, mapBackendToStored, history.length, total]);
+  }, [isLoading, hasMore, limit, offset, mapBackendToStored, history.length, total, localHistory]);
 
   useEffect(() => {
     // initial load
@@ -184,9 +220,9 @@ export const History: React.FC = () => {
 
         {history.length === 0 && !isLoading ? (
           <div className="text-center py-20 bg-gray-100 dark:bg-gray-800 rounded-xl">
-              <FileText size={48} className="mx-auto text-gray-400 mb-4"/>
-              <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">{t('history_empty_title')}</h2>
-              <p className="text-gray-500 dark:text-gray-400">{t('history_empty_desc')}</p>
+            <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+            <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">{t('history_empty_title')}</h2>
+            <p className="text-gray-500 dark:text-gray-400">{t('history_empty_desc')}</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -195,28 +231,28 @@ export const History: React.FC = () => {
               return (
                 <div key={item.id} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-all hover:shadow-lg dark:border dark:border-gray-700/50 dark:hover:border-blue-500">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <div className="flex items-center gap-4 flex-grow">
-                          <Icon className="text-gray-500 dark:text-gray-400 flex-shrink-0" size={32} />
-                          <div>
-                              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{TITLES[item.testType]}</h3>
-                              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                  <Calendar size={14} className="mr-2" />
-                                  {new Date(item.date).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
-                              </div>
-                          </div>
+                    <div className="flex items-center gap-4 flex-grow">
+                      <Icon className="text-gray-500 dark:text-gray-400 flex-shrink-0" size={32} />
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{TITLES[item.testType]}</h3>
+                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <Calendar size={14} className="mr-2" />
+                          {new Date(item.date).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                        </div>
                       </div>
-                      <div className="text-left sm:text-right flex-shrink-0 w-full sm:w-auto">
-                         <ResultSummary result={item} />
-                      </div>
+                    </div>
+                    <div className="text-left sm:text-right flex-shrink-0 w-full sm:w-auto">
+                      <ResultSummary result={item} />
+                    </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start gap-4">
-                      <p className="text-gray-600 dark:text-gray-300 text-sm flex-grow"><span className="font-semibold">{t('ai_assessment')}:</span> {item.report.summary}</p>
-                      <button 
-                        onClick={() => setSelectedResult(item)}
-                        className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                      >
-                          {t('view_details')}
-                      </button>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm flex-grow"><span className="font-semibold">{t('ai_assessment')}:</span> {item.report.summary}</p>
+                    <button
+                      onClick={() => setSelectedResult(item)}
+                      className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                    >
+                      {t('view_details')}
+                    </button>
                   </div>
                 </div>
               );
@@ -232,9 +268,9 @@ export const History: React.FC = () => {
         )}
       </div>
       {selectedResult && (
-        <ReportDetailModal 
-          storedResult={selectedResult} 
-          onClose={() => setSelectedResult(null)} 
+        <ReportDetailModal
+          storedResult={selectedResult}
+          onClose={() => setSelectedResult(null)}
         />
       )}
     </>
