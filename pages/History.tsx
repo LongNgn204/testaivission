@@ -227,7 +227,7 @@ export const History: React.FC = () => {
         ) : (
           <div className="space-y-6">
             {history.map((item) => {
-              const Icon = ICONS[item.testType];
+              const Icon = ICONS[item.testType as TestType] || Eye;
               return (
                 <div key={item.id} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-all hover:shadow-lg dark:border dark:border-gray-700/50 dark:hover:border-blue-500">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

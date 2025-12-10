@@ -57,9 +57,6 @@ export async function chatStream(request: IRequest, env: any): Promise<Response>
         }
 
         try {
-          // Send disclaimer first
-          send(disclaimer(language))
-
           // Get full AI response
           const full = await generateWithCloudflareAI(env.AI, userPrompt, getSystemPrompt(language))
 

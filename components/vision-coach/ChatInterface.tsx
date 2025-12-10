@@ -32,6 +32,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
         }
     }, [isOpen]);
 
+    // One-time disclaimer as a bot message (per device)
+    useEffect(() => {
+        if (!isOpen) return;
+        try {
+            const key = 'eva_disclaimer_seen_v1';
+            const seen = localStorage.getItem(key);
+            if (!seen) {
+                const msg = language === 'vi'
+                    ? 'Lưu ý: Eva là trợ lý AI hỗ trợ sức khỏe mắt và KHÔNG thay thế chẩn đoán/bác sĩ. Nếu có triệu chứng khẩn cấp (mất thị lực đột ngột, đau mắt dữ dội, chấn thương mắt), hãy đi cấp cứu ngay.'
+                    : 'Note: Eva is an AI eye health assistant and does NOT replace a doctor. For emergencies (sudden vision loss, severe eye pain, eye trauma), seek urgent care immediately.';
+                setChatHistory(prev => [...prev, { role: 'bot', text: msg }]);
+                localStorage.setItem(key, '1');
+            }
+        } catch {}
+    }, [isOpen, language]);
+
     const handleChatSubmit = useCallback(async () => {
         if (!chatInput.trim()) return;
         

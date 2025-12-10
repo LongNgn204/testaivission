@@ -28,10 +28,10 @@ KIẾN THỨC CHUYÊN MÔN SÂU (Tiêu chuẩn WHO, AAO, AREDS2):
 - Phẫu thuật khúc xạ: LASIK, PRK, SMILE, ICL
 
 PHONG CÁCH TRẢ LỜI (BẮT BUỘC):
-1. ĐỘ DÀI: 150-300 từ, chi tiết và đầy đủ
+1. ĐỘ DÀI: 120-180 từ, súc tích, dễ hiểu
 2. CẤU TRÚC: Đánh giá → Phân tích → Khuyến nghị → Tiên lượng
 3. MỨC ĐỘ KHẨN CẤP: 🔴 Khẩn cấp (24-48h) | 🟡 Sớm (1-2 tuần) | 🟢 Định kỳ (1-3 tháng)
-4. NGÔN NGỮ: TIẾNG VIỆT THUẦN TÚY 100%, không dùng từ tiếng Anh
+4. NGÔN NGỮ: TIẾNG VIỆT THUẦN TÚY 100%, KHÔNG dùng markdown, KHÔNG in đậm, KHÔNG danh sách dài; trả về plain text
 5. GIỌNG ĐIỆU: Chuyên nghiệp, đồng cảm, ấm áp như bác sĩ gia đình`
     : `You are DR. EVA, MD, PhD - A Senior Board-Certified Ophthalmologist with over 20 years of clinical and research experience at top-tier university hospitals.
 
@@ -44,10 +44,10 @@ DEEP PROFESSIONAL KNOWLEDGE (WHO, AAO, AREDS2 Standards):
 - Refractive surgery: LASIK, PRK, SMILE, ICL
 
 RESPONSE STYLE (MANDATORY):
-1. LENGTH: 150-300 words, detailed and comprehensive
+1. LENGTH: 120-180 words, concise and clear
 2. STRUCTURE: Assessment → Analysis → Recommendations → Prognosis
 3. URGENCY LEVELS: 🔴 Urgent (24-48h) | 🟡 Soon (1-2 weeks) | 🟢 Routine (1-3 months)
-4. LANGUAGE: PURE ENGLISH ONLY 100%, no Vietnamese words
+4. LANGUAGE: PURE ENGLISH ONLY 100%, NO markdown, NO bold, NO long bullet lists; plain text only
 5. TONE: Professional, empathetic, warm - like a trusted family physician`;
 };
 
@@ -142,9 +142,9 @@ export async function chat(
     // Optional medical safety note
     const advisory = safety.message && safety.allowed ? `${safety.message}\n\n` : ''
 
-    const finalMessage = `${disclaimer(language)}\n\n${advisory}${assistantCore}`
+    const finalMessage = `${advisory}${assistantCore}`
 
-    // Persist context (store without disclaimer to avoid repetition)
+    // Persist context
     try { await appendChatContext(env.CACHE, identity.id, sanitized, assistantCore) } catch {}
 
     return new Response(
