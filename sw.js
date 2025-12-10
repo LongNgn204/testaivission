@@ -8,15 +8,13 @@
  * - Push notifications for reminders
  */
 
-const CACHE_NAME = 'suckhoeai-v1';
+const CACHE_NAME = 'suckhoeai-v2';
 const RUNTIME_CACHE = 'suckhoeai-runtime-v1';
 
 // ⚡ CRITICAL ASSETS: Cache immediately for instant load
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
-  '/index.tsx',
-  '/App.tsx',
+  '/index.html'
 ];
 
 // ⚡ INSTALL: Cache critical assets
@@ -117,8 +115,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: data.body,
-    icon: '/icon-192.png',
-    badge: '/badge-72.png',
+    icon: '/assets/logo.png',
+    badge: '/assets/logo.png',
     vibrate: [200, 100, 200],
     data: {
       dateOfArrival: Date.now(),

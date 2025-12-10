@@ -11,6 +11,7 @@ import { Router, IRequest } from 'itty-router';
 import { generateReport } from './handlers/aiReport';
 import { generateDashboardInsights } from './handlers/dashboard';
 import { chat } from './handlers/chat';
+import { chatStream } from './handlers/chatStream';
 import { generateRoutine } from './handlers/routine';
 import { generateProactiveTip } from './handlers/proactiveTip';
 import { adminAIAssistant } from './handlers/adminAssistant';
@@ -78,6 +79,7 @@ router.post('/api/dashboard', generateDashboardInsights);
  * Chat with Dr. Eva
  */
 router.post('/api/chat', chat);
+router.post('/api/chat/stream', chatStream);
 
 /**
  * POST /api/routine
@@ -487,32 +489,39 @@ function isAllowedOrigin(origin: string | null): boolean {
 
 export default {
   async fetch(request: Request, env: any, ctx: any) {
+    const reqId = (crypto as any).randomUUID ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2);
+    const start = Date.now();
     try {
       // CSRF Protection for non-GET requests
       if (request.method !== 'GET' && request.method !== 'OPTIONS') {
         const origin = request.headers.get('Origin');
         if (origin && !isAllowedOrigin(origin)) {
-          console.warn(`Rejected request from origin: ${origin}`);
-          return addCorsHeaders(
-            new Response(
-              JSON.stringify({
-                error: 'Forbidden',
-                message: 'Invalid origin',
-                timestamp: new Date().toISOString(),
-              }),
-              {
-                status: 403,
-                headers: { 'Content-Type': 'application/json' },
-              }
-            )
+          console.warn(`[${reqId}] Rejected request from origin: ${origin}`);
+          const forbidden = new Response(
+            JSON.stringify({
+              error: 'Forbidden',
+              message: 'Invalid origin',
+              timestamp: new Date().toISOString(),
+            }),
+            {
+              status: 403,
+              headers: { 'Content-Type': 'application/json' },
+            }
           );
+          forbidden.headers.set('X-Request-Id', reqId);
+          forbidden.headers.set('Server-Timing', `total;dur=${Date.now() - start}`);
+          return addCorsHeaders(forbidden);
         }
       }
 
+      console.log(`[${reqId}] ${request.method} ${new URL(request.url).pathname}`);
       const response = await router.handle(request, env, ctx);
-      return addCorsHeaders(response);
+      const resWithHeaders = new Response(response.body, response);
+      resWithHeaders.headers.set('X-Request-Id', reqId);
+      resWithHeaders.headers.set('Server-Timing', `total;dur=${Date.now() - start}`);
+      return addCorsHeaders(resWithHeaders);
     } catch (error: any) {
-      console.error('Worker error:', error);
+      console.error(`[${reqId}] Worker error:`, error);
 
       // Determine if this is a production environment
       const url = new URL(request.url);
@@ -523,19 +532,20 @@ export default {
         ? 'An unexpected error occurred. Please try again later.'
         : error.message;
 
-      return addCorsHeaders(
-        new Response(
-          JSON.stringify({
-            error: 'Internal Server Error',
-            message: errorMessage,
-            timestamp: new Date().toISOString(),
-          }),
-          {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-          }
-        )
+      const errRes = new Response(
+        JSON.stringify({
+          error: 'Internal Server Error',
+          message: errorMessage,
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }
       );
+      errRes.headers.set('X-Request-Id', reqId);
+      errRes.headers.set('Server-Timing', `total;dur=${Date.now() - start}`);
+      return addCorsHeaders(errRes);
     }
   },
 };

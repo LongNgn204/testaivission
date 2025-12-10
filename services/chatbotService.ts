@@ -11,26 +11,190 @@ import { getAuthToken } from './authService';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
 
+// Generic fetch with retry, timeout, and 5xx backoff
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+): Promise<Response> {
+  const { timeoutMs = 15000, ...rest } = options;
+  let lastError: any;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...rest, signal: controller.signal });
+      clearTimeout(timer);
+      if (res.status >= 500 && attempt < 2) {
+        const delay = Math.pow(2, attempt) * 500;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      lastError = e;
+      if (attempt < 2) {
+        const delay = Math.pow(2, attempt) * 500;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+    }
+  }
+  throw lastError || new Error('Network error');
+}
+
+// Simple guardrails: sanitize and rate limit
+function sanitizeUserMessage(input: string): string {
+  // Remove potential HTML/script and trim length
+  const text = input.replace(/<[^>]*>?/gm, '').replace(/[\u0000-\u001F\u007F]/g, '').trim();
+  return text.slice(0, 500);
+}
+
+let lastCallTs = 0;
+const COOLDOWN_MS = 1200;
+
 export class ChatbotService {
+  /**
+   * 💬 Chat with Dr. Eva via Worker API (Streaming via SSE emulation)
+   */
+  async chatStream(
+    message: string,
+    lastTestResult: any,
+    userProfile: any,
+    language: 'vi' | 'en',
+    onChunk: (chunk: string) => void
+  ): Promise<string> {
+    try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        onChunk(language === 'vi' ? 'Bạn đang ngoại tuyến. ' : 'You are offline. ');
+        return language === 'vi'
+          ? 'Bạn đang ngoại tuyến. Vui lòng kiểm tra kết nối Internet.'
+          : 'You are offline. Please check your Internet connection.';
+      }
+
+      const now = Date.now();
+      if (now - lastCallTs < COOLDOWN_MS) {
+        const msg = language === 'vi'
+          ? 'Vui lòng chờ một chút trước khi gửi tiếp.'
+          : 'Please wait a moment before sending another message.';
+        onChunk(msg);
+        return msg;
+      }
+      lastCallTs = now;
+
+      const safeMessage = sanitizeUserMessage(message);
+      if (!safeMessage) {
+        return language === 'vi' ? 'Nội dung trống.' : 'Empty message.';
+      }
+
+      const token = getAuthToken();
+
+      const res = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: safeMessage, lastTestResult, userProfile, language }),
+      });
+
+      if (!res.ok || !res.body) {
+        // Fallback to non-stream chat
+        const full = await this.chat(message, lastTestResult, userProfile, language);
+        onChunk(full);
+        return full;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process SSE chunks separated by two newlines
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const packet = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+
+          const lines = packet.split('\n');
+          let event = 'message';
+          let data = '';
+          for (const line of lines) {
+            if (line.startsWith('event:')) event = line.slice(6).trim();
+            if (line.startsWith('data:')) data += line.slice(5).trim();
+          }
+          if (event === 'error') {
+            // Fallback
+            const full = await this.chat(message, lastTestResult, userProfile, language);
+            onChunk(full);
+            return full;
+          } else if (event === 'done') {
+            // end
+            break;
+          } else {
+            onChunk(data);
+            finalText += data;
+          }
+        }
+      }
+
+      return finalText || (language === 'vi' ? 'Không có nội dung.' : 'No content.');
+    } catch (e: any) {
+      const fallback = language === 'vi'
+        ? 'Xin lỗi, AI đang bận. Vui lòng thử lại sau.'
+        : 'Sorry, the AI is busy. Please try again later.';
+      onChunk(fallback);
+      return fallback;
+    }
+  }
+
   /**
    * 💬 Chat with Dr. Eva via Worker API
    */
   async chat(message: string, lastTestResult: any, userProfile: any, language: 'vi' | 'en'): Promise<string> {
     try {
+      // Quick offline check
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return language === 'vi'
+          ? 'Bạn đang ngoại tuyến. Vui lòng kiểm tra kết nối Internet.'
+          : 'You are offline. Please check your Internet connection.';
+      }
+
+      // Rate limit to protect backend and UX
+      const now = Date.now();
+      if (now - lastCallTs < COOLDOWN_MS) {
+        return language === 'vi'
+          ? 'Vui lòng chờ một chút trước khi gửi tiếp. '
+          : 'Please wait a moment before sending another message.';
+      }
+      lastCallTs = now;
+
+      // Sanitize user input
+      const safeMessage = sanitizeUserMessage(message);
+      if (!safeMessage) {
+        return language === 'vi' ? 'Nội dung trống.' : 'Empty message.';
+      }
+
       const token = getAuthToken();
 
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      const response = await fetchWithRetry(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          message,
+          message: safeMessage,
           lastTestResult,
           userProfile,
           language,
         }),
+        timeoutMs: 15000,
       });
 
       if (!response.ok) {
@@ -44,9 +208,10 @@ export class ChatbotService {
         : 'Sorry, I cannot respond at this time.');
     } catch (error: any) {
       console.error('Chat error:', error.message);
-      throw new Error(language === 'vi'
-        ? 'Không thể kết nối với AI: ' + error.message
-        : 'Cannot connect to AI: ' + error.message);
+      // Return graceful fallback instead of throwing to keep UI responsive
+      return language === 'vi'
+        ? 'Xin lỗi, AI đang bận. Vui lòng thử lại sau.'
+        : 'Sorry, the AI is busy. Please try again later.';
     }
   }
 
@@ -57,13 +222,14 @@ export class ChatbotService {
     try {
       const token = getAuthToken();
 
-      const response = await fetch(`${API_BASE_URL}/api/report`, {
+      const response = await fetchWithRetry(`${API_BASE_URL}/api/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ testType, testData, history, language }),
+        timeoutMs: 20000,
       });
 
       if (!response.ok) {
@@ -73,7 +239,18 @@ export class ChatbotService {
       return await response.json();
     } catch (error: any) {
       console.error('Report error:', error);
-      throw error;
+      // Graceful fallback for UI
+      return {
+        id: `report_${Date.now()}`,
+        testType,
+        timestamp: new Date().toISOString(),
+        confidence: 60,
+        summary: language === 'vi' ? 'Không thể tạo báo cáo lúc này.' : 'Unable to generate report right now.',
+        recommendations: [],
+        severity: 'LOW',
+        prediction: '',
+        trend: '',
+      };
     }
   }
 

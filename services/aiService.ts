@@ -20,17 +20,51 @@ import { getAuthToken } from './authService';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
 
+// Generic fetch with retry, timeout, and 5xx backoff (copy from authService)
+async function fetchWithRetry(
+   url: string,
+   options: RequestInit & { timeoutMs?: number } = {}
+): Promise<Response> {
+   const { timeoutMs = 15000, ...rest } = options;
+   let lastError: any;
+   for (let attempt = 0; attempt < 3; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+         const res = await fetch(url, { ...rest, signal: controller.signal });
+         clearTimeout(timer);
+         if (res.status >= 500 && attempt < 2) {
+            const delay = Math.pow(2, attempt) * 500; // 0.5s, 1s
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+         }
+         return res;
+      } catch (e) {
+         clearTimeout(timer);
+         lastError = e;
+         if (attempt < 2) {
+            const delay = Math.pow(2, attempt) * 500;
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+         }
+      }
+   }
+   throw lastError || new Error('Network error');
+}
+
 // Helper for API calls
 async function callWorkerAPI(endpoint: string, body: any): Promise<any> {
    const token = getAuthToken();
 
-   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+   const response = await fetchWithRetry(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
          'Content-Type': 'application/json',
          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
+      // Timeout per call
+      timeoutMs: 15000,
    });
 
    if (!response.ok) {

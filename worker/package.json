@@ -21,7 +21,6 @@
     "db:info": "node scripts/migrate.js info"
   },
   "dependencies": {
-    "@google/genai": "^1.28.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240605.0",

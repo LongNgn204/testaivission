@@ -37,6 +37,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
         
         const userMessage = chatInput.trim();
         setChatInput('');
+        // push user message
         setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
         setStatus('thinking');
         
@@ -46,9 +47,41 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
             
             const { ChatbotService } = await import('../../services/chatbotService');
             const svc = new ChatbotService();
-            const response = await svc.chat(userMessage, context, userProfile, language);
-            
-            setChatHistory(prev => [...prev, { role: 'bot', text: response }]);
+
+            // create placeholder bot bubble and capture its index
+            let botIndex = -1;
+            setChatHistory(prev => {
+                botIndex = prev.length; // after pushing user, bot will be at the end
+                return [...prev, { role: 'bot', text: '' }];
+            });
+
+            // stream chunks and append progressively
+            const final = await svc.chatStream(
+                userMessage,
+                context,
+                userProfile,
+                language,
+                (chunk: string) => {
+                    setChatHistory(prev => {
+                        // find last bot message if index not captured
+                        const idx = botIndex >= 0 ? botIndex : prev.findIndex((m, i) => m.role === 'bot' && i === prev.length - 1);
+                        if (idx === -1) return prev;
+                        const copy = [...prev];
+                        copy[idx] = { ...copy[idx], text: (copy[idx].text || '') + chunk };
+                        return copy;
+                    });
+                }
+            );
+
+            // ensure there is some content in case streaming produced nothing
+            if (!final) {
+                setChatHistory(prev => {
+                    const copy = [...prev];
+                    const idx = botIndex >= 0 ? botIndex : copy.length - 1;
+                    if (idx >= 0) copy[idx] = { ...copy[idx], text: language === 'vi' ? 'Không có nội dung.' : 'No content.' };
+                    return copy;
+                });
+            }
             setStatus('idle');
         } catch (error) {
             console.error('Chat error:', error);
