@@ -204,7 +204,13 @@ export const useDashboardInsights = (
                     setInsights(result);
                     persistInsights(result, fingerprint, language);
                 } else {
-                    throw new Error('Invalid response format');
+                    // API returned null or invalid response - use fallback
+                    console.warn('Dashboard API returned invalid response, using fallback');
+                    const fallback = buildFallbackInsights(history);
+                    setInsights(fallback);
+                    if (fallback) {
+                        setError(language === 'vi' ? 'Đang sử dụng dữ liệu tính toán cục bộ.' : 'Using locally computed data.');
+                    }
                 }
             } catch (err) {
                 if (controller.signal.aborted) return;

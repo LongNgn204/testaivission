@@ -140,13 +140,16 @@ export class ChatbotService {
       });
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        console.error(`Dashboard API error: ${response.status}`);
+        // Return null instead of throwing - let hook handle fallback
+        return null;
       }
 
       return await response.json();
     } catch (error: any) {
       console.error('Dashboard error:', error);
-      throw error;
+      // Return null instead of throwing - let hook handle fallback gracefully
+      return null;
     }
   }
 }

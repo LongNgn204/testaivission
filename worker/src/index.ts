@@ -459,13 +459,27 @@ router.all('*', () => {
 // ============================================================
 // ALLOWED ORIGINS (CSRF Protection)
 // ============================================================
-const ALLOWED_ORIGINS = [
-  'https://slht4653.testaivision.pages.dev',
-  'https://testaivision.pages.dev',
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-];
+// Allow all Cloudflare Pages subdomains + localhost
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return true; // No origin header = same-origin request
+
+  // Exact matches (localhost development)
+  const exactMatches = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+  ];
+
+  if (exactMatches.includes(origin)) return true;
+
+  // Pattern matches (Cloudflare Pages deployments)
+  // Matches: *.testaivision.pages.dev and testaivision.pages.dev
+  const pagesPattern = /^https:\/\/([\w-]+\.)?testaivision\.pages\.dev$/;
+  if (pagesPattern.test(origin)) return true;
+
+  return false;
+}
 
 // ============================================================
 // ERROR HANDLER
@@ -477,7 +491,7 @@ export default {
       // CSRF Protection for non-GET requests
       if (request.method !== 'GET' && request.method !== 'OPTIONS') {
         const origin = request.headers.get('Origin');
-        if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+        if (origin && !isAllowedOrigin(origin)) {
           console.warn(`Rejected request from origin: ${origin}`);
           return addCorsHeaders(
             new Response(
