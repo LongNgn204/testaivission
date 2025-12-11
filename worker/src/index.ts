@@ -464,6 +464,7 @@ router.all('*', () => {
 // Allow all Cloudflare Pages subdomains + localhost
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true; // No origin header = same-origin request
+  if (origin === 'null') return true; // file:// or sandboxed origins
 
   // Exact matches (localhost development)
   const exactMatches = [

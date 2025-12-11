@@ -340,33 +340,145 @@ export class AIService {
     */
    async verifyAllReports(
       history: StoredTestResult[],
-      _language: 'vi' | 'en'
+      language: 'vi' | 'en'
    ): Promise<{ verified: number; errors: string[] }> {
       const errors: string[] = [];
       let verified = 0;
 
-      for (const result of history) {
+      const isVietnameseText = (text: string) => /[ăâêôơưđáàạảãắằặẳẵấầậẩẫéèẹẻẽếềệểễóòọỏõốồộổỗớờợởỡúùụủũứừựửữíìịỉĩýỳỵỷỹ]/i.test(text);
+      const forbiddenVi = [/báo cáo ai (tạm thời )?không khả dụng/i, /không thể tạo báo cáo ai/i];
+      const forbiddenEn = [/AI report is temporarily unavailable/i, /Unable to generate AI report/i];
+
+      const severityRank = (s: any) => ({ LOW: 0, MEDIUM: 1, HIGH: 2 } as const)[s as 'LOW'|'MEDIUM'|'HIGH'] ?? -1;
+
+      const expectMinSeverityFromSnellen = (score: string): 'LOW'|'MEDIUM'|'HIGH' => {
+         switch (score) {
+            case '20/20': return 'LOW';
+            case '20/30': return 'LOW';
+            case '20/40': return 'LOW';
+            case '20/60': return 'MEDIUM';
+            case '20/100': return 'HIGH';
+            case 'Dưới 20/100': return 'HIGH';
+            default: return 'LOW';
+         }
+      };
+
+      for (const item of history) {
          try {
-            const report = result.report;
-
-            if (!report.summary || report.summary.length < 50) {
-               errors.push(`${result.testType} (${result.date}): Summary too short`);
+            const report = item.report;
+            if (!report) {
+               errors.push(`${item.testType} (${item.date}): Missing report`);
                continue;
             }
 
-            if (!report.recommendations || report.recommendations.length === 0) {
-               errors.push(`${result.testType} (${result.date}): No recommendations`);
+            // Basic field checks (flexible but with sensible floors)
+            if (!report.summary || report.summary.trim().length < 120) {
+               errors.push(`${item.testType} (${item.date}): ${language === 'vi' ? 'Tóm tắt quá ngắn (<120 ký tự)' : 'Summary too short (<120 chars)'}`);
                continue;
             }
 
-            if (!['LOW', 'MEDIUM', 'HIGH'].includes(report.severity)) {
-               errors.push(`${result.testType} (${result.date}): Invalid severity`);
+            if (!Array.isArray(report.recommendations) || report.recommendations.length < 3) {
+               errors.push(`${item.testType} (${item.date}): ${language === 'vi' ? 'Thiếu khuyến nghị (>=3)' : 'Insufficient recommendations (>=3)'}`);
                continue;
+            }
+
+            if (!['LOW','MEDIUM','HIGH'].includes(report.severity)) {
+               errors.push(`${item.testType} (${item.date}): ${language === 'vi' ? 'Mức độ nghiêm trọng không hợp lệ' : 'Invalid severity'}`);
+               continue;
+            }
+
+            if (typeof report.confidence !== 'number' || isNaN(report.confidence) || report.confidence < 50 || report.confidence > 100) {
+               errors.push(`${item.testType} (${item.date}): ${language === 'vi' ? 'Độ tin cậy không hợp lệ' : 'Invalid confidence'}`);
+               continue;
+            }
+
+            // Language sanity check
+            if (language === 'vi' && !isVietnameseText(report.summary)) {
+               errors.push(`${item.testType} (${item.date}): ${language === 'vi' ? 'Ngôn ngữ có vẻ không phải tiếng Việt' : 'Language mismatch'}`);
+               continue;
+            }
+            if (language === 'en' && isVietnameseText(report.summary)) {
+               errors.push(`${item.testType} (${item.date}): ${language === 'vi' ? 'Báo cáo tiếng Anh nhưng có dấu tiếng Việt' : 'English report contains Vietnamese diacritics'}`);
+               continue;
+            }
+
+            // Forbidden phrases (avoid rigid/fallback messages)
+            const fbs = language === 'vi' ? forbiddenVi : forbiddenEn;
+            if (fbs.some((rx) => rx.test(report.summary))) {
+               errors.push(`${item.testType} (${item.date}): ${language === 'vi' ? 'Chứa câu xin lỗi/fallback AI' : 'Contains fallback/apology text'}`);
+               continue;
+            }
+
+            // Consistency checks by test type
+            switch (item.testType) {
+               case 'amsler': {
+                  const rd = item.resultData as any;
+                  if (rd && typeof rd.issueDetected === 'boolean') {
+                     if (rd.issueDetected && report.severity === 'LOW') {
+                        errors.push(`amsler (${item.date}): ${language === 'vi' ? 'Amsler bất thường nhưng báo cáo đánh giá LOW' : 'Amsler abnormal yet severity LOW'}`);
+                        continue;
+                     }
+                     if (!rd.issueDetected && report.severity === 'HIGH') {
+                        errors.push(`amsler (${item.date}): ${language === 'vi' ? 'Amsler bình thường nhưng báo cáo đánh giá HIGH' : 'Amsler normal yet severity HIGH'}`);
+                        continue;
+                     }
+                  }
+                  break;
+               }
+               case 'snellen': {
+                  const rd = item.resultData as any;
+                  if (rd && rd.score) {
+                     const expected = expectMinSeverityFromSnellen(rd.score);
+                     if (severityRank(report.severity) < severityRank(expected)) {
+                        errors.push(`snellen (${item.date}): ${language === 'vi' ? `Mức độ nên ≥ ${expected} theo điểm ${rd.score}` : `Severity should be ≥ ${expected} for score ${rd.score}`}`);
+                        continue;
+                     }
+                  }
+                  break;
+               }
+               case 'colorblind': {
+                  const rd = item.resultData as any;
+                  if (rd && typeof rd.accuracy === 'number') {
+                     if (rd.accuracy <= 50 && report.severity === 'LOW') {
+                        errors.push(`colorblind (${item.date}): ${language === 'vi' ? 'Độ chính xác thấp nhưng severity = LOW' : 'Low accuracy but severity = LOW'}`);
+                        continue;
+                     }
+                     if (rd.accuracy >= 90 && report.severity === 'HIGH') {
+                        errors.push(`colorblind (${item.date}): ${language === 'vi' ? 'Độ chính xác cao nhưng severity = HIGH' : 'High accuracy but severity = HIGH'}`);
+                        continue;
+                     }
+                  }
+                  break;
+               }
+               case 'duochrome': {
+                  const rd = item.resultData as any;
+                  if (rd && rd.overallResult) {
+                     if (rd.overallResult === 'normal' && report.severity !== 'LOW') {
+                        errors.push(`duochrome (${item.date}): ${language === 'vi' ? 'Kết quả bình thường nhưng severity ≠ LOW' : 'Normal result but severity ≠ LOW'}`);
+                        continue;
+                     }
+                     if (rd.overallResult !== 'normal' && report.severity === 'LOW') {
+                        errors.push(`duochrome (${item.date}): ${language === 'vi' ? 'Kết quả bất thường nhưng severity = LOW' : 'Abnormal result but severity = LOW'}`);
+                        continue;
+                     }
+                  }
+                  break;
+               }
+               case 'astigmatism': {
+                  const rd = item.resultData as any;
+                  if (rd && rd.overallSeverity) {
+                     if (rd.overallSeverity === 'NONE' && report.severity !== 'LOW') {
+                        errors.push(`astigmatism (${item.date}): ${language === 'vi' ? 'Kết quả không loạn thị nhưng severity ≠ LOW' : 'No astigmatism but severity ≠ LOW'}`);
+                        continue;
+                     }
+                  }
+                  break;
+               }
             }
 
             verified++;
          } catch (e) {
-            errors.push(`${result.testType} (${result.date}): ${String(e)}`);
+            errors.push(`${item.testType} (${item.date}): ${String(e)}`);
          }
       }
 

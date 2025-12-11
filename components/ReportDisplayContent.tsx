@@ -109,7 +109,7 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
                      <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('ai_confidence')}</h3>
                     <p className={`text-5xl font-bold ${report.confidence >= 90 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>{report.confidence}%</p>
                     <div className="mt-4 flex items-center justify-center gap-2">
-                        <div className={`px-3 py-1 text-xs font-semibold rounded-full ${severityStyles[report.severity]}`}>{t('severity')}: {t(`severity_${report.severity.toLowerCase()}` as any)}</div>
+                        <div className={`px-3 py-1 text-xs font-semibold rounded-full ${severityStyles[displaySeverity]}`}>{t('severity')}: {t(`severity_${displaySeverity.toLowerCase()}` as any)}</div>
                     </div>
                 </div>
             )}

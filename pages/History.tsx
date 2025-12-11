@@ -5,6 +5,7 @@ import { StoredTestResult, TestType, SnellenResult, ColorBlindResult, Astigmatis
 import { useLanguage } from '../context/LanguageContext';
 import { ReportDetailModal } from '../components/ReportDetailModal';
 import { getTestHistory } from '../services/authService';
+import { AIReportVerifier } from '../components/AIReportVerifier';
 
 const storageService = new StorageService();
 
@@ -217,6 +218,12 @@ export const History: React.FC = () => {
           <span>{language === 'vi' ? 'Đã tải' : 'Loaded'}: {history.length}{typeof total === 'number' ? ` / ${total}` : ''}</span>
           <span>{language === 'vi' ? 'Trang' : 'Offset'}: {offset}</span>
         </div>
+
+        {history.length > 0 && (
+          <div className="mb-6">
+            <AIReportVerifier history={history} />
+          </div>
+        )}
 
         {history.length === 0 && !isLoading ? (
           <div className="text-center py-20 bg-gray-100 dark:bg-gray-800 rounded-xl">

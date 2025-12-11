@@ -502,8 +502,8 @@
                             class="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <p class="text-xs text-white/50 mt-1">Dữ liệu sẽ được tải từ D1 database thực</p>
                     </div>
-                    <div class="hidden">
-                        <label class="block text-sm font-medium text-white/80 mb-2">JWT Token (không bắt buộc)</label>
+                    <div>
+                        <label class="block text-sm font-medium text-white/80 mb-2">JWT Token (bắt buộc)</label>
                         <input type="password" id="tokenInput" placeholder="Để trống..."
                             class="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
@@ -517,10 +517,7 @@
                         </svg>
                         Xem Dữ Liệu Thực (D1 Database)
                     </button>
-                    <button onclick="loginDemo()"
-                        class="w-full py-3 px-4 rounded-xl border border-white/30 text-white/80 font-medium hover:bg-white/10 transition-all">
-                        Xem Demo (25 hồ sơ mẫu)
-                    </button>
+                    <!-- Demo mode disabled -->
                 </div>
             </div>
         </div>
@@ -629,9 +626,7 @@
                         </svg>
                         Xuất Excel
                     </button>
-                    <span id="demoTag"
-                        class="hidden px-2 py-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-lg">DEMO
-                        MODE</span>
+                    
                 </div>
             </header>
 
@@ -880,7 +875,7 @@
         // ============================================================
         let API_URL = '';
         let TOKEN = '';
-        let isDemo = false;
+        
         let allRecords = [];
         let filteredData = [];
 
@@ -912,8 +907,9 @@
             }
         }
 
-        // Demo data - Comprehensive test records
-        const DEMO_DATA = [
+        // Demo data removed - enforce real data only
+        const DEMO_DATA = [];
+        /* const DEMO_DATA_OLD = [
             // User 001 - Nguyễn Văn A - Thị lực tốt
             { id: '1', userId: 'user_001', userName: 'Nguyễn Văn An', testType: 'snellen', testData: { score: '20/20' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
             { id: '2', userId: 'user_001', userName: 'Nguyễn Văn An', testType: 'colorblind', testData: { accuracy: 98 }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
@@ -959,6 +955,7 @@
             { id: '24', userId: 'user_010', userName: 'Dương Thị Lan', testType: 'snellen', testData: { score: '20/20' }, timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
             { id: '25', userId: 'user_010', userName: 'Dương Thị Lan', testType: 'colorblind', testData: { accuracy: 92 }, timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
         ];
+        */
 
         // Check saved session with expiry validation
         window.onload = () => {
@@ -976,7 +973,7 @@
 
                     API_URL = data.apiUrl || '';
                     TOKEN = data.token || '';
-                    isDemo = data.isDemo || false;
+                    
                     showDashboard();
                     loadRecords();
                 } catch (e) {
@@ -987,10 +984,41 @@
         };
 
         // Login with session expiry
-        function login() {
+        async function login() {
             API_URL = document.getElementById('apiUrl').value.trim();
             TOKEN = document.getElementById('tokenInput').value.trim();
-            isDemo = false;
+            
+
+            const loginErr = document.getElementById('loginError');
+            loginErr.classList.add('hidden');
+            loginErr.textContent = '';
+
+            if (!API_URL) {
+                loginErr.textContent = 'Vui lòng nhập API URL';
+                loginErr.classList.remove('hidden');
+                return;
+            }
+            if (!TOKEN) {
+                loginErr.textContent = 'Vui lòng nhập JWT Token (đăng nhập người dùng để lấy token)';
+                loginErr.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const verifyRes = await fetch(`${API_URL}/api/auth/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: TOKEN })
+                });
+                const verifyData = await verifyRes.json();
+                if (!verifyRes.ok || !verifyData.success) {
+                    throw new Error(verifyData.message || 'Token không hợp lệ');
+                }
+            } catch (e) {
+                loginErr.textContent = `Không xác thực được token: ${e.message || e}`;
+                loginErr.classList.remove('hidden');
+                return;
+            }
 
             const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
             localStorage.setItem('admin_session', JSON.stringify({
@@ -1003,7 +1031,7 @@
             loadRecords();
         }
 
-        function loginDemo() {
+        /* function loginDemo() {
             isDemo = true;
             const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
             localStorage.setItem('admin_session', JSON.stringify({
@@ -1012,12 +1040,12 @@
             }));
             showDashboard();
             loadDemoData();
-        }
+        } */
 
         function showDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('dashboardScreen').classList.remove('hidden');
-            if (isDemo) {
+            if (false) {
                 document.getElementById('demoTag').classList.remove('hidden');
             }
             document.getElementById('settingsApiUrl').value = API_URL;
@@ -1045,7 +1073,7 @@
 
         // Load records from real API
         async function loadRecords() {
-            if (isDemo) {
+            if (false) {
                 loadDemoData();
                 return;
             }
@@ -1054,10 +1082,10 @@
                 // Call new admin API endpoints
                 const [recordsRes, statsRes] = await Promise.all([
                     fetch(`${API_URL}/api/admin/records`, {
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 'Content-Type': 'application/json', ...(TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {}) }
                     }),
                     fetch(`${API_URL}/api/admin/stats`, {
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 'Content-Type': 'application/json', ...(TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {}) }
                     })
                 ]);
 
@@ -1085,15 +1113,14 @@
                     document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('vi-VN');
                     console.log(`✅ Loaded ${allRecords.length} records from D1 database`);
                 } else {
-                    console.warn('No records from API, using demo data');
-                    loadDemoData();
-                    return;
+                    console.warn('No records from API. Demo data disabled.');
+                    allRecords = [];
                 }
 
                 updateAll();
             } catch (err) {
                 console.error('Load records error:', err);
-                // Fallback to localStorage or demo
+                // Fallback: show empty state (no demo data)
                 const local = localStorage.getItem('vision_test_history');
                 if (local) {
                     allRecords = JSON.parse(local).map(r => ({
@@ -1101,8 +1128,8 @@
                         testData: r.resultData, timestamp: r.date, ...analyzeResult({ testType: r.testType, testData: r.resultData })
                     }));
                 } else {
-                    loadDemoData();
-                    return;
+                    allRecords = [];
+                    document.getElementById('lastSync').textContent = 'Không có dữ liệu';
                 }
                 updateAll();
             }
@@ -1284,7 +1311,7 @@
             });
 
             // Save to localStorage if demo mode
-            if (isDemo) {
+            if (false) {
                 localStorage.setItem('demo_records_edited', JSON.stringify(allRecords));
             }
 
@@ -1298,7 +1325,7 @@
 
             allRecords = allRecords.filter(r => r.userId !== editingUserId);
 
-            if (isDemo) {
+            if (false) {
                 localStorage.setItem('demo_records_edited', JSON.stringify(allRecords));
             }
 

@@ -89,61 +89,10 @@ export class ChatbotService {
 
       const token = getAuthToken();
 
-      const res = await fetch(`${API_BASE_URL}/api/chat/stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ message: safeMessage, lastTestResult, userProfile, language }),
-      });
-
-      if (!res.ok || !res.body) {
-        // Fallback to non-stream chat
-        const full = await this.chat(message, lastTestResult, userProfile, language);
-        onChunk(full);
-        return full;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let finalText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process SSE chunks separated by two newlines
-        let idx;
-        while ((idx = buffer.indexOf('\n\n')) !== -1) {
-          const packet = buffer.slice(0, idx);
-          buffer = buffer.slice(idx + 2);
-
-          const lines = packet.split('\n');
-          let event = 'message';
-          let data = '';
-          for (const line of lines) {
-            if (line.startsWith('event:')) event = line.slice(6).trim();
-            if (line.startsWith('data:')) data += line.slice(5).trim();
-          }
-          if (event === 'error') {
-            // Fallback
-            const full = await this.chat(message, lastTestResult, userProfile, language);
-            onChunk(full);
-            return full;
-          } else if (event === 'done') {
-            // end
-            break;
-          } else {
-            onChunk(data);
-            finalText += data;
-          }
-        }
-      }
-
-      return finalText || (language === 'vi' ? 'Không có nội dung.' : 'No content.');
+      // Streaming endpoint not available: call regular chat and emit once
+      const full = await this.chat(message, lastTestResult, userProfile, language);
+      onChunk(full);
+      return full;
     } catch (e: any) {
       const fallback = language === 'vi'
         ? 'Xin lỗi, AI đang bận. Vui lòng thử lại sau.'
