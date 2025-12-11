@@ -105,6 +105,11 @@ export async function login(request: IRequest, env: any): Promise<Response> {
       await db.updateUserLastLogin(user.id)
     }
 
+    // Determine admin role by allowlists
+    const allowPhones = String(env.ADMIN_PHONES || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+    const allowIds = String(env.ADMIN_USER_IDS || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+    const isAdmin = allowPhones.includes(String(user.phone)) || allowIds.includes(String(user.id))
+
     // Sign JWT
     const exp = now + 7 * 24 * 60 * 60 * 1000 // 7 days ms
     const token = await signJWT({ 
@@ -112,6 +117,7 @@ export async function login(request: IRequest, env: any): Promise<Response> {
       name: user.name, 
       phone: user.phone, 
       age: user.age, 
+      role: isAdmin ? 'admin' : 'user',
       exp 
     }, env.JWT_SECRET)
 

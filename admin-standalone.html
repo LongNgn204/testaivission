@@ -503,7 +503,7 @@
                         <p class="text-xs text-white/50 mt-1">Dữ liệu sẽ được tải từ D1 database thực</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-white/80 mb-2">JWT Token (bắt buộc)</label>
+                        <label class="block text-sm font-medium text-white/80 mb-2">JWT Token (admin)</label>
                         <input type="password" id="tokenInput" placeholder="Để trống..."
                             class="w-full px-4 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
@@ -998,35 +998,28 @@
                 loginErr.classList.remove('hidden');
                 return;
             }
-            if (!TOKEN) {
-                loginErr.textContent = 'Vui lòng nhập JWT Token (đăng nhập người dùng để lấy token)';
-                loginErr.classList.remove('hidden');
-                return;
-            }
-
-            try {
-                const verifyRes = await fetch(`${API_URL}/api/auth/verify`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: TOKEN })
-                });
-                const verifyData = await verifyRes.json();
-                if (!verifyRes.ok || !verifyData.success) {
-                    throw new Error(verifyData.message || 'Token không hợp lệ');
-                }
-            } catch (e) {
-                loginErr.textContent = `Không xác thực được token: ${e.message || e}`;
-                loginErr.classList.remove('hidden');
-                return;
-            }
-
+                        // If an admin JWT is provided, verify and use it; otherwise proceed in public read mode
             const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-            localStorage.setItem('admin_session', JSON.stringify({
-                apiUrl: API_URL,
-                token: TOKEN,
-                isDemo: false,
-                expiresAt
-            }));
+            if (TOKEN) {
+                try {
+                    const verifyRes = await fetch(`${API_URL}/api/auth/verify`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: TOKEN })
+                    });
+                    const verifyData = await verifyRes.json();
+                    if (!verifyRes.ok || !verifyData.success) {
+                        throw new Error(verifyData.message || 'Token không hợp lệ');
+                    }
+                    localStorage.setItem('admin_session', JSON.stringify({ apiUrl: API_URL, token: TOKEN, expiresAt }));
+                } catch (e) {
+                    loginErr.textContent = `Không xác thực được token: ${e.message || e}`;
+                    loginErr.classList.remove('hidden');
+                    return;
+                }
+            } else {
+                localStorage.setItem('admin_session', JSON.stringify({ apiUrl: API_URL, token: '', expiresAt }));
+            }
             showDashboard();
             loadRecords();
         }

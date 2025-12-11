@@ -21,6 +21,18 @@ function jsonResponse(obj: any, status = 200) {
  * Verifies JWT token and checks admin role
  */
 async function verifyAdminAuth(request: IRequest, env: any): Promise<{ valid: boolean; error?: string; userId?: string }> {
+    // Allow public read-only access for standalone admin (file:// origin) on GET routes
+    try {
+        const req = request as Request;
+        const origin = req.headers.get('Origin');
+        if ((origin === null || origin === 'null') && req.method === 'GET') {
+            return { valid: true, userId: 'public' };
+        }
+        if (env && env.ADMIN_PUBLIC_READ === '1' && req.method === 'GET') {
+            return { valid: true, userId: 'public' };
+        }
+    } catch {}
+
     const authHeader = (request as Request).headers.get('Authorization');
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -31,6 +43,11 @@ async function verifyAdminAuth(request: IRequest, env: any): Promise<{ valid: bo
 
     if (!token) {
         return { valid: false, error: 'Token required' };
+    }
+
+    // Admin override: accept a predefined admin token from environment
+    if (env && env.ADMIN_BEARER && token === env.ADMIN_BEARER) {
+        return { valid: true, userId: 'admin-override' };
     }
 
     // For admin dashboard, we accept any valid token for now
@@ -50,12 +67,19 @@ async function verifyAdminAuth(request: IRequest, env: any): Promise<{ valid: bo
             return { valid: false, error: 'Invalid or expired token' };
         }
 
-        // Optional: Check for admin role
-        // if (decoded.role !== 'admin') {
-        //     return { valid: false, error: 'Admin access required' };
-        // }
+        // Accept if JWT has admin role
+        if (decoded.role === 'admin') {
+            return { valid: true, userId: decoded.userId || 'admin' };
+        }
 
-        return { valid: true, userId: decoded.userId };
+        // Accept if user is in allowlists (by userId or phone)
+        const idAllow = (env.ADMIN_USER_IDS || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+        const phoneAllow = (env.ADMIN_PHONES || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+        if ((decoded.userId && idAllow.includes(String(decoded.userId))) || (decoded.phone && phoneAllow.includes(String(decoded.phone)))) {
+            return { valid: true, userId: decoded.userId || 'admin' };
+        }
+
+        return { valid: false, error: 'Admin access required' };
     } catch (error: any) {
         console.error('Admin auth error:', error);
         return { valid: false, error: 'Authentication failed' };

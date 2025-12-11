@@ -72,15 +72,8 @@ export class ChatbotService {
           : 'You are offline. Please check your Internet connection.';
       }
 
-      const now = Date.now();
-      if (now - lastCallTs < COOLDOWN_MS) {
-        const msg = language === 'vi'
-          ? 'Vui lòng chờ một chút trước khi gửi tiếp.'
-          : 'Please wait a moment before sending another message.';
-        onChunk(msg);
-        return msg;
-      }
-      lastCallTs = now;
+      // Rate limit is handled in chat(); avoid double-checking here to prevent false "please wait" responses
+      // See issue: chatStream invoked chat() immediately, causing cooldown to trigger.
 
       const safeMessage = sanitizeUserMessage(message);
       if (!safeMessage) {
@@ -118,7 +111,7 @@ export class ChatbotService {
       const now = Date.now();
       if (now - lastCallTs < COOLDOWN_MS) {
         return language === 'vi'
-          ? 'Vui lòng chờ một chút trước khi gửi tiếp. '
+          ? 'Vui lòng chờ một chút trước khi gửi tiếp.'
           : 'Please wait a moment before sending another message.';
       }
       lastCallTs = now;
