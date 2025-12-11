@@ -1,11 +1,11 @@
 /**
  * ============================================================
- * 💡 Proactive Tip Prompts - EXPERT ADVICE v2.0
+ * 💡 Proactive Tip Prompts - EXPERT ADVICE v2.1
  * ============================================================
  * 
- * Nâng cấp lời khuyên sức khỏe:
- * - Tăng độ dài: 50-70 từ
- * - Thêm cơ sở khoa học (AREDS2, WHO)
+ * Lời khuyên sức khỏe:
+ * - Không giới hạn độ dài cứng
+ * - Cơ sở khoa học (AREDS2, WHO)
  * - Cá nhân hóa theo ngữ cảnh
  * - Ngôn ngữ thuần túy, không pha trộn
  */
@@ -63,7 +63,7 @@ export function createProactiveTipPrompt(
 
 ✅ QUY TẮC BẮT BUỘC:
 1. MỞ ĐẦU TỰ NHIÊN: "Nhân tiện nhắc bạn...", "Mẹo nhỏ cho bạn hôm nay...", "Bạn biết không...", "Bác sĩ Eva muốn chia sẻ..."
-2. ĐỘ DÀI: 50-70 từ tiếng Việt, 2-3 câu
+2. ĐỘ DÀI: Trả lời đầy đủ, chi tiết - không giới hạn cụ thể
 3. NỘI DUNG: Dựa trên ngữ cảnh người dùng + cơ sở khoa học
 4. GIỌNG ĐIỆU: Ấm áp, quan tâm, như bác sĩ gia đình đang nhắn tin cho bệnh nhân thân quen
 5. NGÔN NGỮ: TIẾNG VIỆT THUẦN TÚY 100% - Không dùng bất kỳ từ tiếng Anh nào
@@ -117,7 +117,7 @@ ${context.length > 0 ? context.join('\n') : 'Không có thông tin cụ thể - 
 
 ✅ MANDATORY RULES:
 1. NATURAL OPENING: "Just so you know...", "Quick tip for today...", "Did you know...", "Dr. Eva wants to share..."
-2. LENGTH: 50-70 words in English, 2-3 sentences
+2. LENGTH: Respond fully and thoroughly - no strict word limit
 3. CONTENT: Based on user context + scientific evidence
 4. TONE: Warm, caring, like a family doctor texting a familiar patient
 5. LANGUAGE: PURE ENGLISH ONLY 100% - Do not use any Vietnamese words

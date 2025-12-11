@@ -204,20 +204,18 @@ export const useDashboardInsights = (
                     setInsights(result);
                     persistInsights(result, fingerprint, language);
                 } else {
-                    // API returned null or invalid response - use fallback
+                    // API returned null or invalid response - use fallback silently
                     console.warn('Dashboard API returned invalid response, using fallback');
                     const fallback = buildFallbackInsights(history);
                     setInsights(fallback);
-                    if (fallback) {
-                        setError(language === 'vi' ? 'Đang sử dụng dữ liệu tính toán cục bộ.' : 'Using locally computed data.');
-                    }
+                    // Không hiển thị error message cho user
                 }
             } catch (err) {
                 if (controller.signal.aborted) return;
-                console.error('Failed to load dashboard insights from OpenRouter', err);
+                console.error('Failed to load dashboard insights', err);
                 const fallback = buildFallbackInsights(history);
                 setInsights(fallback);
-                setError('AI đang bận, đã chuyển sang dữ liệu gần nhất.');
+                // Không hiển thị error message - fallback đã xử lý
             } finally {
                 if (!controller.signal.aborted) {
                     setIsLoading(false);
