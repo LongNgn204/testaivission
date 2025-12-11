@@ -1,15 +1,19 @@
 import React from 'react';
-import { 
-    CheckCircle, AlertTriangle, Activity, BrainCircuit, TrendingUp, Scale, AlertOctagon, Zap 
+import {
+    CheckCircle, AlertTriangle, Activity, BrainCircuit, TrendingUp, Scale, AlertOctagon, Zap
 } from 'lucide-react';
-import { 
-    StoredTestResult, SnellenResult, ColorBlindResult, AstigmatismResult, AmslerGridResult, DuochromeResult 
+import {
+    StoredTestResult, SnellenResult, ColorBlindResult, AstigmatismResult, AmslerGridResult, DuochromeResult
 } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
 const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResult }) => {
     const { t } = useLanguage();
     const { testType, resultData, report } = storedResult;
+
+    // Định nghĩa displaySeverity từ report.severity với fallback
+    const displaySeverity = (report?.severity || 'LOW') as 'LOW' | 'MEDIUM' | 'HIGH';
+
     const severityStyles = {
         LOW: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
         MEDIUM: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
@@ -27,7 +31,7 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
             </div>
         </div>
     );
-    
+
     const renderColorblind = (result: ColorBlindResult) => {
         // Map English type to translation key
         const typeMap: Record<string, string> = {
@@ -36,7 +40,7 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
             'Possible Total Color Blindness': t('colorblind_type_total')
         };
         const translatedType = typeMap[result.type] || result.type;
-        
+
         return (
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('test_result')}</h3>
@@ -71,16 +75,16 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{result.details}</p>
         </div>
     );
-    
+
     const renderDuochrome = (result: DuochromeResult) => {
-         const resultTextMap = { myopic: t('duochrome_myopic'), hyperopic: t('duochrome_hyperopic'), normal: t('duochrome_normal'), mixed: t('duochrome_mixed_short') };
-         const resultColorMap = {
+        const resultTextMap = { myopic: t('duochrome_myopic'), hyperopic: t('duochrome_hyperopic'), normal: t('duochrome_normal'), mixed: t('duochrome_mixed_short') };
+        const resultColorMap = {
             myopic: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30',
             hyperopic: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30',
             normal: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30',
             mixed: 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30',
-         };
-         return (
+        };
+        return (
             <div className={`col-span-full text-center rounded-xl p-6 ${resultColorMap[result.overallResult]}`}>
                 <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('test_result')}</h3>
                 <p className="text-3xl font-bold">{resultTextMap[result.overallResult]}</p>
@@ -98,7 +102,7 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
             default: return null;
         }
     };
-    
+
     const hasDetailedResult = testType === 'snellen' || testType === 'colorblind';
 
     return (
@@ -106,7 +110,7 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
             {renderResult()}
             {hasDetailedResult && (
                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
-                     <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('ai_confidence')}</h3>
+                    <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('ai_confidence')}</h3>
                     <p className={`text-5xl font-bold ${report.confidence >= 90 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>{report.confidence}%</p>
                     <div className="mt-4 flex items-center justify-center gap-2">
                         <div className={`px-3 py-1 text-xs font-semibold rounded-full ${severityStyles[displaySeverity]}`}>{t('severity')}: {t(`severity_${displaySeverity.toLowerCase()}` as any)}</div>
@@ -142,21 +146,21 @@ export const ReportDisplayContent: React.FC<{ storedResult: StoredTestResult }> 
         amsler: t('report_title_amsler'),
         duochrome: t('report_title_duochrome'),
     };
-    
+
     return (
-         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl animate-fade-in">
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl animate-fade-in">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">{reportTitles[report.testType]}</h2>
-            
+
             <ReportHeader storedResult={storedResult} />
 
             <div className="space-y-6">
-                <div><h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><mainIcon.icon className={`mr-2 text-${mainIcon.color}-500`}/>{t('general_assessment')}</h4><p className="text-gray-700 dark:text-gray-300 leading-relaxed bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">{report.summary}</p></div>
+                <div><h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><mainIcon.icon className={`mr-2 text-${mainIcon.color}-500`} />{t('general_assessment')}</h4><p className="text-gray-700 dark:text-gray-300 leading-relaxed bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">{report.summary}</p></div>
                 {report.trend && (
-                    <div><h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><TrendingUp className="mr-2 text-indigo-500"/>{t('trend_analysis')}</h4><p className="text-gray-700 dark:text-gray-300 leading-relaxed bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-lg">{report.trend}</p></div>
+                    <div><h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><TrendingUp className="mr-2 text-indigo-500" />{t('trend_analysis')}</h4><p className="text-gray-700 dark:text-gray-300 leading-relaxed bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-lg">{report.trend}</p></div>
                 )}
-                {report.causes && <div><h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><AlertTriangle className="mr-2 text-yellow-500"/>{t('potential_causes')}</h4><p className="text-gray-700 dark:text-gray-300 leading-relaxed bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg">{report.causes}</p></div>}
+                {report.causes && <div><h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><AlertTriangle className="mr-2 text-yellow-500" />{t('potential_causes')}</h4><p className="text-gray-700 dark:text-gray-300 leading-relaxed bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg">{report.causes}</p></div>}
                 <div>
-                    <h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><CheckCircle className="mr-2 text-green-500"/>{t('recommendations')}</h4>
+                    <h4 className="font-bold text-lg mb-2 flex items-center dark:text-gray-200"><CheckCircle className="mr-2 text-green-500" />{t('recommendations')}</h4>
                     <ul className="space-y-2 list-inside text-gray-700 dark:text-gray-300 bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
                         {report.recommendations.map((rec, i) => <li key={i} className="flex"><span className="text-green-600 dark:text-green-400 mr-2 font-bold">✓</span>{rec}</li>)}
                     </ul>

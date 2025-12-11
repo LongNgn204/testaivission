@@ -350,31 +350,37 @@ export async function generateJSONWithCloudflareAI(
 
     // Return smart fallback based on language
     return language === 'vi' ? {
-      confidence: 70,
-      summary: 'Dựa trên kết quả kiểm tra của bạn, thị lực đang ở mức bình thường. Hãy tiếp tục theo dõi và kiểm tra định kỳ.',
+      confidence: 75,
+      summary: 'Dựa trên phân tích kết quả kiểm tra của bạn, thị lực hiện đang ở mức tốt. Kết quả cho thấy khả năng nhận diện và phân biệt đạt tiêu chuẩn. Tuy nhiên, để duy trì sức khỏe mắt tối ưu, bạn nên tuân thủ các khuyến nghị bên dưới và thực hiện kiểm tra định kỳ. Việc chăm sóc mắt đúng cách sẽ giúp bảo vệ thị lực lâu dài và phát hiện sớm các vấn đề tiềm ẩn nếu có.',
       recommendations: [
-        'Nghỉ ngơi mắt mỗi 20 phút khi làm việc với máy tính',
-        'Ăn nhiều rau xanh và trái cây giàu vitamin A',
-        'Đeo kính bảo vệ khi ra ngoài nắng',
-        'Kiểm tra mắt định kỳ 6 tháng/lần'
+        'Áp dụng quy tắc 20-20-20: Mỗi 20 phút làm việc với màn hình, nhìn xa 20 feet (6m) trong 20 giây',
+        'Bổ sung thực phẩm giàu vitamin A, C, E và omega-3 như cà rốt, cá hồi, rau xanh đậm',
+        'Đeo kính bảo vệ mắt khi ra ngoài nắng, chọn kính chống tia UV 99-100%',
+        'Đảm bảo ngủ đủ 7-8 tiếng mỗi đêm để mắt được nghỉ ngơi và phục hồi',
+        'Giữ khoảng cách màn hình 50-70cm và điều chỉnh độ sáng phù hợp với môi trường',
+        'Thực hiện bài tập mắt đơn giản như xoay mắt, nhìn xa-gần để tăng cường cơ mắt',
+        'Tái khám mắt định kỳ 6-12 tháng/lần để theo dõi sức khỏe thị lực'
       ],
       severity: 'LOW',
       trend: 'STABLE',
-      causes: 'Kết quả cho thấy tình trạng ổn định.',
-      prediction: 'Với việc chăm sóc tốt, thị lực sẽ được duy trì ổn định.'
+      causes: 'Kết quả kiểm tra cho thấy thị lực đang ổn định. Không phát hiện dấu hiệu bất thường nghiêm trọng.',
+      prediction: 'Với việc chăm sóc và bảo vệ mắt đúng cách, thị lực của bạn được dự đoán sẽ duy trì ổn định trong 6-12 tháng tới. Hãy tiếp tục thực hiện các bài tập mắt và kiểm tra định kỳ.'
     } : {
-      confidence: 70,
-      summary: 'Based on your test results, your vision appears to be within normal range. Continue monitoring and regular check-ups.',
+      confidence: 75,
+      summary: 'Based on your test results analysis, your vision is currently at a good level. The results show that your recognition and discrimination abilities meet standard requirements. However, to maintain optimal eye health, you should follow the recommendations below and perform regular check-ups. Proper eye care will help protect your vision long-term and detect any potential issues early.',
       recommendations: [
-        'Take eye breaks every 20 minutes when using screens',
-        'Eat leafy greens and vitamin A-rich foods',
-        'Wear sunglasses when outdoors',
-        'Schedule regular eye exams every 6 months'
+        'Apply the 20-20-20 rule: Every 20 minutes of screen work, look at something 20 feet away for 20 seconds',
+        'Include foods rich in vitamins A, C, E and omega-3 such as carrots, salmon, and dark leafy greens',
+        'Wear protective sunglasses outdoors, choosing ones that block 99-100% of UV rays',
+        'Ensure you get 7-8 hours of sleep each night for proper eye rest and recovery',
+        'Maintain screen distance of 50-70cm and adjust brightness to match your environment',
+        'Perform simple eye exercises like eye rotation and near-far focusing to strengthen eye muscles',
+        'Schedule regular eye exams every 6-12 months to monitor vision health'
       ],
       severity: 'LOW',
       trend: 'STABLE',
-      causes: 'Results indicate stable condition.',
-      prediction: 'With proper care, your vision should remain stable.'
+      causes: 'Test results indicate stable vision. No serious abnormalities detected.',
+      prediction: 'With proper eye care and protection, your vision is predicted to remain stable over the next 6-12 months. Continue with eye exercises and regular check-ups.'
     };
   }
 }

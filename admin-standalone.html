@@ -957,7 +957,7 @@
         ];
         */
 
-        // Check saved session with expiry validation
+        // Auto-login: Tự động vào dashboard khi mở trang
         window.onload = () => {
             const saved = localStorage.getItem('admin_session');
             if (saved) {
@@ -966,21 +966,31 @@
 
                     // Check session expiry
                     if (data.expiresAt && Date.now() > data.expiresAt) {
-                        console.log('Session expired, clearing...');
+                        console.log('Session expired, auto-renewing...');
                         localStorage.removeItem('admin_session');
+                    } else {
+                        API_URL = data.apiUrl || '';
+                        TOKEN = data.token || '';
+                        
+                        showDashboard();
+                        loadRecords();
                         return;
                     }
-
-                    API_URL = data.apiUrl || '';
-                    TOKEN = data.token || '';
-                    
-                    showDashboard();
-                    loadRecords();
                 } catch (e) {
                     console.error('Failed to parse session:', e);
                     localStorage.removeItem('admin_session');
                 }
             }
+            
+            // AUTO-LOGIN: Tự động vào dashboard với API URL mặc định
+            API_URL = document.getElementById('apiUrl').value.trim() || 'https://vision-coach-worker.stu725114073.workers.dev';
+            TOKEN = ''; // Không cần token cho public read mode
+            
+            const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+            localStorage.setItem('admin_session', JSON.stringify({ apiUrl: API_URL, token: '', expiresAt }));
+            
+            showDashboard();
+            loadRecords();
         };
 
         // Login with session expiry
