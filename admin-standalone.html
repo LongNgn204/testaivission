@@ -608,7 +608,10 @@
             <!-- Header -->
             <header
                 class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-40">
-                <h2 id="pageTitle" class="text-lg font-bold text-slate-800">Dashboard</h2>
+                <div class="flex items-center gap-4">
+                    <h2 id="pageTitle" class="text-lg font-bold text-slate-800">Dashboard</h2>
+                    <span class="text-xs text-slate-400">Đồng bộ: <span id="lastSync">--</span></span>
+                </div>
                 <div class="flex items-center gap-3">
                     <button onclick="loadRecords()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
                         title="Làm mới" aria-label="Làm mới dữ liệu">
@@ -626,7 +629,7 @@
                         </svg>
                         Xuất Excel
                     </button>
-                    
+
                 </div>
             </header>
 
@@ -875,7 +878,7 @@
         // ============================================================
         let API_URL = '';
         let TOKEN = '';
-        
+
         let allRecords = [];
         let filteredData = [];
 
@@ -971,7 +974,7 @@
                     } else {
                         API_URL = data.apiUrl || '';
                         TOKEN = data.token || '';
-                        
+
                         showDashboard();
                         loadRecords();
                         return;
@@ -981,14 +984,14 @@
                     localStorage.removeItem('admin_session');
                 }
             }
-            
+
             // AUTO-LOGIN: Tự động vào dashboard với API URL mặc định
             API_URL = document.getElementById('apiUrl').value.trim() || 'https://vision-coach-worker.stu725114073.workers.dev';
             TOKEN = ''; // Không cần token cho public read mode
-            
+
             const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
             localStorage.setItem('admin_session', JSON.stringify({ apiUrl: API_URL, token: '', expiresAt }));
-            
+
             showDashboard();
             loadRecords();
         };
@@ -997,7 +1000,7 @@
         async function login() {
             API_URL = document.getElementById('apiUrl').value.trim();
             TOKEN = document.getElementById('tokenInput').value.trim();
-            
+
 
             const loginErr = document.getElementById('loginError');
             loginErr.classList.add('hidden');
@@ -1008,7 +1011,7 @@
                 loginErr.classList.remove('hidden');
                 return;
             }
-                        // If an admin JWT is provided, verify and use it; otherwise proceed in public read mode
+            // If an admin JWT is provided, verify and use it; otherwise proceed in public read mode
             const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
             if (TOKEN) {
                 try {
@@ -1081,6 +1084,8 @@
                 return;
             }
 
+            console.log('📡 Loading records from API:', API_URL);
+
             try {
                 // Call new admin API endpoints
                 const [recordsRes, statsRes] = await Promise.all([
@@ -1092,12 +1097,17 @@
                     })
                 ]);
 
+                console.log('📥 Records API status:', recordsRes.status);
+                console.log('📊 Stats API status:', statsRes.status);
+
                 if (!recordsRes.ok) {
-                    console.error('Records API Error:', recordsRes.status);
-                    throw new Error('Records API Error');
+                    const errorText = await recordsRes.text();
+                    console.error('Records API Error:', recordsRes.status, errorText);
+                    throw new Error(`Records API Error: ${recordsRes.status}`);
                 }
 
                 const recordsData = await recordsRes.json();
+                console.log('📦 Records API Response:', recordsData);
 
                 if (recordsData.success && recordsData.records) {
                     // Map API response to our format
@@ -1115,14 +1125,21 @@
 
                     document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('vi-VN');
                     console.log(`✅ Loaded ${allRecords.length} records from D1 database`);
+
+                    // Also log stats if available
+                    if (statsRes.ok) {
+                        const statsData = await statsRes.json();
+                        console.log('📊 Stats API Response:', statsData);
+                    }
                 } else {
-                    console.warn('No records from API. Demo data disabled.');
+                    console.warn('⚠️ No records from API. Response:', recordsData);
                     allRecords = [];
+                    document.getElementById('lastSync').textContent = 'Không có record';
                 }
 
                 updateAll();
             } catch (err) {
-                console.error('Load records error:', err);
+                console.error('❌ Load records error:', err);
                 // Fallback: show empty state (no demo data)
                 const local = localStorage.getItem('vision_test_history');
                 if (local) {
@@ -1130,9 +1147,11 @@
                         id: r.id, userId: 'local', userName: 'Local User', testType: r.testType,
                         testData: r.resultData, timestamp: r.date, ...analyzeResult({ testType: r.testType, testData: r.resultData })
                     }));
+                    document.getElementById('lastSync').textContent = 'LocalStorage';
+                    console.log('💾 Loaded from localStorage:', allRecords.length);
                 } else {
                     allRecords = [];
-                    document.getElementById('lastSync').textContent = 'Không có dữ liệu';
+                    document.getElementById('lastSync').textContent = 'Lỗi API';
                 }
                 updateAll();
             }

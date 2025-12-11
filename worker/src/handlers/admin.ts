@@ -21,17 +21,32 @@ function jsonResponse(obj: any, status = 200) {
  * Verifies JWT token and checks admin role
  */
 async function verifyAdminAuth(request: IRequest, env: any): Promise<{ valid: boolean; error?: string; userId?: string }> {
-    // Allow public read-only access for standalone admin (file:// origin) on GET routes
+    // Allow public read-only access for standalone admin on GET routes
+    // This supports: file:// origin, localhost, 127.0.0.1, or ADMIN_PUBLIC_READ=1
     try {
         const req = request as Request;
         const origin = req.headers.get('Origin');
-        if ((origin === null || origin === 'null') && req.method === 'GET') {
+        const isGetRequest = req.method === 'GET';
+
+        // Allow public read for file:// origin (null)
+        if ((origin === null || origin === 'null') && isGetRequest) {
             return { valid: true, userId: 'public' };
         }
-        if (env && env.ADMIN_PUBLIC_READ === '1' && req.method === 'GET') {
+
+        // Allow public read for localhost development
+        if (isGetRequest && origin && (
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1') ||
+            origin.includes('0.0.0.0')
+        )) {
+            return { valid: true, userId: 'public-localhost' };
+        }
+
+        // Allow public read if env flag is set
+        if (env && env.ADMIN_PUBLIC_READ === '1' && isGetRequest) {
             return { valid: true, userId: 'public' };
         }
-    } catch {}
+    } catch { }
 
     const authHeader = (request as Request).headers.get('Authorization');
 

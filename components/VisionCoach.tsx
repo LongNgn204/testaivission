@@ -12,8 +12,6 @@ import { VoiceInterface } from './vision-coach/VoiceInterface';
  * CHỨC NĂNG:
  * - Nút Chat (xanh lá): Chat text với Dr. Eva
  * - Nút Voice (xanh dương): Nói chuyện bằng giọng nói
- * 
- * 100% MIỄN PHÍ - Không cần API key!
  * - Chat: Cloudflare Workers AI (LLAMA 3.1)
  * - Voice: Browser Web Speech API + Cloudflare AI
  */
