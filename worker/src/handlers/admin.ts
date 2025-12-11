@@ -87,6 +87,83 @@ async function verifyAdminAuth(request: IRequest, env: any): Promise<{ valid: bo
 }
 
 /**
+ * POST /api/admin/reset-all
+ * Hard reset: delete ALL data in D1 tables and KV caches.
+ * Requires admin authentication (ADMIN_BEARER or JWT with admin role).
+ */
+export async function resetAllData(request: IRequest, env: any): Promise<Response> {
+    try {
+        const auth = await verifyAdminAuth(request, env);
+        if (!auth.valid) {
+            return jsonResponse({ success: false, message: auth.error || 'Unauthorized' }, 401);
+        }
+
+        if (!env.DB) {
+            return jsonResponse({ success: false, message: 'Database not configured' }, 500);
+        }
+
+        // Delete rows from D1 (respect FK order: children first)
+        const tablesInDeleteOrder = [
+            'ai_reports',
+            'test_results',
+            'chat_history',
+            'reminders',
+            'routines',
+            'sessions',
+            'user_settings',
+            'analytics',
+            'users'
+        ];
+
+        const dbDeletes: { table: string; ok: boolean; error?: string }[] = [];
+        for (const t of tablesInDeleteOrder) {
+            try {
+                await env.DB.prepare(`DELETE FROM ${t}`).run();
+                dbDeletes.push({ table: t, ok: true });
+            } catch (e: any) {
+                dbDeletes.push({ table: t, ok: false, error: e?.message });
+            }
+        }
+
+        // Clear KV namespaces (known prefixes)
+        const kv = env.CACHE as KVNamespace;
+        const prefixes = ['vision-coach:', 'chatctx:', 'cb:cfai'];
+        const kvDeleted: Record<string, number> = {};
+        if (kv && (kv as any).list) {
+            for (const prefix of prefixes) {
+                try {
+                    let cursor: string | undefined = undefined;
+                    let count = 0;
+                    do {
+                        const list: any = await (kv as any).list({ prefix, cursor });
+                        const keys = list.keys || [];
+                        for (const k of keys) {
+                            await kv.delete(k.name);
+                            count++;
+                        }
+                        cursor = list.list_complete ? undefined : list.cursor;
+                    } while (cursor);
+                    kvDeleted[prefix] = count;
+                } catch (e) {
+                    kvDeleted[prefix] = -1; // indicate failure
+                }
+            }
+        }
+
+        return jsonResponse({
+            success: true,
+            message: 'All backend data cleared',
+            db: dbDeletes,
+            kv: kvDeleted,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        console.error('Admin reset-all error:', error);
+        return jsonResponse({ success: false, message: 'Failed to reset data', error: error.message }, 500);
+    }
+}
+
+/**
  * GET /api/admin/users
  * Get all users from D1 database
  */

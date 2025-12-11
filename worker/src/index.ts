@@ -15,7 +15,7 @@ import { chatStream } from './handlers/chatStream';
 import { generateRoutine } from './handlers/routine';
 import { generateProactiveTip } from './handlers/proactiveTip';
 import { adminAIAssistant } from './handlers/adminAssistant';
-import { getAdminUsers, getAdminRecords, getAdminStats } from './handlers/admin';
+import { getAdminUsers, getAdminRecords, getAdminStats, resetAllData } from './handlers/admin';
 import { syncPull, syncHistory, syncSettings, syncRoutine } from './handlers/sync';
 import { login, verifyToken, logout } from './handlers/auth';
 import { DatabaseService } from './services/database';
@@ -107,6 +107,11 @@ router.post('/api/admin/assistant', adminAIAssistant);
 router.get('/api/admin/users', getAdminUsers);
 router.get('/api/admin/records', getAdminRecords);
 router.get('/api/admin/stats', getAdminStats);
+
+/**
+ * POST /api/admin/reset-all - Danger: wipe ALL data (D1 + KV)
+ */
+router.post('/api/admin/reset-all', resetAllData);
 
 /**
  * Sync Endpoints - Frontend-Backend Data Synchronization
