@@ -1,11 +1,11 @@
 /**
  * ============================================================
- * 📊 Dashboard Prompts - DEEP ANALYSIS v2.0
+ * 📊 Dashboard Prompts - DEEP ANALYSIS v2.1
  * ============================================================
  * 
- * Nâng cấp phân tích dashboard:
- * - Tăng chi tiết overall summary: 80-120 từ
- * - Thêm cảnh báo sớm và dự đoán xu hướng
+ * Phân tích dashboard:
+ * - Summary và tips không giới hạn cứng
+ * - Cảnh báo sớm và dự đoán xu hướng
  * - Ngôn ngữ thuần túy, không pha trộn
  * - Kiến thức y khoa chuẩn quốc tế
  */
@@ -70,7 +70,7 @@ ${historyDigest || 'Chưa có lịch sử kiểm tra - đưa ra đánh giá chun
   "score": <số từ 0-100, tính theo tiêu chí trên>,
   "rating": "EXCELLENT" | "GOOD" | "AVERAGE" | "NEEDS_ATTENTION",
   "trend": "IMPROVING" | "STABLE" | "DECLINING" | "INSUFFICIENT_DATA",
-  "overallSummary": "<80-120 từ TIẾNG VIỆT THUẦN TÚY. Tóm tắt tổng quan sức khỏe thị lực bao gồm: đánh giá hiện trạng, so sánh với tiêu chuẩn y khoa, dự đoán xu hướng, khuyến nghị ưu tiên>",
+  "overallSummary": "<TIẾNG VIỆT THUẦN TÚY. Tóm tắt đầy đủ sức khỏe thị lực: đánh giá hiện trạng, so sánh tiêu chuẩn y khoa, dự đoán xu hướng, khuyến nghị - không giới hạn độ dài>",
   "positives": [
     "<điểm tích cực 1 với lý do y khoa>",
     "<điểm tích cực 2 với số liệu cụ thể>",
@@ -81,7 +81,7 @@ ${historyDigest || 'Chưa có lịch sử kiểm tra - đưa ra đánh giá chun
     "<lĩnh vực cần theo dõi 2 với thời gian đề xuất tái khám>",
     "<lĩnh vực cần theo dõi 3 nếu có>"
   ],
-  "proTip": "<40-60 từ TIẾNG VIỆT. Lời khuyên chuyên gia dựa trên dữ liệu cụ thể của bệnh nhân, có tính ứng dụng cao>"
+  "proTip": "<TIẾNG VIỆT. Lời khuyên chuyên gia chi tiết dựa trên dữ liệu bệnh nhân - không giới hạn độ dài>"
 }
 
 ✅ NGÔN NGỮ: TIẾNG VIỆT THUẦN TÚY 100% - Không dùng bất kỳ từ tiếng Anh nào`;
@@ -128,7 +128,7 @@ ${historyDigest || 'No test history available - provide general assessment on im
   "score": <number 0-100, calculated per criteria above>,
   "rating": "EXCELLENT" | "GOOD" | "AVERAGE" | "NEEDS_ATTENTION",
   "trend": "IMPROVING" | "STABLE" | "DECLINING" | "INSUFFICIENT_DATA",
-  "overallSummary": "<80-120 words PURE ENGLISH. Comprehensive vision health summary including: current status assessment, comparison with medical standards, trend prediction, priority recommendations>",
+  "overallSummary": "<PURE ENGLISH. Comprehensive vision health summary: current status, medical standards comparison, trend prediction, recommendations - no strict word limit>",
   "positives": [
     "<positive point 1 with medical rationale>",
     "<positive point 2 with specific data>",
@@ -139,7 +139,7 @@ ${historyDigest || 'No test history available - provide general assessment on im
     "<area to monitor 2 with suggested follow-up timeline>",
     "<area to monitor 3 if applicable>"
   ],
-  "proTip": "<40-60 words ENGLISH. Expert advice based on patient's specific data, highly actionable>"
+  "proTip": "<ENGLISH. Detailed expert advice based on patient's data - no strict word limit>"
 }
 
 ✅ LANGUAGE: PURE ENGLISH ONLY 100% - Do not use any Vietnamese words`;

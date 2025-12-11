@@ -1,11 +1,11 @@
 /**
  * ============================================================
- * 📋 Report Prompts - DEEP MEDICAL TRAINING v2.0
+ * 📋 Report Prompts - DEEP MEDICAL TRAINING v2.1
  * ============================================================
  * 
- * Nâng cấp toàn diện báo cáo y khoa:
- * - Tăng summary: 400-500 từ
- * - Khuyến nghị: 12-15 mục chi tiết
+ * Báo cáo y khoa chi tiết:
+ * - Summary và phân tích không giới hạn cứng
+ * - Khuyến nghị đầy đủ, chi tiết
  * - Kiến thức chuẩn quốc tế (WHO, AAO)
  * - Ngôn ngữ thuần túy, dịch sát nghĩa
  */
@@ -254,14 +254,9 @@ export function createReportPrompt(
 ═══════════════════════════════════════════════════════════════════════════════
 {
   "confidence": <số từ 75-99, dựa trên độ rõ ràng của kết quả test>,
-  "summary": "<400-500 từ TIẾNG VIỆT THUẦN TÚY. Phân tích lâm sàng sâu sắc bao gồm:
-    1. Đánh giá tổng quan kết quả
-    2. Cơ chế bệnh sinh (nếu có bất thường)
-    3. So sánh với tiêu chuẩn y khoa quốc tế
-    4. Ảnh hưởng đến cuộc sống hàng ngày
-    5. Tiên lượng nếu không can thiệp>",
-  "trend": "<100-150 từ TIẾNG VIỆT. Phân tích xu hướng so với các lần kiểm tra trước, dự đoán diễn biến>",
-  "causes": "<100-120 từ TIẾNG VIỆT. Phân tích nguyên nhân có thể: di truyền, môi trường, lối sống, bệnh lý nền>",
+  "summary": "<TIẾNG VIỆT THUẦN TÚY. Phân tích lâm sàng đầy đủ bao gồm: đánh giá kết quả, cơ chế bệnh sinh, so sánh tiêu chuẩn quốc tế, ảnh hưởng cuộc sống, tiên lượng - trả lời chi tiết không giới hạn>",
+  "trend": "<TIẾNG VIỆT. Phân tích xu hướng so với lịch sử, dự đoán diễn biến - không giới hạn độ dài>",
+  "causes": "<TIẾNG VIỆT. Phân tích nguyên nhân: di truyền, môi trường, lối sống, bệnh lý nền - không giới hạn>",
   "recommendations": [
     "Khuyến nghị 1: <chi tiết, cụ thể, có thời gian thực hiện>",
     "Khuyến nghị 2: <bao gồm liều lượng, tần suất nếu là thuốc/bổ sung>",
@@ -269,21 +264,16 @@ export function createReportPrompt(
     "... 12-15 khuyến nghị chi tiết"
   ],
   "severity": "LOW" | "MEDIUM" | "HIGH",
-  "prediction": "<100-120 từ TIẾNG VIỆT. Tiên lượng 6-12 tháng tới, các yếu tố ảnh hưởng, kế hoạch theo dõi cụ thể>"
+  "prediction": "<TIẾNG VIỆT. Tiên lượng 6-12 tháng, yếu tố ảnh hưởng, kế hoạch theo dõi - không giới hạn độ dài>"
 }`
     : `═══════════════════════════════════════════════════════════════════════════════
 📄 OUTPUT FORMAT - RESPOND WITH ONLY VALID JSON (no markdown, no explanation):
 ═══════════════════════════════════════════════════════════════════════════════
 {
   "confidence": <number 75-99, based on test result clarity>,
-  "summary": "<400-500 words PURE ENGLISH. Deep clinical analysis including:
-    1. Overall result assessment
-    2. Pathophysiology (if abnormalities present)
-    3. Comparison with international medical standards
-    4. Impact on daily life
-    5. Prognosis without intervention>",
-  "trend": "<100-150 words ENGLISH. Trend analysis compared to previous tests, predicted progression>",
-  "causes": "<100-120 words ENGLISH. Possible causes analysis: genetic, environmental, lifestyle, underlying conditions>",
+  "summary": "<PURE ENGLISH. Comprehensive clinical analysis: result assessment, pathophysiology, international standards comparison, daily life impact, prognosis - respond thoroughly with no strict limit>",
+  "trend": "<ENGLISH. Trend analysis vs history, predicted progression - no strict word limit>",
+  "causes": "<ENGLISH. Cause analysis: genetic, environmental, lifestyle, conditions - no strict limit>",
   "recommendations": [
     "Recommendation 1: <detailed, specific, with timeline>",
     "Recommendation 2: <include dosage, frequency if medication/supplement>",
@@ -291,7 +281,7 @@ export function createReportPrompt(
     "... 12-15 detailed recommendations"
   ],
   "severity": "LOW" | "MEDIUM" | "HIGH",
-  "prediction": "<100-120 words ENGLISH. 6-12 month prognosis, influencing factors, specific follow-up plan>"
+  "prediction": "<ENGLISH. 6-12 month prognosis, influencing factors, follow-up plan - no strict limit>"
 }`;
 
   const historyLabel = isVi ? '📊 LỊCH SỬ KIỂM TRA (5 lần gần nhất):' : '📊 TEST HISTORY (last 5):';

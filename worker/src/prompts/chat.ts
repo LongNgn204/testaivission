@@ -1,29 +1,29 @@
 /**
  * ============================================================
- * 💬 Chat Prompts - DEEP OPHTHALMOLOGY TRAINING v2.0
+ * 💬 Chat Prompts - DEEP OPHTHALMOLOGY TRAINING v2.1
  * ============================================================
  * 
- * Nâng cấp toàn diện kiến thức nhãn khoa chuyên sâu
- * - Tăng độ dài câu trả lời: 150-300 từ
+ * Kiến thức nhãn khoa chuyên sâu
+ * - Trả lời đầy đủ, chi tiết (không giới hạn cứng)
  * - Kiến thức y khoa chuẩn quốc tế (WHO, AAO)
  * - Ngôn ngữ thuần túy, không pha trộn
  * - Cấu trúc trả lời chuẩn bác sĩ lâm sàng
  */
 
 export function createChatPrompt(
-   message: string,
-   lastTestResult: any,
-   userProfile: any,
-   language: 'vi' | 'en'
+  message: string,
+  lastTestResult: any,
+  userProfile: any,
+  language: 'vi' | 'en'
 ): string {
-   const isVi = language === 'vi';
+  const isVi = language === 'vi';
 
-   if (isVi) {
-      let contextInfo = '';
+  if (isVi) {
+    let contextInfo = '';
 
-      if (lastTestResult) {
-         const date = new Date(lastTestResult.date).toLocaleDateString('vi-VN');
-         contextInfo += `
+    if (lastTestResult) {
+      const date = new Date(lastTestResult.date).toLocaleDateString('vi-VN');
+      contextInfo += `
 ══════════════════════════════════════════
 📋 KẾT QUẢ KIỂM TRA GẦN NHẤT:
 ══════════════════════════════════════════
@@ -31,19 +31,19 @@ export function createChatPrompt(
 - Ngày thực hiện: ${date}
 - Kết quả chi tiết: ${JSON.stringify(lastTestResult.resultData)}
 - Mức độ nghiêm trọng: ${lastTestResult.report?.severity || 'Chưa đánh giá'}`;
-      }
+    }
 
-      if (userProfile) {
-         contextInfo += `
+    if (userProfile) {
+      contextInfo += `
 ══════════════════════════════════════════
 👤 HỒ SƠ BỆNH NHÂN:
 ══════════════════════════════════════════
 - Làm việc với máy tính: ${userProfile.worksWithComputer ? 'Có (nguy cơ cao hội chứng thị giác máy tính - CVS)' : 'Không'}
 - Đeo kính: ${userProfile.wearsGlasses ? 'Có (cần tái khám định kỳ 6-12 tháng)' : 'Không'}
 - Mục tiêu chăm sóc: ${userProfile.goal}`;
-      }
+    }
 
-      return `Bạn là TIẾN SĨ - BÁC SĨ EVA, Chuyên gia Nhãn khoa cao cấp với hơn 20 năm kinh nghiệm lâm sàng và nghiên cứu tại các bệnh viện tuyến trung ương.
+    return `Bạn là TIẾN SĨ - BÁC SĨ EVA, Chuyên gia Nhãn khoa cao cấp với hơn 20 năm kinh nghiệm lâm sàng và nghiên cứu tại các bệnh viện tuyến trung ương.
 
 ═══════════════════════════════════════════════════════════════════════════════
 🏥 CHUYÊN MÔN SÂU - KIẾN THỨC CHUẨN QUỐC TẾ (WHO, AAO, ASIA-ARVO):
@@ -127,7 +127,7 @@ export function createChatPrompt(
 3. 💊 KHUYẾN NGHỊ ĐIỀU TRỊ: Lời khuyên cụ thể, khả thi (3-4 câu)
 4. ⚕️ TIÊN LƯỢNG & THEO DÕI: Dự đoán diễn biến, lịch tái khám (2-3 câu)
 
-✅ ĐỘ DÀI: 150-300 từ (chi tiết, đầy đủ thông tin chuyên môn)
+✅ ĐỘ DÀI: Trả lời đầy đủ, chi tiết, không giới hạn cụ thể - miễn là đủ thông tin y khoa cần thiết
 
 ✅ MỨC ĐỘ KHẨN CẤP (sử dụng khi cần):
    🔴 KHẨN CẤP (trong 24-48 giờ): Mất thị lực đột ngột, đau nhức dữ dội, chấn thương mắt, chớp sáng kèm ruồi bay
@@ -146,12 +146,12 @@ ${contextInfo}
 ❓ CÂU HỎI CỦA BỆNH NHÂN:
 ══════════════════════════════════════════
 ${message}`;
-   } else {
-      let contextInfo = '';
+  } else {
+    let contextInfo = '';
 
-      if (lastTestResult) {
-         const date = new Date(lastTestResult.date).toLocaleDateString('en-US');
-         contextInfo += `
+    if (lastTestResult) {
+      const date = new Date(lastTestResult.date).toLocaleDateString('en-US');
+      contextInfo += `
 ══════════════════════════════════════════
 📋 LATEST TEST RESULT:
 ══════════════════════════════════════════
@@ -159,19 +159,19 @@ ${message}`;
 - Date performed: ${date}
 - Detailed results: ${JSON.stringify(lastTestResult.resultData)}
 - Severity level: ${lastTestResult.report?.severity || 'Not yet evaluated'}`;
-      }
+    }
 
-      if (userProfile) {
-         contextInfo += `
+    if (userProfile) {
+      contextInfo += `
 ══════════════════════════════════════════
 👤 PATIENT PROFILE:
 ══════════════════════════════════════════
 - Computer work: ${userProfile.worksWithComputer ? 'Yes (high risk of Computer Vision Syndrome)' : 'No'}
 - Wears glasses: ${userProfile.wearsGlasses ? 'Yes (requires routine check-up every 6-12 months)' : 'No'}
 - Care goal: ${userProfile.goal}`;
-      }
+    }
 
-      return `You are DR. EVA, MD, PhD - A Senior Board-Certified Ophthalmologist with over 20 years of clinical and research experience at top-tier university hospitals.
+    return `You are DR. EVA, MD, PhD - A Senior Board-Certified Ophthalmologist with over 20 years of clinical and research experience at top-tier university hospitals.
 
 ═══════════════════════════════════════════════════════════════════════════════
 🏥 DEEP EXPERTISE - INTERNATIONAL STANDARDS (WHO, AAO, ASIA-ARVO):
@@ -255,7 +255,7 @@ ${message}`;
 3. 💊 TREATMENT RECOMMENDATIONS: Specific, actionable advice (3-4 sentences)
 4. ⚕️ PROGNOSIS & FOLLOW-UP: Expected outcome, follow-up schedule (2-3 sentences)
 
-✅ LENGTH: 150-300 words (detailed, comprehensive medical information)
+✅ LENGTH: Respond fully and thoroughly - no strict word limit, ensure all necessary medical information is provided
 
 ✅ URGENCY LEVELS (use when applicable):
    🔴 URGENT (within 24-48 hours): Sudden vision loss, severe pain, eye trauma, light flashes with floaters
@@ -274,5 +274,5 @@ ${contextInfo}
 ❓ PATIENT QUESTION:
 ══════════════════════════════════════════
 ${message}`;
-   }
+  }
 }

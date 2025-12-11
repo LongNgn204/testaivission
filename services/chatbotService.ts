@@ -47,11 +47,11 @@ async function fetchWithRetry(
 function sanitizeUserMessage(input: string): string {
   // Remove potential HTML/script and trim length
   const text = input.replace(/<[^>]*>?/gm, '').replace(/[\u0000-\u001F\u007F]/g, '').trim();
-  return text.slice(0, 500);
+  return text.slice(0, 2000); // Tăng limit từ 500 lên 2000 để cho phép tin nhắn dài hơn
 }
 
 let lastCallTs = 0;
-const COOLDOWN_MS = 1200;
+const COOLDOWN_MS = 300; // Giảm từ 1200ms xuống 300ms để phản hồi nhanh hơn
 
 export class ChatbotService {
   /**

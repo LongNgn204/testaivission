@@ -145,7 +145,7 @@ export default function ProgressPage() {
       amsler: { vi: 'Amsler', en: 'Amsler' },
       duochrome: { vi: 'Duochrome', en: 'Duochrome' },
     };
-    return language === 'vi' ? map[type].vi : map[type].en;
+    return language === 'vi' ? (map[type]?.vi || type) : (map[type]?.en || type);
   };
 
   return (

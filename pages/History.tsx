@@ -253,7 +253,7 @@ export const History: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <p className="text-gray-600 dark:text-gray-300 text-sm flex-grow"><span className="font-semibold">{t('ai_assessment')}:</span> {item.report.summary}</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm flex-grow"><span className="font-semibold">{t('ai_assessment')}:</span> {item.report?.summary || (language === 'vi' ? 'Chưa có đánh giá' : 'No assessment available')}</p>
                     <button
                       onClick={() => setSelectedResult(item)}
                       className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
