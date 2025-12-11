@@ -76,8 +76,6 @@ const SimpleLineChart: React.FC<{ points: { x: string; y: number }[] }> = ({ poi
 };
 
 export default function ProgressPage() {
-  // Guard: valid test types
-  const VALID_TYPES: TestType[] = ['snellen','colorblind','astigmatism','amsler','duochrome'];
   const { language } = useLanguage();
   const VALID_TYPES: TestType[] = ['snellen','colorblind','astigmatism','amsler','duochrome'];
   const isValidType = (t: any): t is TestType => VALID_TYPES.includes(t as TestType);
@@ -99,12 +97,16 @@ export default function ProgressPage() {
 
   const snellenData = history
     .filter((h) => h.testType === 'snellen')
-    .map((h) => ({ x: h.date, y: scoreToNumber((h.resultData as any).score) }))
+    .map((h) => {
+      const score = (h?.resultData as any)?.score ?? '20/20';
+      return { x: h.date, y: scoreToNumber(String(score)) };
+    })
     .reverse();
 
   const counts = history.reduce<Record<TestType, number>>(
     (acc, cur) => {
-      const k = cur.testType as TestType;
+      const k = cur?.testType;
+      if (!isValidType(k)) return acc; // ignore invalid/unknown types
       acc[k] = (acc[k] || 0) + 1;
       return acc;
     },
@@ -149,7 +151,9 @@ export default function ProgressPage() {
       amsler: { vi: 'Amsler', en: 'Amsler' },
       duochrome: { vi: 'Duochrome', en: 'Duochrome' },
     };
-    return language === 'vi' ? map[type].vi : map[type].en;
+    const entry = map[type as TestType];
+    if (!entry) return language === 'vi' ? 'Không xác định' : 'Unknown';
+    return language === 'vi' ? entry.vi : entry.en;
   };
 
   return (
