@@ -626,7 +626,7 @@
                         </svg>
                         Xuất Excel
                     </button>
-                    
+
                 </div>
             </header>
 
@@ -745,7 +745,8 @@
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
                                             Mức độ</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
-                                            Phân tích AI</th>
+                                            Phân tích AI (chức năng này cần phát triển)
+                                        </th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
                                             Ngày</th>
                                     </tr>
@@ -875,7 +876,7 @@
         // ============================================================
         let API_URL = '';
         let TOKEN = '';
-        
+
         let allRecords = [];
         let filteredData = [];
 
@@ -971,7 +972,7 @@
                     } else {
                         API_URL = data.apiUrl || '';
                         TOKEN = data.token || '';
-                        
+
                         showDashboard();
                         loadRecords();
                         return;
@@ -981,14 +982,14 @@
                     localStorage.removeItem('admin_session');
                 }
             }
-            
+
             // AUTO-LOGIN: Tự động vào dashboard với API URL mặc định
             API_URL = document.getElementById('apiUrl').value.trim() || 'https://vision-coach-worker.stu725114073.workers.dev';
             TOKEN = ''; // Không cần token cho public read mode
-            
+
             const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
             localStorage.setItem('admin_session', JSON.stringify({ apiUrl: API_URL, token: '', expiresAt }));
-            
+
             showDashboard();
             loadRecords();
         };
@@ -997,7 +998,7 @@
         async function login() {
             API_URL = document.getElementById('apiUrl').value.trim();
             TOKEN = document.getElementById('tokenInput').value.trim();
-            
+
 
             const loginErr = document.getElementById('loginError');
             loginErr.classList.add('hidden');
@@ -1008,7 +1009,7 @@
                 loginErr.classList.remove('hidden');
                 return;
             }
-                        // If an admin JWT is provided, verify and use it; otherwise proceed in public read mode
+            // If an admin JWT is provided, verify and use it; otherwise proceed in public read mode
             const expiresAt = Date.now() + (SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
             if (TOKEN) {
                 try {
