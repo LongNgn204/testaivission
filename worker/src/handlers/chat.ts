@@ -28,12 +28,20 @@ KIẾN THỨC CHUYÊN MÔN SÂU (Tiêu chuẩn WHO, AAO, AREDS2):
 - Dinh dưỡng cho mắt: Lutein, Zeaxanthin, Omega-3, Vitamin A
 - Phẫu thuật khúc xạ: LASIK, PRK, SMILE, ICL
 
+<<<<<<< Updated upstream
 PHONG CÁCH TRẢ LỜI (BẮT BUỘC):
 1. ĐỘ DÀI: 150-300 từ, chi tiết và đầy đủ
 2. CẤU TRÚC: Đánh giá → Phân tích → Khuyến nghị → Tiên lượng
 3. MỨC ĐỘ KHẨN CẤP: 🔴 Khẩn cấp (24-48h) | 🟡 Sớm (1-2 tuần) | 🟢 Định kỳ (1-3 tháng)
 4. NGÔN NGỮ: TIẾNG VIỆT THUẦN TÚY 100%, không dùng từ tiếng Anh
 5. GIỌNG ĐIỆU: Chuyên nghiệp, đồng cảm, ấm áp như bác sĩ gia đình`
+=======
+PHONG CÁCH TRẢ LỜI:
+- Linh hoạt về độ dài (ưu tiên súc tích, phù hợp ngữ cảnh).
+- Cấu trúc khuyến nghị: Đánh giá → Phân tích → Khuyến nghị → Tiên lượng (nếu phù hợp).
+- Ngôn ngữ: 100% Tiếng Việt, tự nhiên, không chèn tuyên bố miễn trừ trách nhiệm.
+- Giọng điệu: Chuyên nghiệp, đồng cảm, ấm áp.`
+>>>>>>> Stashed changes
     : `You are DR. EVA, MD, PhD - A Senior Board-Certified Ophthalmologist with over 20 years of clinical and research experience at top-tier university hospitals.
 
 DEEP PROFESSIONAL KNOWLEDGE (WHO, AAO, AREDS2 Standards):
@@ -71,6 +79,7 @@ export async function chat(
       );
     }
 
+<<<<<<< Updated upstream
     if (!['vi', 'en'].includes(language)) {
       return new Response(
         JSON.stringify({
@@ -79,6 +88,13 @@ export async function chat(
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+=======
+    // Content safety
+    const safety = evaluateContentSafety(String(message), language)
+    if (!safety.allowed) {
+      const safeMsg = safety.message || (language === 'vi' ? 'Nội dung này không được hỗ trợ.' : 'This content is not supported.')
+      return new Response(JSON.stringify({ message: safeMsg, timestamp: new Date().toISOString(), language }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+>>>>>>> Stashed changes
     }
 
     // Check if Cloudflare AI is available

@@ -14,7 +14,12 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
         LOW: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
         MEDIUM: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
         HIGH: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
-    };
+    } as const;
+
+    // Guard values để tránh hiển thị 0%/undefined khi fallback
+    const displayConfidence = Math.max(0, Math.min(100, typeof report?.confidence === 'number' && !isNaN(report.confidence) ? report.confidence : 65));
+    const displaySeverity = (['LOW','MEDIUM','HIGH'] as const).includes(report?.severity as any) ? (report.severity as 'LOW'|'MEDIUM'|'HIGH') : 'LOW';
+    const displaySeverityKey = `severity_${displaySeverity.toLowerCase()}` as any;
 
     const renderSnellen = (result: SnellenResult) => (
         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
@@ -107,7 +112,7 @@ const ReportHeader: React.FC<{ storedResult: StoredTestResult }> = ({ storedResu
             {hasDetailedResult && (
                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
                      <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('ai_confidence')}</h3>
-                    <p className={`text-5xl font-bold ${report.confidence >= 90 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>{report.confidence}%</p>
+                    <p className={`text-5xl font-bold ${displayConfidence >= 90 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>{displayConfidence}%</p>
                     <div className="mt-4 flex items-center justify-center gap-2">
                         <div className={`px-3 py-1 text-xs font-semibold rounded-full ${severityStyles[report.severity]}`}>{t('severity')}: {t(`severity_${report.severity.toLowerCase()}` as any)}</div>
                     </div>

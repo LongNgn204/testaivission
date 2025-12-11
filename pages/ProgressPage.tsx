@@ -76,7 +76,11 @@ const SimpleLineChart: React.FC<{ points: { x: string; y: number }[] }> = ({ poi
 };
 
 export default function ProgressPage() {
+  // Guard: valid test types
+  const VALID_TYPES: TestType[] = ['snellen','colorblind','astigmatism','amsler','duochrome'];
   const { language } = useLanguage();
+  const VALID_TYPES: TestType[] = ['snellen','colorblind','astigmatism','amsler','duochrome'];
+  const isValidType = (t: any): t is TestType => VALID_TYPES.includes(t as TestType);
   const [history, setHistory] = useState<StoredTestResult[]>([]);
   const storage = useMemo(() => new StorageService(), []);
 

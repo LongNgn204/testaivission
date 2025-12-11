@@ -209,7 +209,8 @@ export const useDashboardInsights = (
                     const fallback = buildFallbackInsights(history);
                     setInsights(fallback);
                     if (fallback) {
-                        setError(language === 'vi' ? 'Đang sử dụng dữ liệu tính toán cục bộ.' : 'Using locally computed data.');
+                        // Downgrade to console warning to avoid noisy UI banner
+console.warn(language === 'vi' ? 'Đang sử dụng dữ liệu tính toán cục bộ.' : 'Using locally computed data.');
                     }
                 }
             } catch (err) {

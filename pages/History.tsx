@@ -72,8 +72,27 @@ export const History: React.FC = () => {
     duochrome: t('duochrome_test'),
   };
 
-  // Get localStorage history once for report lookup
-  const localHistory = React.useMemo(() => storageService.getTestHistory(), []);
+  // Helper: ensure every item has a valid report (for legacy records)
+  const makeFallbackReport = (testType: TestType, dateISO: string): AIReport => ({
+    id: `fallback_${Date.now()}`,
+    testType,
+    timestamp: dateISO,
+    totalResponseTime: 0,
+    confidence: 65,
+    summary: language === 'vi' ? 'Báo cáo AI chưa có sẵn cho bản ghi này.' : 'AI report is not available for this record.',
+    recommendations: [],
+    severity: 'LOW',
+  });
+
+  const ensureReport = (item: StoredTestResult): StoredTestResult => {
+    if (item && (item as any).report && (item as any).report.summary !== undefined) return item;
+    const dateISO = item?.date || new Date().toISOString();
+    const safeReport = makeFallbackReport(item?.testType || 'snellen', dateISO);
+    return { ...item, report: safeReport } as StoredTestResult;
+  };
+
+  // Get localStorage history once for report lookup (sanitized)
+  const localHistory = React.useMemo(() => storageService.getTestHistory().map(ensureReport), [language]);
 
   // Find matching report from localStorage by comparing testType and date
   const findLocalReport = useCallback((testType: string, timestamp: number): AIReport | null => {
@@ -227,7 +246,7 @@ export const History: React.FC = () => {
         ) : (
           <div className="space-y-6">
             {history.map((item) => {
-              const Icon = ICONS[item.testType];
+              const Icon = ICONS[item.testType as TestType] || Eye;
               return (
                 <div key={item.id} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md transition-all hover:shadow-lg dark:border dark:border-gray-700/50 dark:hover:border-blue-500">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

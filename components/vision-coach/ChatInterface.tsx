@@ -32,6 +32,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
         }
     }, [isOpen]);
 
+
     const handleChatSubmit = useCallback(async () => {
         if (!chatInput.trim()) return;
         
