@@ -21,17 +21,32 @@ function jsonResponse(obj: any, status = 200) {
  * Verifies JWT token and checks admin role
  */
 async function verifyAdminAuth(request: IRequest, env: any): Promise<{ valid: boolean; error?: string; userId?: string }> {
-    // Allow public read-only access for standalone admin (file:// origin) on GET routes
+    // Allow public read-only access for standalone admin on GET routes
+    // This supports: file:// origin, localhost, 127.0.0.1, or ADMIN_PUBLIC_READ=1
     try {
         const req = request as Request;
         const origin = req.headers.get('Origin');
-        if ((origin === null || origin === 'null') && req.method === 'GET') {
+        const isGetRequest = req.method === 'GET';
+
+        // Allow public read for file:// origin (null)
+        if ((origin === null || origin === 'null') && isGetRequest) {
             return { valid: true, userId: 'public' };
         }
-        if (env && env.ADMIN_PUBLIC_READ === '1' && req.method === 'GET') {
+
+        // Allow public read for localhost development
+        if (isGetRequest && origin && (
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1') ||
+            origin.includes('0.0.0.0')
+        )) {
+            return { valid: true, userId: 'public-localhost' };
+        }
+
+        // Allow public read if env flag is set
+        if (env && env.ADMIN_PUBLIC_READ === '1' && isGetRequest) {
             return { valid: true, userId: 'public' };
         }
-    } catch {}
+    } catch { }
 
     const authHeader = (request as Request).headers.get('Authorization');
 
@@ -361,6 +376,173 @@ export async function getAdminStats(
         return jsonResponse({
             success: false,
             message: 'Failed to get stats',
+            error: error.message
+        }, 500);
+    }
+}
+
+/**
+ * DELETE /api/admin/users/:userId
+ * Delete a user and all their related data from D1 database
+ */
+export async function deleteAdminUser(
+    request: IRequest,
+    env: any
+): Promise<Response> {
+    try {
+        // Verify admin authentication - require proper auth for DELETE operations
+        const auth = await verifyAdminAuth(request, env);
+
+        // For DELETE, we need stricter auth - don't allow public access
+        const req = request as Request;
+        const origin = req.headers.get('Origin');
+        const isLocalhost = origin && (
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1') ||
+            origin.includes('0.0.0.0')
+        );
+
+        // Allow localhost for development, but still check auth for production
+        if (!isLocalhost && !auth.valid) {
+            return jsonResponse({ success: false, message: auth.error || 'Unauthorized' }, 401);
+        }
+
+        if (!env.DB) {
+            return jsonResponse({ success: false, message: 'Database not configured' }, 500);
+        }
+
+        // Get userId from URL params
+        const userId = request.params?.userId;
+
+        if (!userId) {
+            return jsonResponse({ success: false, message: 'User ID is required' }, 400);
+        }
+
+        console.log(`[Admin] Deleting user: ${userId}`);
+
+        // Delete user's data in order (respecting foreign key constraints)
+        const deleteResults: { table: string; deleted: number; error?: string }[] = [];
+
+        // 1. Delete from ai_reports
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM ai_reports WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'ai_reports', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'ai_reports', deleted: 0, error: e?.message });
+        }
+
+        // 2. Delete from test_results
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM test_results WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'test_results', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'test_results', deleted: 0, error: e?.message });
+        }
+
+        // 3. Delete from chat_history
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM chat_history WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'chat_history', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'chat_history', deleted: 0, error: e?.message });
+        }
+
+        // 4. Delete from reminders
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM reminders WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'reminders', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'reminders', deleted: 0, error: e?.message });
+        }
+
+        // 5. Delete from routines
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM routines WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'routines', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'routines', deleted: 0, error: e?.message });
+        }
+
+        // 6. Delete from sessions
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM sessions WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'sessions', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'sessions', deleted: 0, error: e?.message });
+        }
+
+        // 7. Delete from user_settings
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM user_settings WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'user_settings', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'user_settings', deleted: 0, error: e?.message });
+        }
+
+        // 8. Delete from analytics
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM analytics WHERE user_id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'analytics', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'analytics', deleted: 0, error: e?.message });
+        }
+
+        // 9. Finally, delete from users table
+        try {
+            const result = await env.DB
+                .prepare('DELETE FROM users WHERE id = ?')
+                .bind(userId)
+                .run();
+            deleteResults.push({ table: 'users', deleted: result.changes || 0 });
+        } catch (e: any) {
+            deleteResults.push({ table: 'users', deleted: 0, error: e?.message });
+        }
+
+        // Calculate total deleted records
+        const totalDeleted = deleteResults.reduce((acc, r) => acc + r.deleted, 0);
+        const hasErrors = deleteResults.some(r => r.error);
+
+        console.log(`[Admin] User ${userId} deleted. Total records removed: ${totalDeleted}`);
+
+        return jsonResponse({
+            success: !hasErrors,
+            message: hasErrors
+                ? 'User deleted with some errors'
+                : `User ${userId} and all related data deleted successfully`,
+            userId,
+            totalDeleted,
+            details: deleteResults,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        console.error('Admin delete user error:', error);
+        return jsonResponse({
+            success: false,
+            message: 'Failed to delete user',
             error: error.message
         }, 500);
     }

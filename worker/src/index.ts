@@ -15,7 +15,7 @@ import { chatStream } from './handlers/chatStream';
 import { generateRoutine } from './handlers/routine';
 import { generateProactiveTip } from './handlers/proactiveTip';
 import { adminAIAssistant } from './handlers/adminAssistant';
-import { getAdminUsers, getAdminRecords, getAdminStats, resetAllData } from './handlers/admin';
+import { getAdminUsers, getAdminRecords, getAdminStats, resetAllData, deleteAdminUser } from './handlers/admin';
 import { syncPull, syncHistory, syncSettings, syncRoutine } from './handlers/sync';
 import { login, verifyToken, logout } from './handlers/auth';
 import { DatabaseService } from './services/database';
@@ -107,6 +107,11 @@ router.post('/api/admin/assistant', adminAIAssistant);
 router.get('/api/admin/users', getAdminUsers);
 router.get('/api/admin/records', getAdminRecords);
 router.get('/api/admin/stats', getAdminStats);
+
+/**
+ * DELETE /api/admin/users/:userId - Delete a user and all their data
+ */
+router.delete('/api/admin/users/:userId', deleteAdminUser);
 
 /**
  * POST /api/admin/reset-all - Danger: wipe ALL data (D1 + KV)
@@ -475,8 +480,10 @@ function isAllowedOrigin(origin: string | null): boolean {
   const exactMatches = [
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost:5500',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
+    'http://127.0.0.1:5500',
   ];
 
   if (exactMatches.includes(origin)) return true;
