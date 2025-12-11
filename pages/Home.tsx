@@ -201,12 +201,13 @@ export const Home: React.FC = () => {
     const { startTour, hasCompletedTour, isTourActive } = useTourGuide();
 
     React.useEffect(() => {
-        // Start tour for first-time users after data loads
-        if (!hasCompletedTour && !isTourActive && !isHistoryLoading && history.length === 0) {
-            const timer = setTimeout(() => startTour(), 1500);
+        // Start tour for first-time users after page loads
+        // Show tour if user hasn't completed it yet (regardless of history)
+        if (!hasCompletedTour && !isTourActive && !isHistoryLoading) {
+            const timer = setTimeout(() => startTour(), 1000);
             return () => clearTimeout(timer);
         }
-    }, [hasCompletedTour, isTourActive, isHistoryLoading, history.length, startTour]);
+    }, [hasCompletedTour, isTourActive, isHistoryLoading, startTour]);
 
     const isLoadingDashboard = isHistoryLoading || isInsightsLoading;
 
