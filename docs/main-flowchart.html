@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Coach - Flowcharts</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-tab {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab:hover,
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .flowchart-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+
+        .flowchart-section.active {
+            display: block;
+        }
+
+        .flowchart-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .flowchart-section h2::before {
+            content: '';
+            display: block;
+            width: 5px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 20px 0;
+        }
+
+        .description {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .description h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .description ul {
+            list-style: none;
+        }
+
+        .description li {
+            padding: 8px 0;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .description li::before {
+            content: '→';
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .flowchart-section {
+                padding: 15px;
+            }
+
+            .nav-tab {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Vision Coach - Website Flowcharts</h1>
+            <p>Sơ đồ luồng hoạt động toàn bộ ứng dụng</p>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showSection('overview')">🏗️ Kiến Trúc</button>
+            <button class="nav-tab" onclick="showSection('auth')">🔐 Xác Thực</button>
+            <button class="nav-tab" onclick="showSection('home')">🏠 Trang Chủ</button>
+            <button class="nav-tab" onclick="showSection('tests')">🎯 Tests</button>
+            <button class="nav-tab" onclick="showSection('ai')">🤖 AI Eva</button>
+            <button class="nav-tab" onclick="showSection('data')">💾 Data Flow</button>
+            <button class="nav-tab" onclick="showSection('admin')">👨‍💼 Admin</button>
+        </div>
+
+        <!-- Overview Section -->
+        <section id="overview" class="flowchart-section active">
+            <h2>Kiến Trúc Tổng Quan</h2>
+            <div class="mermaid">
+                flowchart TD
+                subgraph Public["🌐 Public Routes"]
+                A[🏠 Welcome Page<br>/] --> B[🔐 Auth Page<br>/login]
+                end
+
+                B --> C{Đăng nhập<br>thành công?}
+                C -->|❌| B
+                C -->|✅| D{Đã setup<br>routine?}
+
+                D -->|Chưa| E[⚙️ Setup Page<br>/setup]
+                E --> F[AI tạo<br>Weekly Routine]
+                F --> G
+
+                D -->|Rồi| G[🏠 Home Page<br>/home]
+
+                subgraph Protected["🔒 Protected Routes"]
+                G --> H[📋 5 Vision Tests]
+                G --> I[📊 History & Progress]
+                G --> J[🏥 Hospital Locator]
+                G --> K[⚙️ Settings]
+                end
+
+                subgraph AI["🤖 AI Assistant - Eva"]
+                L[💬 Text Chat]
+                M[🎤 Voice Chat]
+                end
+
+                G -.-> L
+                G -.-> M
+
+                subgraph Admin["👨‍💼 Admin Dashboard"]
+                N[📊 Dashboard]
+                O[👥 Users]
+                P[📋 Records]
+                Q[📈 Analytics]
+                end
+
+                style A fill:#e3f2fd
+                style G fill:#c8e6c9
+                style H fill:#fff9c4
+                style L fill:#f3e5f5
+                style N fill:#e8eaf6
+            </div>
+
+            <div class="description">
+                <h3>📝 Mô tả</h3>
+                <ul>
+                    <li><strong>Public Routes:</strong> Không cần đăng nhập - Welcome Page, Auth Page</li>
+                    <li><strong>Protected Routes:</strong> Cần đăng nhập - Tất cả tính năng chính</li>
+                    <li><strong>AI Eva:</strong> Trợ lý AI luôn floating sẵn sàng hỗ trợ</li>
+                    <li><strong>Admin:</strong> Quản lý người dùng và dữ liệu test</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Auth Section -->
+        <section id="auth" class="flowchart-section">
+            <h2>Luồng Xác Thực</h2>
+            <div class="mermaid">
+                flowchart TD
+                A[🏠 Welcome Page] --> B{Click Bắt đầu?}
+                B -->|Yes| C[📝 Auth Page]
+
+                C --> D{Có tài khoản<br>đã lưu?}
+                D -->|Có| E[📋 Danh sách TK]
+                D -->|Không| F[📝 Form mới]
+
+                E --> G{Chọn TK cũ?}
+                G -->|Có| H[Auto-fill]
+                G -->|Không| F
+
+                H --> I
+                F --> I[Nhập Name/Phone/Age]
+
+                I --> J{Validate?}
+                J -->|❌ Lỗi| K[Hiện lỗi]
+                K --> I
+
+                J -->|✅ OK| L[📡 API Login]
+                L --> M{Thành công?}
+
+                M -->|❌| N[Lỗi API]
+                N --> I
+
+                M -->|✅| O[💾 Lưu Token]
+                O --> P{Đã Setup?}
+
+                P -->|Chưa| Q[⚙️ Setup Page]
+                P -->|Rồi| R[🏠 Home]
+
+                Q --> S[🤖 AI tạo Routine]
+                S --> R
+
+                subgraph Demo
+                T[🎮 Demo Login]
+                T --> O
+                end
+
+                style A fill:#e3f2fd
+                style R fill:#c8e6c9
+                style Q fill:#fff3e0
+                style T fill:#f3e5f5
+            </div>
+
+            <div class="description">
+                <h3>📝 Chi tiết xác thực</h3>
+                <ul>
+                    <li><strong>Name:</strong> Tối thiểu 2 ký tự</li>
+                    <li><strong>Phone:</strong> 10 chữ số, bắt đầu bằng 0</li>
+                    <li><strong>Age:</strong> 1-120 tuổi</li>
+                    <li><strong>Demo Account:</strong> Demo User / 0123456789 / 25</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Home Section -->
+        <section id="home" class="flowchart-section">
+            <h2>Luồng Trang Chủ</h2>
+            <div class="mermaid">
+                flowchart TD
+                A[🏠 Home Page Mount] --> B[📦 Load Test History]
+                B --> C[🤖 Gọi AI Insights]
+
+                C --> D{AI OK?}
+                D -->|❌| E[Empty State]
+                D -->|✅| F[📊 Dashboard Content]
+
+                F --> G[Vision Score]
+                F --> H[Trend Analysis]
+                F --> I[Recommendations]
+
+                subgraph TodayPlan["📅 Today's Plan"]
+                J[Load Weekly Routine]
+                J --> K[Filter by Today]
+                K --> L{Có activities?}
+                L -->|❌| M[Rest Day 😴]
+                L -->|✅| N[Activity Cards]
+                end
+
+                N --> O{Click Activity?}
+                O -->|Test| P[Navigate Test]
+                O -->|Exercise| Q[Exercise Modal]
+                O -->|Interactive| R[AI Exercise]
+
+                subgraph Tests["🎯 All Tests"]
+                S[Render 6 Test Cards]
+                S --> T{Click?}
+                T --> U[Navigate Test Page]
+                end
+
+                subgraph Tour["🎓 Tour Guide"]
+                V{First-time?}
+                V -->|Yes| W[Auto Tour]
+                W --> X[Highlight UI]
+                end
+
+                style A fill:#e3f2fd
+                style F fill:#c8e6c9
+                style P fill:#fff9c4
+                style U fill:#fff9c4
+            </div>
+        </section>
+
+        <!-- Tests Section -->
+        <section id="tests" class="flowchart-section">
+            <h2>Luồng Kiểm Tra Thị Lực</h2>
+            <div class="mermaid">
+                flowchart TD
+                A[🎯 Test Page] --> B[Start Screen]
+                B --> C{Click Start?}
+                C -->|Yes| D[Initialize Test]
+
+                D --> E[Generate Questions]
+                E --> F[Test Screen]
+
+                F --> G{User trả lời}
+                G --> H[Record Answer]
+                H --> I{Còn câu?}
+
+                I -->|Yes| F
+                I -->|No| J[Calculate Results]
+
+                J --> K[🤖 Generate AI Report]
+                K --> L{AI OK?}
+
+                L -->|❌| M[Fallback Report]
+                L -->|✅| N[Full Report]
+
+                M --> O[💾 Save to Storage]
+                N --> O
+
+                O --> P[📡 Sync Backend]
+                P --> Q[🔥 Update Streak]
+                Q --> R[✅ Complete View]
+
+                R --> S{Action?}
+                S -->|📄 View Report| T[Report Modal]
+                S -->|🔄 Retake| A
+                S -->|📤 Share| U[Share Options]
+                S -->|🏠 Home| V[Navigate Home]
+
+                style A fill:#e8eaf6
+                style R fill:#c8e6c9
+                style K fill:#fff3e0
+            </div>
+
+            <div class="description">
+                <h3>📋 5 Loại Test</h3>
+                <ul>
+                    <li><strong>Snellen:</strong> Thị lực - Xác định độ nét (20/20, 20/40...)</li>
+                    <li><strong>Ishihara:</strong> Mù màu - 20 bảng màu Ishihara</li>
+                    <li><strong>Astigmatism:</strong> Loạn thị - Phát hiện độ cong giác mạc</li>
+                    <li><strong>Amsler Grid:</strong> Võng mạc - Phát hiện thoái hóa điểm vàng</li>
+                    <li><strong>Duochrome:</strong> Kính - Kiểm tra độ chính xác kính</li>
+                </ul>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e8eaf6"></div>
+                    <span>Bắt đầu</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #fff3e0"></div>
+                    <span>AI Processing</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #c8e6c9"></div>
+                    <span>Hoàn thành</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Section -->
+        <section id="ai" class="flowchart-section">
+            <h2>Luồng AI Assistant (Eva)</h2>
+            <div class="mermaid">
+                flowchart TD
+                subgraph ChatFlow["💬 Text Chat"]
+                A1[Click Chat Button] --> B1[Open Modal]
+                B1 --> C1[Load History]
+                C1 --> D1[User nhập message]
+                D1 --> E1{API Key?}
+                E1 -->|Gemini| F1[Gemini API]
+                E1 -->|Workers| G1[Cloudflare AI]
+                F1 --> H1[AI Response]
+                G1 --> H1
+                H1 --> I1[Display + TTS]
+                I1 --> D1
+                end
+
+                subgraph VoiceFlow["🎤 Voice Chat"]
+                A2[Click Voice Button] --> B2[Open Modal]
+                B2 --> C2{Browser Support?}
+                C2 -->|❌| D2[Unsupported]
+                C2 -->|✅| E2[Init Speech]
+                E2 --> F2[User nói]
+                F2 --> G2[Speech→Text]
+                G2 --> H2[Send to AI]
+                H2 --> I2[AI Response]
+                I2 --> J2[Text→Speech]
+                J2 --> K2[Eva nói]
+                K2 --> F2
+                end
+
+                subgraph Context["🧠 AI Context"]
+                L[System: Dr. Eva]
+                M[Lịch sử chat]
+                N[User health data]
+                end
+
+                style A1 fill:#c8e6c9
+                style A2 fill:#90caf9
+                style H1 fill:#f3e5f5
+                style I2 fill:#f3e5f5
+            </div>
+
+            <div class="description">
+                <h3>🤖 Eva AI Features</h3>
+                <ul>
+                    <li><strong>Text Chat:</strong> Gõ text, nhận trả lời từ Gemini/LLAMA 3.1</li>
+                    <li><strong>Voice Chat:</strong> Nói chuyện bằng giọng nói (Web Speech API)</li>
+                    <li><strong>Context Aware:</strong> Hiểu lịch sử test và sức khỏe người dùng</li>
+                    <li><strong>Multilingual:</strong> Hỗ trợ tiếng Việt và tiếng Anh</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Data Section -->
+        <section id="data" class="flowchart-section">
+            <h2>Luồng Dữ Liệu</h2>
+            <div class="mermaid">
+                flowchart TD
+                subgraph Client["📱 Client Layer"]
+                A[localStorage]
+                B[React Context]
+                C[Components]
+                end
+
+                subgraph Services["⚙️ Service Layer"]
+                D[StorageService]
+                E[AIService]
+                F[AuthService]
+                end
+
+                subgraph Backend["☁️ Backend Layer"]
+                G[Cloudflare Workers]
+                H[D1 Database]
+                I[Workers AI]
+                end
+
+                subgraph External["🌐 External APIs"]
+                J[Google Gemini]
+                K[OpenRouter]
+                end
+
+                C --> D
+                C --> B
+
+                D --> A
+                D --> F
+                F --> G
+                G --> H
+
+                C --> E
+                E --> G
+                G --> I
+
+                E --> J
+                E --> K
+
+                style A fill:#e3f2fd
+                style H fill:#c8e6c9
+                style J fill:#fff3e0
+                style K fill:#fff3e0
+            </div>
+
+            <div class="description">
+                <h3>💾 Storage Keys</h3>
+                <ul>
+                    <li><strong>test_history_v2:</strong> Lịch sử tất cả bài test</li>
+                    <li><strong>user_auth_v2:</strong> Thông tin đăng nhập</li>
+                    <li><strong>weekly_routine:</strong> Lịch trình tuần từ AI</li>
+                    <li><strong>eva_chat_history:</strong> Lịch sử chat với Eva</li>
+                    <li><strong>streak_data:</strong> Dữ liệu streak & gamification</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="admin" class="flowchart-section">
+            <h2>Luồng Admin Dashboard</h2>
+            <div class="mermaid">
+                flowchart TD
+                A[🔐 Admin Access] --> B{Has Token?}
+                B -->|❌| C[Login Page]
+                B -->|✅| D[Dashboard]
+
+                C --> E[Enter Credentials]
+                E --> F[API /admin/login]
+                F --> G{Success?}
+                G -->|❌| H[Error]
+                H --> C
+                G -->|✅| I[Save Token]
+                I --> D
+
+                D --> J{Select Page}
+
+                J -->|📊| K[Dashboard]
+                J -->|👥| L[Users]
+                J -->|📋| M[Records]
+                J -->|📈| N[Analytics]
+                J -->|⚙️| O[Settings]
+
+                K --> P[API /admin/stats]
+                L --> Q[API /admin/users]
+                M --> R[API /admin/records]
+                N --> S[Charts & Reports]
+                O --> T[System Config]
+
+                style D fill:#e8eaf6
+                style C fill:#ffcdd2
+                style K fill:#c8e6c9
+            </div>
+
+            <div class="description">
+                <h3>👨‍💼 Admin Features</h3>
+                <ul>
+                    <li><strong>Dashboard:</strong> Tổng quan số liệu, recent activity</li>
+                    <li><strong>Users:</strong> Quản lý người dùng, search/filter</li>
+                    <li><strong>Records:</strong> Xem tất cả test records, AI reports</li>
+                    <li><strong>Analytics:</strong> Biểu đồ, thống kê chi tiết</li>
+                    <li><strong>Settings:</strong> Cấu hình hệ thống, AI settings</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        function showSection(id) {
+            // Hide all sections
+            document.querySelectorAll('.flowchart-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Remove active from all tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected section
+            document.getElementById(id).classList.add('active');
+
+            // Add active to clicked tab
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>
