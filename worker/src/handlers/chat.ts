@@ -6,6 +6,7 @@
 
 import { IRequest } from 'itty-router'
 import { generateWithCloudflareAI } from '../services/gemini'
+import { runTwoPassGptOss } from '../services/gptOss'
 import { getChatContext, appendChatContext, renderContextAsText } from '../services/chatContext'
 import { evaluateContentSafety } from '../services/contentSafety'
 import { isBreakerOpen, recordFailure, recordSuccess } from '../services/circuitBreaker'
@@ -141,6 +142,13 @@ export async function chat(request: IRequest, env: any): Promise<Response> {
 
     const t0 = Date.now()
     let assistantCore = ''
+    const requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
+    
+    // Chú thích: log function để track 2-pass
+    const logJson = (event: string, meta?: Record<string, unknown>) => {
+      console.log(JSON.stringify({ event, ...meta }))
+    }
+
     try {
       const mdl = model || env.CHAT_MODEL || ''
       if (mdl.startsWith('gemini-')) {
@@ -153,7 +161,14 @@ export async function chat(request: IRequest, env: any): Promise<Response> {
           topP: typeof topP === 'number' ? Math.min(Math.max(topP, 0), 1) : 0.8,
         })
       } else {
-        assistantCore = await generateWithCloudflareAI(env.AI, userPrompt, getSystemPrompt(language), { model: mdl || undefined, temperature: typeof temperature === 'number' ? temperature : 0.7, max_tokens: typeof maxTokens === 'number' ? Math.max(64, Math.floor(maxTokens)) : 1200, top_p: typeof topP === 'number' ? Math.min(Math.max(topP, 0), 1) : 0.8 })
+        // Chú thích: dùng GPT-OSS-120B với 2-pass accuracy check thay vì llama
+        const systemPrompt = getSystemPrompt(language)
+        const { text } = await runTwoPassGptOss(env.AI, logJson, {
+          requestId,
+          instructions: systemPrompt,
+          userInput: userPrompt,
+        })
+        assistantCore = text
       }
       await recordSuccess(env.CACHE)
     } catch (e) {
@@ -174,11 +189,11 @@ export async function chat(request: IRequest, env: any): Promise<Response> {
       const { DatabaseService } = await import('../services/database')
       const db = new DatabaseService(env.DB)
       await db.trackCost({ userId: uid, service: 'llm', endpoint: '/api/chat', tokensInput: tokensIn, tokensOutput: tokensOut, costUsd: 0 })
-      console.info(JSON.stringify({ evt: 'chat_done', model: model || env.CHAT_MODEL || '@cf/meta/llama-3.1-8b-instruct', tokensIn, tokensOut, latency }))
+      console.info(JSON.stringify({ evt: 'chat_done', model: model || env.CHAT_MODEL || '@cf/openai/gpt-oss-120b', tokensIn, tokensOut, latency }))
     } catch {}
 
     return new Response(
-      JSON.stringify({ message: assistantCore, timestamp: new Date().toISOString(), language, model: model || env.CHAT_MODEL || '@cf/meta/llama-3.1-8b-instruct' }),
+      JSON.stringify({ message: assistantCore, timestamp: new Date().toISOString(), language, model: model || env.CHAT_MODEL || '@cf/openai/gpt-oss-120b' }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: any) {

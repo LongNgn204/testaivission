@@ -5,6 +5,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useRoutine } from '../../context/RoutineContext';
 import { StorageService } from '../../services/storageService';
 import { ChatbotService } from '../../services/chatbotService';
+import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import { speakVi } from '../../utils/audioUtils';
 
 const storageService = new StorageService();
 
@@ -17,7 +19,7 @@ interface VoiceInterfaceProps {
  * Free Voice Chat Interface
  * Uses:
  * - Browser Web Speech API for Speech Recognition (STT)
- * - Cloudflare Workers AI (LLAMA 3.1) for AI response - FREE!
+ * - Cloudflare Workers AI (GPT-OSS-120B) for AI response - FREE!
  * - Browser SpeechSynthesis for Text-to-Speech (TTS)
  * 
  * NO API KEY REQUIRED!
@@ -28,71 +30,53 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     const navigate = useNavigate();
 
     const [status, setStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
-    const [userTranscript, setUserTranscript] = useState('');
     const [botTranscript, setBotTranscript] = useState('');
+    
+    // Chú thích: dùng hook useSpeechRecognition để quản lý STT
+    const speechRecognition = useSpeechRecognition(language);
+    const { isSupported: isSpeechSupported, isListening, interimText, finalText, error: speechError, start: startSTT, stop: stopSTT, reset: resetSTT } = speechRecognition;
+    
     const [error, setError] = useState<string | null>(null);
-
-    const recognitionRef = useRef<any>(null);
-    const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const lastSentTextRef = useRef<string>('');
     const chatbotService = useRef(new ChatbotService());
-
-    // Check if speech recognition is supported
-    const isSpeechSupported = typeof window !== 'undefined' &&
-        ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
     // Check if speech synthesis is supported
     const isSynthesisSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
-    // Get best voice for language
-    const getBestVoice = useCallback(() => {
-        if (!isSynthesisSupported) return null;
-
-        const voices = speechSynthesis.getVoices();
-        const targetLang = language === 'vi' ? 'vi' : 'en';
-
-        // Try to find a good quality voice
-        const preferredVoices = voices.filter(v =>
-            v.lang.startsWith(targetLang) &&
-            (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Natural') || v.localService === false)
-        );
-
-        if (preferredVoices.length > 0) return preferredVoices[0];
-
-        // Fallback to any voice for the language
-        const langVoices = voices.filter(v => v.lang.startsWith(targetLang));
-        if (langVoices.length > 0) return langVoices[0];
-
-        // Last resort: first available voice
-        return voices[0] || null;
-    }, [language, isSynthesisSupported]);
-
-    // Speak text using browser TTS
+    // Chú thích: wrap speakVi với callback để restart listening sau khi nói xong
     const speak = useCallback((text: string) => {
         if (!isSynthesisSupported || !text) return;
 
-        // Cancel any ongoing speech
-        speechSynthesis.cancel();
+        setStatus('speaking');
+        setBotTranscript(text);
+
+        // Chú thích: dùng speakVi từ audioUtils, nhưng cần track khi nói xong để restart
+        const synth = window.speechSynthesis;
+        synth.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = getBestVoice();
         utterance.lang = language === 'vi' ? 'vi-VN' : 'en-US';
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
 
-        utterance.onstart = () => setStatus('speaking');
         utterance.onend = () => {
             setStatus('listening');
             setBotTranscript('');
-            startListening();
-        };
-        utterance.onerror = () => {
-            setStatus('listening');
-            startListening();
+            // Restart listening sau khi nói xong
+            if (isOpen) {
+                startSTT();
+            }
         };
 
-        synthRef.current = utterance;
-        speechSynthesis.speak(utterance);
-    }, [language, isSynthesisSupported, getBestVoice]);
+        utterance.onerror = () => {
+            setStatus('listening');
+            if (isOpen) {
+                startSTT();
+            }
+        };
+
+        synth.speak(utterance);
+    }, [language, isSynthesisSupported, isOpen, startSTT]);
 
     // Process voice command and handle navigation/tests
     const processCommand = useCallback((transcript: string): boolean => {
@@ -167,6 +151,7 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
         if (!text.trim()) return;
 
         setStatus('thinking');
+        stopSTT(); // Chú thích: dừng STT khi đang suy nghĩ
 
         try {
             const history = storageService.getTestHistory();
@@ -174,19 +159,51 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
 
             const response = await chatbotService.current.chat(text, context, userProfile, language);
 
-            setBotTranscript(response);
             speak(response);
         } catch (err: any) {
             console.error('Voice AI error:', err);
             const errorMsg = language === 'vi'
                 ? 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.'
                 : 'Sorry, an error occurred. Please try again.';
-            setBotTranscript(errorMsg);
             speak(errorMsg);
         }
-    }, [language, userProfile, speak]);
+    }, [language, userProfile, speak, stopSTT]);
 
-    // Start speech recognition
+    // Chú thích: theo dõi finalText và gửi khi có thay đổi mới
+    useEffect(() => {
+        if (finalText && finalText !== lastSentTextRef.current && finalText.trim()) {
+            const textToSend = finalText.trim();
+            lastSentTextRef.current = textToSend;
+
+            // Check if it's a command first
+            if (!processCommand(textToSend)) {
+                // Not a command, send to AI
+                sendToAI(textToSend);
+            }
+            
+            // Reset STT để chuẩn bị cho lần nói tiếp theo
+            resetSTT();
+            lastSentTextRef.current = '';
+        }
+    }, [finalText, processCommand, sendToAI, resetSTT]);
+
+    // Chú thích: sync status với isListening từ hook
+    useEffect(() => {
+        if (isListening && status !== 'thinking' && status !== 'speaking') {
+            setStatus('listening');
+        } else if (!isListening && status === 'listening') {
+            setStatus('idle');
+        }
+    }, [isListening, status]);
+
+    // Chú thích: sync error từ hook
+    useEffect(() => {
+        if (speechError) {
+            setError(speechError);
+        }
+    }, [speechError]);
+
+    // Start listening
     const startListening = useCallback(() => {
         if (!isSpeechSupported) {
             setError(language === 'vi'
@@ -194,73 +211,18 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
                 : 'Browser does not support speech recognition');
             return;
         }
-
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-
-        recognition.lang = language === 'vi' ? 'vi-VN' : 'en-US';
-        recognition.continuous = false;
-        recognition.interimResults = true;
-
-        recognition.onstart = () => {
-            setStatus('listening');
-            setUserTranscript('');
-            setError(null);
-        };
-
-        recognition.onresult = (event: any) => {
-            let transcript = '';
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                transcript += event.results[i][0].transcript;
-            }
-            setUserTranscript(transcript);
-
-            // If final result
-            if (event.results[event.results.length - 1].isFinal) {
-                const finalTranscript = transcript.trim();
-
-                // Check if it's a command first
-                if (!processCommand(finalTranscript)) {
-                    // Not a command, send to AI
-                    sendToAI(finalTranscript);
-                }
-            }
-        };
-
-        recognition.onerror = (event: any) => {
-            console.error('Speech recognition error:', event.error);
-            if (event.error === 'not-allowed') {
-                setError(language === 'vi'
-                    ? 'Vui lòng cho phép truy cập microphone'
-                    : 'Please allow microphone access');
-            } else if (event.error !== 'no-speech') {
-                setError(language === 'vi'
-                    ? 'Lỗi nhận diện giọng nói: ' + event.error
-                    : 'Speech recognition error: ' + event.error);
-            }
-            setStatus('idle');
-        };
-
-        recognition.onend = () => {
-            // Auto-restart if still in listening mode and no error
-            if (status === 'listening' && !error) {
-                // Don't auto-restart, wait for user to click again
-            }
-        };
-
-        recognitionRef.current = recognition;
-        recognition.start();
-    }, [isSpeechSupported, language, status, error, processCommand, sendToAI]);
+        setError(null);
+        startSTT();
+    }, [isSpeechSupported, language, startSTT]);
 
     // Stop listening
     const stopListening = useCallback(() => {
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-            recognitionRef.current = null;
+        stopSTT();
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.cancel();
         }
-        speechSynthesis.cancel();
         setStatus('idle');
-    }, []);
+    }, [stopSTT]);
 
     // Toggle listening
     const toggleListening = useCallback(() => {
@@ -275,11 +237,12 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     useEffect(() => {
         if (!isOpen) {
             stopListening();
-            setUserTranscript('');
+            resetSTT();
             setBotTranscript('');
             setError(null);
+            lastSentTextRef.current = '';
         }
-    }, [isOpen, stopListening]);
+    }, [isOpen, stopListening, resetSTT]);
 
     // Auto-start listening when opened
     useEffect(() => {
@@ -373,12 +336,15 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
 
                 {/* Transcripts */}
                 <div className="mt-8 min-h-[120px] space-y-4 px-4 w-full">
-                    {userTranscript && (
+                    {(interimText || finalText) && (
                         <div className="bg-white/10 rounded-lg p-4 animate-fade-in">
                             <p className="text-sm text-gray-400 mb-1">
                                 {language === 'vi' ? 'Bạn nói:' : 'You said:'}
                             </p>
-                            <p className="text-lg text-white">"{userTranscript}"</p>
+                            <p className="text-lg text-white">
+                                {finalText && <span>"{finalText}"</span>}
+                                {interimText && !finalText && <span className="text-gray-400">"{interimText}"</span>}
+                            </p>
                         </div>
                     )}
 

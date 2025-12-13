@@ -41,3 +41,31 @@ export function playAudioBuffer(buffer: AudioBuffer, ctx: AudioContext): AudioBu
     source.start();
     return source;
 }
+
+/**
+ * ============================================================
+ * 🔊 Text-to-Speech (TTS) - Browser SpeechSynthesis API
+ * ============================================================
+ * 
+ * Sử dụng SpeechSynthesis API của trình duyệt để đọc văn bản
+ * Hỗ trợ tiếng Việt và tiếng Anh
+ */
+
+/**
+ * Đọc văn bản bằng SpeechSynthesis (tiếng Việt)
+ * Chú thích: tránh chồng giọng khi user hỏi liên tục
+ */
+export function speakVi(text: string, language: 'vi' | 'en' = 'vi'): void {
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+
+  // Chú thích: tránh chồng giọng khi user hỏi liên tục
+  synth.cancel();
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = language === 'vi' ? 'vi-VN' : 'en-US';
+  u.rate = 1.0;
+  u.pitch = 1.0;
+
+  synth.speak(u);
+}
