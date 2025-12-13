@@ -9,7 +9,7 @@ import { generateWithCloudflareAI } from '../services/gemini'
 import { getChatContext, appendChatContext, renderContextAsText } from '../services/chatContext'
 import { evaluateContentSafety } from '../services/contentSafety'
 import { isBreakerOpen, recordFailure, recordSuccess } from '../services/circuitBreaker'
-import { verifyJWT } from './auth'
+import { verifyAuthToken } from './auth'
 
 const getSystemPrompt = (language: 'vi' | 'en') => {
   return language === 'vi'
@@ -89,8 +89,11 @@ async function resolveContextId(request: Request, env: any): Promise<{ id: strin
     const auth = request.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
     if (token && env.JWT_SECRET) {
-      const decoded: any = await verifyJWT(token, env.JWT_SECRET)
-      if (decoded?.userId) return { id: `user:${decoded.userId}`, source: 'user' }
+      const decoded: any = await verifyAuthToken(token, env)
+      if (decoded?.sub || decoded?.userId) {
+        const uid = decoded.sub || decoded.userId
+        return { id: `user:${uid}`, source: 'user' }
+      }
     }
   } catch {}
   const ip = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'anonymous'
@@ -100,7 +103,7 @@ async function resolveContextId(request: Request, env: any): Promise<{ id: strin
 export async function chat(request: IRequest, env: any): Promise<Response> {
   const req = request as unknown as Request
   try {
-    const { message, lastTestResult, userProfile, language } = (await req.json()) as any
+    const { message, lastTestResult, userProfile, language, model, temperature, topP, maxTokens } = (await req.json()) as any
 
     if (!message || !['vi','en'].includes(language)) {
       return new Response(JSON.stringify({ error: 'Bad request' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
@@ -136,9 +139,22 @@ export async function chat(request: IRequest, env: any): Promise<Response> {
       ? `\n\nHồ sơ người dùng: ${JSON.stringify(userProfile)}`
       : `\n\nUser profile: ${JSON.stringify(userProfile)}`
 
+    const t0 = Date.now()
     let assistantCore = ''
     try {
-      assistantCore = await generateWithCloudflareAI(env.AI, userPrompt, getSystemPrompt(language))
+      const mdl = model || env.CHAT_MODEL || ''
+      if (mdl.startsWith('gemini-')) {
+        const { createGeminiFromEnv } = await import('../services/gemini')
+        const gem = createGeminiFromEnv(env)
+        assistantCore = await gem.generateContent(userPrompt, {
+          model: mdl,
+          temperature: typeof temperature === 'number' ? temperature : 0.7,
+          maxTokens: typeof maxTokens === 'number' ? Math.max(64, Math.floor(maxTokens)) : 1200,
+          topP: typeof topP === 'number' ? Math.min(Math.max(topP, 0), 1) : 0.8,
+        })
+      } else {
+        assistantCore = await generateWithCloudflareAI(env.AI, userPrompt, getSystemPrompt(language), { model: mdl || undefined, temperature: typeof temperature === 'number' ? temperature : 0.7, max_tokens: typeof maxTokens === 'number' ? Math.max(64, Math.floor(maxTokens)) : 1200, top_p: typeof topP === 'number' ? Math.min(Math.max(topP, 0), 1) : 0.8 })
+      }
       await recordSuccess(env.CACHE)
     } catch (e) {
       await recordFailure(env.CACHE)
@@ -149,8 +165,20 @@ export async function chat(request: IRequest, env: any): Promise<Response> {
     // Persist context (assistant message)
     try { await appendChatContext(env.CACHE, identity.id, sanitized, assistantCore) } catch {}
 
+    // Cost & latency tracking (approximate tokens)
+    try {
+      const uid = identity.id.startsWith('user:') ? identity.id.slice(5) : null
+      const tokensIn = Math.ceil((getSystemPrompt(language).length + userPrompt.length) / 4)
+      const tokensOut = Math.ceil(assistantCore.length / 4)
+      const latency = Date.now() - t0
+      const { DatabaseService } = await import('../services/database')
+      const db = new DatabaseService(env.DB)
+      await db.trackCost({ userId: uid, service: 'llm', endpoint: '/api/chat', tokensInput: tokensIn, tokensOutput: tokensOut, costUsd: 0 })
+      console.info(JSON.stringify({ evt: 'chat_done', model: model || env.CHAT_MODEL || '@cf/meta/llama-3.1-8b-instruct', tokensIn, tokensOut, latency }))
+    } catch {}
+
     return new Response(
-      JSON.stringify({ message: assistantCore, timestamp: new Date().toISOString(), language, model: 'llama-3.1-8b-instruct' }),
+      JSON.stringify({ message: assistantCore, timestamp: new Date().toISOString(), language, model: model || env.CHAT_MODEL || '@cf/meta/llama-3.1-8b-instruct' }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: any) {

@@ -231,7 +231,8 @@ export function createGeminiFromEnv(env: any): GeminiService {
 export async function generateWithCloudflareAI(
   ai: any,  // env.AI binding
   prompt: string,
-  systemPrompt?: string
+  systemPrompt?: string,
+  opts?: { temperature?: number; max_tokens?: number; model?: string; top_p?: number }
 ): Promise<string> {
   try {
     console.log('🤖 Using Cloudflare Workers AI (Llama 3.1)...');
@@ -244,10 +245,11 @@ export async function generateWithCloudflareAI(
 
     messages.push({ role: 'user', content: prompt });
 
-    const response = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+    const response = await ai.run(opts?.model || '@cf/meta/llama-3.1-8b-instruct', {
       messages,
-      max_tokens: 2000,
-      temperature: 0.7,
+      max_tokens: opts?.max_tokens ?? 2000,
+      temperature: typeof opts?.temperature === 'number' ? opts!.temperature : 0.7,
+      top_p: typeof opts?.top_p === 'number' ? opts!.top_p : 0.8,
     });
 
     const text = response?.response || '';

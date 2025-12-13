@@ -8,7 +8,7 @@
  */
 
 import { IRequest } from 'itty-router';
-import { generateJSONWithCloudflareAI } from '../services/gemini';
+import { generateJSONWithCloudflareAI, createGeminiFromEnv } from '../services/gemini';
 import { CacheService, CACHE_TTL } from '../services/cache';
 import { createReportPrompt } from '../prompts/report';
 
@@ -81,7 +81,13 @@ export async function generateReport(
     // Generate report using Cloudflare AI
     const prompt = createReportPrompt(testType, testData, history, language);
 
-    const report = await generateJSONWithCloudflareAI(env.AI, prompt, language);
+    let report: any;
+    if ((env.REPORT_MODEL || '').startsWith('gemini-')) {
+      const gem = createGeminiFromEnv(env);
+      report = await gem.generateJSON(prompt, undefined, { model: env.REPORT_MODEL, maxTokens: 1200, temperature: 0.3 });
+    } else {
+      report = await generateJSONWithCloudflareAI(env.AI, prompt, language);
+    }
 
     // Add metadata
     const result = {

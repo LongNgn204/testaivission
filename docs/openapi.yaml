@@ -1,0 +1,308 @@
+openapi: 3.0.0
+info:
+  title: Vision Coach API
+  description: AI-powered vision testing platform API
+  version: 1.0.0
+  contact:
+    name: Vision Coach Team
+    url: https://github.com/LongNgn204/testaivission
+
+servers:
+  - url: https://vision-coach-worker.stu725114073.workers.dev
+    description: Production API
+  - url: http://localhost:8787
+    description: Local development API
+
+paths:
+  /api/auth/login:
+    post:
+      summary: User login
+      description: Authenticate user and return JWT token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: "Nguyễn Văn A"
+                phone:
+                  type: string
+                  pattern: '^\d{10,11}$'
+                  example: "0912345678"
+                age:
+                  type: integer
+                  minimum: 5
+                  maximum: 120
+                  example: 30
+              required:
+                - name
+                - phone
+                - age
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        description: JWT token
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          phone:
+                            type: string
+                          age:
+                            type: integer
+                          createdAt:
+                            type: string
+                            format: date-time
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/verify:
+    post:
+      summary: Verify JWT token
+      description: Verify if JWT token is still valid
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      valid:
+                        type: boolean
+                      user:
+                        type: object
+        '401':
+          description: Token is invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/chat:
+    post:
+      summary: Chat with Dr. Eva
+      description: Send message to AI chatbot and get response
+      tags:
+        - AI Services
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                  example: "Tôi bị cận thị, có nên đeo kính liên tục?"
+                context:
+                  type: object
+                  properties:
+                    lastTestResult:
+                      type: object
+                    userProfile:
+                      type: object
+                language:
+                  type: string
+                  enum: [vi, en]
+                  default: vi
+              required:
+                - message
+      responses:
+        '200':
+          description: Chat response received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        description: Response from Dr. Eva (150-300 words)
+                      tokensUsed:
+                        type: object
+                        properties:
+                          input:
+                            type: integer
+                          output:
+                            type: integer
+                      cost:
+                        type: number
+                        format: float
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/report:
+    post:
+      summary: Generate AI report for test
+      description: Generate detailed AI analysis report for a test result
+      tags:
+        - AI Services
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                testType:
+                  type: string
+                  enum: [snellen, colorblind, astigmatism, amsler, duochrome]
+                testData:
+                  type: object
+                  description: Test result data (varies by test type)
+                language:
+                  type: string
+                  enum: [vi, en]
+                  default: vi
+              required:
+                - testType
+                - testData
+      responses:
+        '200':
+          description: Report generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      testType:
+                        type: string
+                      summary:
+                        type: string
+                        description: 400-500 word analysis
+                      recommendations:
+                        type: array
+                        items:
+                          type: string
+                        description: 12-15 detailed recommendations
+                      severity:
+                        type: string
+                        enum: [LOW, MEDIUM, HIGH]
+                      confidence:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Input validation failed"
+            details:
+              type: object
+              description: Additional error details
+      required:
+        - success
+        - error
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/auth/login
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: AI Services
+    description: AI-powered endpoints (chat, reports, etc.)
+  - name: Data Sync
+    description: Data synchronization endpoints
+

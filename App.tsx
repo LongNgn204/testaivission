@@ -44,6 +44,8 @@ import { initializeReminderSystem } from './services/reminderService';
 import { initPerformanceOptimizations } from './utils/performanceUtils';
 import { verifyUserToken, getAuthToken, clearAuthToken, processOfflineQueue } from './services/authService';
 import { checkAndMigrateData } from './utils/dataMigration';
+import { logger } from './utils/logger';
+import { initAuth0 } from './utils/auth0';
 import './utils/envConfig';
 
 // ============================================================
@@ -65,8 +67,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, Error
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-        // Log error to console (in production, send to error tracking service)
-        console.error('App Error:', error, errorInfo);
+        // Log error với structured logging
+        logger.error('App Error', error, 'ErrorBoundary');
+        if (import.meta.env.DEV) {
+            console.error('Component Stack:', errorInfo.componentStack);
+        }
     }
 
     handleReload = () => {
@@ -371,6 +376,11 @@ const AppContent: React.FC = () => {
  * 4. RoutineProvider: Quản lý lịch trình và trạng thái setup
  */
 export default function App() {
+    // Khởi tạo Auth0 ngay khi app mount (nếu được bật qua env)
+    React.useEffect(() => {
+        initAuth0().catch(() => {});
+    }, []);
+
     return (
         <ErrorBoundary>
             <ThemeProvider>

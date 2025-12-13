@@ -21,6 +21,7 @@
     "db:info": "node scripts/migrate.js info"
   },
   "dependencies": {
+    "jose": "^5.9.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240605.0",

@@ -109,6 +109,57 @@ router.get('/api/admin/records', getAdminRecords);
 router.get('/api/admin/stats', getAdminStats);
 
 /**
+ * GET /api/admin/cost-summary
+ * Daily totals for tokens/requests/cost (last 30 days)
+ */
+router.get('/api/admin/cost-summary', async (request: IRequest, env: any) => {
+  try {
+    // Reuse verifyAdminAuth logic by deferring to admin handler if needed later
+    const sql = `
+      SELECT 
+        CASE 
+          WHEN (CAST(created_at AS TEXT) GLOB '[0-9]*' AND LENGTH(CAST(created_at AS TEXT)) > 10) 
+            THEN date(CAST(created_at AS INTEGER)/1000, 'unixepoch')
+          WHEN (CAST(created_at AS TEXT) GLOB '[0-9]*')
+            THEN date(CAST(created_at AS INTEGER), 'unixepoch')
+          ELSE date(created_at)
+        END AS d,
+        service,
+        COUNT(*) AS requests,
+        COALESCE(SUM(tokens_input), 0) AS tokens_in,
+        COALESCE(SUM(tokens_output), 0) AS tokens_out,
+        COALESCE(SUM(cost_usd), 0) AS cost_usd
+      FROM cost_tracking
+      WHERE 
+        (
+          CASE 
+            WHEN (CAST(created_at AS TEXT) GLOB '[0-9]*' AND LENGTH(CAST(created_at AS TEXT)) > 10) 
+              THEN date(CAST(created_at AS INTEGER)/1000, 'unixepoch')
+            WHEN (CAST(created_at AS TEXT) GLOB '[0-9]*')
+              THEN date(CAST(created_at AS INTEGER), 'unixepoch')
+            ELSE date(created_at)
+          END
+        ) >= date('now', '-30 day')
+      GROUP BY d, service
+      ORDER BY d DESC, service ASC
+    `;
+
+    const res = await env.DB.prepare(sql).all();
+    const rows = res.results || [];
+
+    return new Response(JSON.stringify({ success: true, rows }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ success: false, error: String(e) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+/**
  * DELETE /api/admin/users/:userId - Delete a user and all their data
  */
 router.delete('/api/admin/users/:userId', deleteAdminUser);
@@ -144,8 +195,8 @@ router.post('/api/tts/generate', async (request: IRequest, env: any) => {
     }
 
     // Verify token
-    const { verifyJWT } = await import('./handlers/auth');
-    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    const { verifyAuthToken } = await import('./handlers/auth');
+    const decoded: any = await verifyAuthToken(token, env);
     if (!decoded) {
       return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), {
         status: 403,
@@ -322,8 +373,8 @@ router.post('/api/tests/save', async (request: IRequest, env: any) => {
     }
 
     // Verify token
-    const { verifyJWT } = await import('./handlers/auth');
-    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    const { verifyAuthToken } = await import('./handlers/auth');
+    const decoded: any = await verifyAuthToken(token, env);
     if (!decoded) {
       return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
     }
@@ -376,8 +427,8 @@ router.get('/api/tests/history', async (request: IRequest, env: any) => {
     if (!token) {
       return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
-    const { verifyJWT } = await import('./handlers/auth');
-    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
+    const { verifyAuthToken } = await import('./handlers/auth');
+    const decoded: any = await verifyAuthToken(token, env);
     if (!decoded) {
       return new Response(JSON.stringify({ success: false, message: 'Invalid or expired token' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
     }
@@ -488,10 +539,13 @@ function isAllowedOrigin(origin: string | null): boolean {
 
   if (exactMatches.includes(origin)) return true;
 
-  // Pattern matches (Cloudflare Pages deployments)
-  // Matches: *.testaivision.pages.dev and testaivision.pages.dev
-  const pagesPattern = /^https:\/\/([\w-]+\.)?testaivision\.pages\.dev$/;
+  // Allow any Cloudflare Pages deployments (*.pages.dev)
+  const pagesPattern = /^https:\/\/([\w-]+\.)?pages\.dev$/;
   if (pagesPattern.test(origin)) return true;
+
+  // Allow Workers.dev origins
+  const workersPattern = /^https:\/\/([\w-]+\.)?workers\.dev$/;
+  if (workersPattern.test(origin)) return true;
 
   return false;
 }

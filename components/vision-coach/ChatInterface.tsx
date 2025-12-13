@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Bot, Send, User } from 'lucide-react';
+import { X, Bot, Send, User, Volume2, VolumeX, Pause, Play } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useRoutine } from '../../context/RoutineContext';
 import { StorageService } from '../../services/storageService';
@@ -17,6 +17,25 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
     const [chatInput, setChatInput] = useState('');
     const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'bot', text: string }>>([]);
     const [status, setStatus] = useState<'idle' | 'thinking'>('idle');
+    const [liveVoice, setLiveVoice] = useState(false);
+    const [model, setModel] = useState<string>(() => localStorage.getItem('chat_model') || '@cf/meta/llama-3.1-8b-instruct');
+    const [temperature, setTemperature] = useState<number>(() => {
+        const v = localStorage.getItem('chat_temperature');
+        return v ? Number(v) : 0.7;
+    });
+    const [topP, setTopP] = useState<number>(() => {
+        const v = localStorage.getItem('chat_top_p');
+        return v ? Number(v) : 0.8;
+    });
+    const [maxTokens, setMaxTokens] = useState<number>(() => {
+        const v = localStorage.getItem('chat_max_tokens');
+        return v ? Number(v) : 1200;
+    });
+    const speechQueueRef = useRef<string[]>([]);
+    const speakingRef = useRef(false);
+    const [speakingUI, setSpeakingUI] = useState(false);
+    const [paused, setPaused] = useState(false);
+    const speechBufferRef = useRef<string>('');
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to bottom
@@ -48,6 +67,74 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
         } catch {}
     }, [isOpen, language]);
 
+    // =====================
+    // LIVE VOICE (TTS) – theo chunk streaming
+    // =====================
+    const cancelSpeech = useCallback(() => {
+        try {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        } catch {}
+        speakingRef.current = false;
+        speechQueueRef.current = [];
+        if (speechBufferRef.current) speechBufferRef.current = '';
+    }, []);
+
+    const speakNext = useCallback(() => {
+        if (!liveVoice) return;
+        if (speakingRef.current) return;
+        const next = speechQueueRef.current.shift();
+        if (!next) return;
+        if (!('speechSynthesis' in window)) return;
+
+        try {
+            speakingRef.current = true;
+            const utter = new SpeechSynthesisUtterance(next);
+            utter.lang = language === 'vi' ? 'vi-VN' : 'en-US';
+            utter.rate = 1.0;
+            utter.pitch = 1.0;
+            utter.volume = 1.0;
+            utter.onend = () => {
+                speakingRef.current = false;
+                // Nói tiếp chunk kế tiếp (nếu còn)
+                speakNext();
+            };
+            utter.onerror = () => {
+                speakingRef.current = false;
+                speakNext();
+            };
+            // Chọn voice phù hợp (nếu có)
+            const voices = window.speechSynthesis.getVoices();
+            const target = voices.find(v => v.lang?.toLowerCase().startsWith(language === 'vi' ? 'vi' : 'en'));
+            if (target) utter.voice = target;
+            window.speechSynthesis.speak(utter);
+            setSpeakingUI(true);
+            setPaused(false);
+        } catch {
+            speakingRef.current = false;
+            setSpeakingUI(false);
+        }
+    }, [language, liveVoice]);
+
+    const enqueueSpeech = useCallback((text: string) => {
+        if (!liveVoice) return;
+        if (!text) return;
+        if (!('speechSynthesis' in window)) return;
+        speechQueueRef.current.push(text);
+        // Nếu đang rảnh thì bắt đầu nói
+        if (!speakingRef.current) speakNext();
+    }, [liveVoice, speakNext]);
+
+    // Tắt tiếng ngay khi đóng chat hoặc khi tắt toggle
+    useEffect(() => {
+        if (!isOpen || !liveVoice) {
+            cancelSpeech();
+        }
+        // cleanup khi unmount
+        return () => cancelSpeech();
+    }, [isOpen, liveVoice, cancelSpeech]);
+
     const handleChatSubmit = useCallback(async () => {
         if (!chatInput.trim()) return;
         
@@ -56,6 +143,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
         // push user message
         setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
         setStatus('thinking');
+        // Live voice: hủy tiếng cũ và reset buffer
+        cancelSpeech();
+        speechBufferRef.current = '';
         
         try {
             const history = storageService.getTestHistory();
@@ -71,23 +161,55 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
                 return [...prev, { role: 'bot', text: '' }];
             });
 
+            // helper: đẩy chunk vào UI và hàng đợi đọc
+            const handleChunk = (chunk: string) => {
+                // UI append
+                setChatHistory(prev => {
+                    const idx = botIndex >= 0 ? botIndex : prev.findIndex((m, i) => m.role === 'bot' && i === prev.length - 1);
+                    if (idx === -1) return prev;
+                    const copy = [...prev];
+                    copy[idx] = { ...copy[idx], text: (copy[idx].text || '') + chunk };
+                    return copy;
+                });
+                // TTS sentence-level: gom chunk thành câu ngắn
+                if (liveVoice) {
+                    speechBufferRef.current += chunk;
+                    const parts = speechBufferRef.current.split(/([.!?]+\s+)/);
+                    // Kết hợp lại để lấy các câu hoàn chỉnh
+                    let assembled = '';
+                    const sentences: string[] = [];
+                    for (let i = 0; i < parts.length; i += 2) {
+                        const seg = parts[i] || '';
+                        const end = parts[i + 1] || '';
+                        const sentence = (seg + end).trim();
+                        if (!sentence) continue;
+                        if (end) {
+                            sentences.push(sentence);
+                        } else {
+                            assembled = sentence; // phần còn lại chưa đủ dấu
+                        }
+                    }
+                    // enqueue các câu hoàn chỉnh
+                    for (const s of sentences) enqueueSpeech(s);
+                    speechBufferRef.current = assembled; // phần dư giữ lại
+                }
+            };
+
             // stream chunks and append progressively
             const final = await svc.chatStream(
                 userMessage,
                 context,
                 userProfile,
                 language,
-                (chunk: string) => {
-                    setChatHistory(prev => {
-                        // find last bot message if index not captured
-                        const idx = botIndex >= 0 ? botIndex : prev.findIndex((m, i) => m.role === 'bot' && i === prev.length - 1);
-                        if (idx === -1) return prev;
-                        const copy = [...prev];
-                        copy[idx] = { ...copy[idx], text: (copy[idx].text || '') + chunk };
-                        return copy;
-                    });
-                }
+                handleChunk,
+                { model: model || undefined, temperature, topP, maxTokens }
             );
+
+            // enqueue phần còn lại nếu có
+            if (liveVoice && speechBufferRef.current) {
+                enqueueSpeech(speechBufferRef.current);
+                speechBufferRef.current = '';
+            }
 
             // ensure there is some content in case streaming produced nothing
             if (!final) {
@@ -107,7 +229,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
             setChatHistory(prev => [...prev, { role: 'bot', text: errorMsg }]);
             setStatus('idle');
         }
-    }, [chatInput, language, userProfile]);
+    }, [chatInput, language, userProfile, liveVoice, cancelSpeech, enqueueSpeech]);
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in p-4">
@@ -130,12 +252,35 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
                             </p>
                         </div>
                     </div>
-                    <button 
-                        onClick={onClose} 
-                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
-                    >
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setLiveVoice(v => !v)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm ${liveVoice ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200'}`}
+                            title={language === 'vi' ? 'Đọc theo thời gian thực' : 'Live voice (TTS)'}
+                        >
+                            {liveVoice ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                            <span className="hidden sm:inline">{liveVoice ? (language === 'vi' ? 'Đang đọc' : 'Speaking') : (language === 'vi' ? 'Tắt tiếng' : 'Muted')}</span>
+                        </button>
+                        {liveVoice && speakingUI && (
+                          <>
+                            <button
+                              onClick={() => { try { if ('speechSynthesis' in window) { if (paused) { window.speechSynthesis.resume(); setPaused(false); } else { window.speechSynthesis.pause(); setPaused(true); } } } catch {} }}
+                              className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                              aria-label={paused ? 'Resume' : 'Pause'}
+                            >
+                              {paused ? <Play size={16} /> : <Pause size={16} />}
+                            </button>
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">{language === 'vi' ? 'Đang nói…' : 'Speaking…'}</span>
+                          </>
+                        )}
+                        <button 
+                            onClick={onClose} 
+                            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
+                            aria-label="Close"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Chat Messages Area */}
@@ -189,6 +334,62 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
                     )}
                     
                     <div ref={chatEndRef} />
+                </div>
+
+                {/* Advanced settings */}
+                <div className="px-4 py-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-20">Model</label>
+                            <select
+                                value={model}
+                                onChange={(e) => { setModel(e.target.value); localStorage.setItem('chat_model', e.target.value); }}
+                                className="flex-1 text-sm px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
+                            >
+                                <option value="@cf/meta/llama-3.1-8b-instruct">Llama 3.1 8B Instruct (default)</option>
+                                <option value="">Use server default</option>
+                                <option value="@cf/meta/llama-3.1-70b-instruct">Llama 3.1 70B Instruct (if available)</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-20">Temperature</label>
+                            <input
+                                type="range"
+                                min={0}
+                                max={1.5}
+                                step={0.1}
+                                value={temperature}
+                                onChange={(e) => { const v = Number(e.target.value); setTemperature(v); localStorage.setItem('chat_temperature', String(v)); }}
+                                className="flex-1"
+                            />
+                            <span className="text-xs text-gray-600 dark:text-gray-300 w-10 text-right">{temperature.toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-20">top_p</label>
+                            <input
+                                type="range"
+                                min={0}
+                                max={1}
+                                step={0.05}
+                                value={topP}
+                                onChange={(e) => { const v = Number(e.target.value); setTopP(v); localStorage.setItem('chat_top_p', String(v)); }}
+                                className="flex-1"
+                            />
+                            <span className="text-xs text-gray-600 dark:text-gray-300 w-10 text-right">{topP.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-20">max_tokens</label>
+                            <input
+                                type="number"
+                                min={64}
+                                max={4096}
+                                step={64}
+                                value={maxTokens}
+                                onChange={(e) => { const v = Number(e.target.value); setMaxTokens(v); localStorage.setItem('chat_max_tokens', String(v)); }}
+                                className="w-28 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Input Area */}

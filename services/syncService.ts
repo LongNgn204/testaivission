@@ -14,11 +14,16 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://vision-coach-worker.stu725114073.workers.dev';
 
 // 🔐 Auth Helper
+import { getAuthToken as getTokenFromService } from './authService';
 const getAuthToken = (): string | null => {
     try {
-        return localStorage.getItem('auth_token');
+        return getTokenFromService();
     } catch {
-        return null;
+        try {
+            return localStorage.getItem('vision_coach_token');
+        } catch {
+            return null;
+        }
     }
 };
 

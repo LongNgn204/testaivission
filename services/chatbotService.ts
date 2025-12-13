@@ -62,7 +62,8 @@ export class ChatbotService {
     lastTestResult: any,
     userProfile: any,
     language: 'vi' | 'en',
-    onChunk: (chunk: string) => void
+    onChunk: (chunk: string) => void,
+    options?: { model?: string; temperature?: number; topP?: number; maxTokens?: number }
   ): Promise<string> {
     try {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -72,9 +73,6 @@ export class ChatbotService {
           : 'You are offline. Please check your Internet connection.';
       }
 
-      // Rate limit is handled in chat(); avoid double-checking here to prevent false "please wait" responses
-      // See issue: chatStream invoked chat() immediately, causing cooldown to trigger.
-
       const safeMessage = sanitizeUserMessage(message);
       if (!safeMessage) {
         return language === 'vi' ? 'Nội dung trống.' : 'Empty message.';
@@ -82,10 +80,88 @@ export class ChatbotService {
 
       const token = getAuthToken();
 
-      // Streaming endpoint not available: call regular chat and emit once
-      const full = await this.chat(message, lastTestResult, userProfile, language);
-      onChunk(full);
-      return full;
+      // Use SSE over fetch to preserve Authorization header
+      const res = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          message: safeMessage,
+          lastTestResult,
+          userProfile,
+          language,
+          model: options?.model,
+          temperature: options?.temperature,
+          topP: options?.topP,
+          maxTokens: options?.maxTokens,
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        // Fallback to non-streaming
+        const full = await this.chat(message, lastTestResult, userProfile, language);
+        onChunk(full);
+        return full;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let final = '';
+
+      const processBuffer = () => {
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const raw = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          const lines = raw.split('\n');
+          let event: string | null = null;
+          let data = '';
+          for (const line of lines) {
+            if (line.startsWith('event:')) event = line.slice(6).trim();
+            else if (line.startsWith('data:')) data += line.slice(5).trim();
+          }
+          if (!event) {
+            // default event is message; treat as data
+            if (data) {
+              onChunk(data);
+              final += data;
+            }
+          } else if (event === 'done') {
+            // stop
+            return true;
+          } else if (event === 'error') {
+            // relay error
+            onChunk('');
+            return true;
+          } else {
+            // unknown event -> treat as data
+            if (data) {
+              onChunk(data);
+              final += data;
+            }
+          }
+        }
+        return false;
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const shouldStop = processBuffer();
+        if (shouldStop) break;
+      }
+
+      // Process any remaining data
+      if (buffer.length > 0) {
+        buffer += '\n\n';
+        processBuffer();
+      }
+
+      return final || (language === 'vi' ? 'Không có nội dung.' : 'No content.');
     } catch (e: any) {
       const fallback = language === 'vi'
         ? 'Xin lỗi, AI đang bận. Vui lòng thử lại sau.'

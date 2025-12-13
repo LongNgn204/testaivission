@@ -8,7 +8,7 @@ workers_dev = true
 
 # Environment variables
 [env.production]
-vars = { ENVIRONMENT = "production" }
+vars = { ENVIRONMENT = "production", REPORT_MODEL = "gemini-2.0-flash-lite", CHAT_MODEL = "gemini-2.5-flash-native-audio-dialog" }
 routes = [
   { pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }
 ]

@@ -20,6 +20,32 @@ import type {
 export class DatabaseService {
   constructor(private db: D1Database) { }
 
+  async trackCost(params: {
+    userId?: string | null;
+    service: 'llm' | 'embedding' | 'tts' | 'stt';
+    endpoint?: string;
+    tokensInput?: number;
+    tokensOutput?: number;
+    costUsd?: number;
+  }): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO cost_tracking (id, user_id, service, endpoint, tokens_input, tokens_output, cost_usd, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        `cost_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        params.userId ?? null,
+        params.service,
+        params.endpoint ?? null,
+        params.tokensInput ?? null,
+        params.tokensOutput ?? null,
+        params.costUsd ?? 0,
+        Date.now()
+      )
+      .run();
+  }
+
   // ============================================================
   // User Operations
   // ============================================================

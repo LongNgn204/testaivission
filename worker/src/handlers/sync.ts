@@ -22,16 +22,17 @@ async function authenticateRequest(request: IRequest, env: any): Promise<{ userI
         });
     }
 
-    const { verifyJWT } = await import('./auth');
-    const decoded: any = await verifyJWT(token, env.JWT_SECRET);
-    if (!decoded || !decoded.userId) {
+    const { verifyAuthToken } = await import('./auth');
+    const decoded: any = await verifyAuthToken(token, env);
+    const uid = decoded?.sub || decoded?.userId;
+    if (!decoded || !uid) {
         return new Response(JSON.stringify({ success: false, message: 'Invalid token' }), {
             status: 403,
             headers: { 'Content-Type': 'application/json' }
         });
     }
 
-    return { userId: decoded.userId };
+    return { userId: uid as string };
 }
 
 /**

@@ -1,5 +1,6 @@
 import { IRequest } from 'itty-router'
 import { DatabaseService } from '../services/database'
+import { jwtVerify, createRemoteJWKSet } from 'jose'
 
 // Simple base64url helpers
 function base64url(input: ArrayBuffer | string): string {
@@ -52,6 +53,32 @@ export async function verifyJWT(token: string, secret: string): Promise<Record<s
   } catch (e) {
     return null
   }
+}
+
+// RS256 (Auth0) verification via JWKS, with HS256 fallback
+export async function verifyAuthToken(token: string, env: any): Promise<Record<string, any> | null> {
+  const domain = (env.AUTH0_DOMAIN || '').trim();
+  try {
+    if (domain) {
+      const issuer = domain.startsWith('https://') ? domain : `https://${domain}/`;
+      const jwks = createRemoteJWKSet(new URL(`${issuer}.well-known/jwks.json`));
+      const audience = (env.AUTH0_AUDIENCE || '').trim() || undefined;
+      const { payload } = await jwtVerify(token, jwks, {
+        issuer,
+        audience,
+      });
+      // Basic expiry check
+      if (payload.exp && Date.now() / 1000 >= payload.exp) return null;
+      return payload as unknown as Record<string, any>;
+    }
+  } catch (e) {
+    // Fall through to HS256
+  }
+  // Fallback HS256 (legacy)
+  if (env.JWT_SECRET) {
+    return verifyJWT(token, env.JWT_SECRET);
+  }
+  return null;
 }
 
 function cleanPhone(p: string): string {
