@@ -102,6 +102,24 @@ export async function generateReport(
     // Cache result
     await cacheService.set(cacheKey, result, { ttl: CACHE_TTL.REPORT });
 
+    // Cost & latency tracking
+    try {
+      const reportStr = JSON.stringify(report)
+      const tokensIn = Math.ceil(prompt.length / 4)
+      const tokensOut = Math.ceil(reportStr.length / 4)
+      const { DatabaseService } = await import('../services/database')
+      const db = new DatabaseService(env.DB)
+      await db.trackCost({
+        userId: null,
+        service: 'llm',
+        endpoint: '/api/report',
+        tokensInput: tokensIn,
+        tokensOutput: tokensOut,
+        costUsd: 0,
+      })
+      console.info(JSON.stringify({ evt: 'report_done', model: env.REPORT_MODEL || 'cloudflare-ai', tokensIn, tokensOut }))
+    } catch {}
+
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

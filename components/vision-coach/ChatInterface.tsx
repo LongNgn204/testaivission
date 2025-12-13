@@ -97,11 +97,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose })
             utter.volume = 1.0;
             utter.onend = () => {
                 speakingRef.current = false;
+                setSpeakingUI(false);
+                setPaused(false);
                 // Nói tiếp chunk kế tiếp (nếu còn)
                 speakNext();
             };
             utter.onerror = () => {
                 speakingRef.current = false;
+                setSpeakingUI(false);
+                setPaused(false);
                 speakNext();
             };
             // Chọn voice phù hợp (nếu có)

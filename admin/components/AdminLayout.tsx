@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import {
-    LayoutDashboard, FileText, Users, BarChart3, Settings,
+    LayoutDashboard, FileText, Users, BarChart3, Settings, DollarSign,
     LogOut, Menu, X, Shield, ChevronRight, Bell
 } from 'lucide-react';
 import { useAdmin } from '../index';
@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
     { id: 'records', label: 'Hồ Sơ Khám', icon: FileText },
     { id: 'users', label: 'Người Dùng', icon: Users },
     { id: 'analytics', label: 'Thống Kê', icon: BarChart3 },
+    { id: 'cost', label: 'Chi phí & Hiệu năng', icon: DollarSign },
     { id: 'settings', label: 'Cài Đặt', icon: Settings },
 ];
 

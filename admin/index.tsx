@@ -15,6 +15,7 @@ import { RecordsPage } from './pages/RecordsPage';
 import { UsersPage } from './pages/UsersPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AdminCostDashboard } from '../pages/AdminCostDashboard';
 
 // Admin Context
 interface AdminUser {
@@ -80,6 +81,7 @@ export const AdminApp: React.FC = () => {
             case 'records': return <RecordsPage />;
             case 'users': return <UsersPage />;
             case 'analytics': return <AnalyticsPage />;
+            case 'cost': return <AdminCostDashboard />;
             case 'settings': return <SettingsPage />;
             default: return <DashboardPage />;
         }
