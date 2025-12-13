@@ -6,7 +6,6 @@ import { useRoutine } from '../../context/RoutineContext';
 import { StorageService } from '../../services/storageService';
 import { ChatbotService } from '../../services/chatbotService';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
-import { speakVi } from '../../utils/audioUtils';
 
 const storageService = new StorageService();
 
@@ -43,14 +42,14 @@ export const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ isOpen, onClose 
     // Check if speech synthesis is supported
     const isSynthesisSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
-    // Chú thích: wrap speakVi với callback để restart listening sau khi nói xong
+    // Chú thích: TTS với callback để restart listening sau khi nói xong
     const speak = useCallback((text: string) => {
         if (!isSynthesisSupported || !text) return;
 
         setStatus('speaking');
         setBotTranscript(text);
 
-        // Chú thích: dùng speakVi từ audioUtils, nhưng cần track khi nói xong để restart
+        // Chú thích: dùng SpeechSynthesis với callback để restart listening
         const synth = window.speechSynthesis;
         synth.cancel();
 
